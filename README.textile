@@ -1,0 +1,17 @@
+h1. Scatterize
+h5. Data Exploration Made Awesome
+
+It happens all the time at our lab: someone's giving a presentation that includes a bivariate scatter plot. And someone raises her hand and says "What if you excluse those two outliers?" And someone else asks "What if you covary for age?" If the presenter is very sharp, those are the next two slides. Much more often, the response is "I'll try that and get back to you."
+
+_BOOOOOOOO-RING._
+
+Scatterize lets you upload a CSV file, plot the data, and in your browser in real-time, exclude outlier points and include nuisance variables. Every variation of your plot gives you a distinct URL -- so you can prepare your chart and send it to a colleague.
+
+Someday it'll let you do robust regression, too.
+
+The code is available here at https://github.com/njvack/scatterize, and there's a demo up at http://someday.example.com/scatterize
+
+h2. Requirements
+
+Requires Python 2.7+, Django 1.3, NumPy, and SciPy.
+
