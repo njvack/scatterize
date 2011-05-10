@@ -1,4 +1,5 @@
 h1. Scatterize
+
 h5. Data Exploration Made Awesome
 
 It happens all the time at our lab: someone's giving a presentation that includes a bivariate scatter plot. And someone raises her hand and says "What if you excluse those two outliers?" And someone else asks "What if you covary for age?" If the presenter is very sharp, those are the next two slides. Much more often, the response is "I'll try that and get back to you."
