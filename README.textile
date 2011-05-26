@@ -10,9 +10,11 @@ Scatterize lets you upload a CSV file, plot the data, and in your browser in rea
 
 Someday it'll let you do robust regression, too.
 
+And on another day it'll let you take one variable and correlate it with a whole bunch of other variables.
+
 The code is available here at https://github.com/njvack/scatterize, and there's a demo up at http://someday.example.com/scatterize
 
 h2. Requirements
 
-Requires Python 2.7+, Django 1.3, NumPy, and SciPy.
+Requires Python 2.7+, web.py, NumPy, and SciPy.
 
