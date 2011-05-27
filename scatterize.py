@@ -3,10 +3,11 @@ import flask
 import time
 app = flask.Flask(__name__)
 
+ASSET_TIME = int(time.time())
 
 @app.route("/")
 def index():
-    flask.g.time = int(time.time())
+    flask.g.time = ASSET_TIME
     return flask.render_template("index.html")
 
 if __name__ == "__main__":
