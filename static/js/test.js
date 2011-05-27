@@ -1,1 +1,0 @@
-var foo = "I AM YOUR MOM";
