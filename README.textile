@@ -16,5 +16,5 @@ The code is available here at https://github.com/njvack/scatterize, and there's 
 
 h2. Requirements
 
-Requires Python 2.7+, web.py, NumPy, and SciPy.
+Requires Python 2.7+, Flask, NumPy, and SciPy.
 
