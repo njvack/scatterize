@@ -1,2 +1,4 @@
 *pyc
 settings.py
+env
+.DS_Store
