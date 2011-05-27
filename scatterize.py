@@ -1,24 +1,14 @@
 #!/usr/bin/env python
+import flask
+import time
+app = flask.Flask(__name__)
 
-import web
-import helpers
 
-urls = (
-    '/kitten', 'Kitten',
-    '/(.*)', 'Hello'
-)
+@app.route("/")
+def index():
+    flask.g.time = int(time.time())
+    return flask.render_template("index.html")
 
-scatterize = web.application(urls, globals())
-render = web.template.render("templates", base="base", globals={'helpers':helpers})
-
-class Kitten:
-    def GET(self):
-        return "I am kitten"
-
-class Hello:
-    def GET(self, name):
-        name = name or "Fooooo"
-        return render.index(name=name)
-
-if __name__ == '__main__':
-    scatterize.run()
+if __name__ == "__main__":
+    app.debug = True
+    app.run()

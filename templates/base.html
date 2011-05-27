@@ -1,10 +1,13 @@
-$def with (content)
 <!DOCTYPE html>
+{%- import "macros.html" as macros %}
 <html>
 <head>
-  <script type="text/javascript" src="$:helpers.js_path("test.js")"> </script>
+  <title>Hi</title>
+  {{ macros.css_link("reset.css", asset_tag=g.time) }}
+  {{ macros.css_link("style.css", asset_tag=g.time) }}
+  {{ macros.js_include("jquery-1.6.1.min.js", asset_tag=g.time) }}
 </head>
 <body>
-  $:content
+  {% block content %}{% endblock %}
 </body>
 </html>
