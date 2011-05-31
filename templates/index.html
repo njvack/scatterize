@@ -2,42 +2,21 @@
 {% block content -%}
 <p>This is a test page.</p>
 
+<div id="test_scatter">
+</div>
 <script type="text/javascript">
-var data = pv.range(100).map(function(x) {
-  
-  return [Math.random(),Math.random()]; 
+$(function() {
+  $('#test_scatter').ready(function() {
+    var scatterplot = S.scatterplot("test_scatter", 500, 500);
+    
+    $.ajax({
+      'url' : 'scatter.js',
+      'success' : function(d) {
+        S.data = d;
+        scatterplot.draw_data(d.points);
+      }
+    });
+  });
 });
-
-var 
-  h = 400,
-  w = 400,
-  x = pv.Scale.linear(0,1).range(0,w),
-  y = pv.Scale.linear(0,1).range(0,h);
-
-var vis = new pv.Panel()
-  .width(w)
-  .height(h)
-  .bottom(20)
-  .left(20)
-  .right(20)
-  .top(20);
-
-vis.add(pv.Rule)
-  .data(x.ticks())
-  .left(x)
-  .strokeStyle(function(t) {return t == x.ticks()[0] ? 'black' : '#eee'; });
-
-vis.add(pv.Rule)
-  .data(y.ticks())
-  .bottom(y)
-  .strokeStyle(function(t) {return t == y.ticks()[0] ? 'black' : '#eee'; });
-
-vis.add(pv.Dot)
-  .data(data)
-  .left(function(d) {return x(d[0]); })
-  .bottom(function(d) {return y(d[1]); })
-
-vis.render();
-  
 </script>
 {%- endblock %}
