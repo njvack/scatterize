@@ -19,9 +19,11 @@ var S = {
         .bottom(function(p){return my.y(p[1]);});
     };
     
-    my.set_scales = function() {
-      my.x = pv.Scale.linear(0, 1).range(0, w);
-      my.y = pv.Scale.linear(0, 1).range(0, h);
+    my.set_scales = function(points) {
+      var xvals = points.map(function(p) {return p[0]; });
+      var yvals = points.map(function(p) {return p[1]; });
+      my.x = pv.Scale.linear(pv.min(xvals), pv.max(xvals)).range(0, w);
+      my.y = pv.Scale.linear(pv.min(yvals), pv.max(yvals)).range(0, h);
     };
     
     my.add_rules = function() {
@@ -34,7 +36,7 @@ var S = {
     }
     
     pub.draw_data = function(points) {
-      my.set_scales()
+      my.set_scales(points)
       my.add_rules()
       pub.set_points(points)
       pub.vis.render();
