@@ -32,7 +32,9 @@ var S = {
         .left(my.x);
       pub.vis.add(pv.Rule)
         .data(my.y.ticks())
-        .bottom(my.y);
+        .bottom(my.y)
+      .anchor("left").add(pv.Label)
+        .text(my.y.tickFormat);
     }
     
     pub.draw_data = function(points) {
