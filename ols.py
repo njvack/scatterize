@@ -52,10 +52,7 @@ class ols:
         self.y = y
         self.x = x
         self.y_varnm = y_varnm
-        if not isinstance(x_varnm,list): 
-            self.x_varnm = ['const'] + list(x_varnm)
-        else:
-            self.x_varnm = ['const'] + x_varnm
+        self.x_varnm = list(x_varnm)
 
         # Estimate model using OLS
         self.estimate()
