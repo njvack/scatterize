@@ -1,0 +1,11 @@
+{%- extends "base.html" %}
+{% block content -%}
+<h1>Got {{ g.filename }}</h1>
+
+<pre>
+  {% for row in g.rows -%}
+   {{row}}
+  {% endfor -%}
+</pre>
+
+{%- endblock %}

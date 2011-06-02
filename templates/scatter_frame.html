@@ -4,13 +4,24 @@
 
 <div id="test_scatter">
 </div>
+
+<table id="data">
+  {% for row in g.rows -%}
+  <tr>
+    {% for d in row -%}
+    <td>{{d}}</td>
+    {% endfor -%}
+  </tr>
+  {% endfor -%}
+</table>
+
 <script type="text/javascript">
 $(function() {
   $('#test_scatter').ready(function() {
     var scatterplot = S.scatterplot("test_scatter", 500, 500);
     
     $.ajax({
-      'url' : 'demo_scatter.js',
+      'url' : '{{ url_for("regress_js", filehash=g.filehash)}}',
       'success' : function(d) {
         S.data = d;
         scatterplot.draw_data(d.points);

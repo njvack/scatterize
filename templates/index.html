@@ -2,19 +2,9 @@
 {% block content -%}
 <h1>Welcome to scatterize!</h1>
 
-<script type="text/javascript">
-$(function() {
-  $('#test_scatter').ready(function() {
-    var scatterplot = S.scatterplot("test_scatter", 500, 500);
-    
-    $.ajax({
-      'url' : 'scatter.js',
-      'success' : function(d) {
-        S.data = d;
-        scatterplot.draw_data(d.points);
-      }
-    });
-  });
-});
-</script>
+<form method="post" action="{{ url_for("upload") }}" enctype="multipart/form-data">
+  <p>To get started, upload a CSV file.</p>
+  <input type="file" name="csvfile" />
+  <input type="submit" value="Go for it!" />
+</form>
 {%- endblock %}
