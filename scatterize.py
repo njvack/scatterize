@@ -27,9 +27,9 @@ def scatter():
     er_sd = np.random.uniform(5, 50)
     b0 = np.random.uniform(-20, 20)
     b1 = np.random.uniform(-20, 20)
-    x = np.linspace(0, 50, num=points)
+    x = np.random.normal(loc=np.random.uniform(-10, 10), scale=100, size=points)
     y = (b0*np.ones(points))+(b1*x)
-    err = np.random.normal(loc=0, scale=20, size=points)
+    err = np.random.normal(loc=0, scale=100, size=points)
     y += err
     
     params = {
@@ -77,6 +77,7 @@ def scatter_frame(filehash):
     with open("%s/%s.csv" % (STORAGE_DIR, filehash), 'rt') as csvfile:
         reader = csv.reader(csvfile, dialect="excel")
         rows = list(reader)
+    g.column_names = rows[0]
     g.rows = rows
     g.filehash = filehash
     
