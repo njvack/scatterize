@@ -1,5 +1,6 @@
-var S = {
-  'scatterplot': function(canvas, w, h) {
+var S = function($) {
+  var S_my = {}
+  S_my.scatterplot = function(canvas, w, h) {
     var pub = {};
     var my = {};
     pub.vis = new pv.Panel()
@@ -75,9 +76,9 @@ var S = {
     
     pub.my = my; // debugging fun
     return pub;
-  },
+  };
   
-  'single_state': function(base_url, columns, x_control, y_control) {
+  S_my.single_state = function(base_url, columns, x_control, y_control) {
     var pub = {}
     var my = {};
     
@@ -116,6 +117,7 @@ var S = {
     
     pub.my = my;
     return pub;
-  },
- 
-}
+  };
+  
+  return S_my;
+}(jQuery);
