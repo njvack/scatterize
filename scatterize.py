@@ -92,8 +92,13 @@ def regress_js(filehash):
         csvfile.seek(0)
         datas = np.genfromtxt(csvfile, delimiter=",", skip_header=1)
     
-    xvals = datas[:,0]
-    yvals = datas[:,3]
+    app.logger.debug(request.args)
+    x_idx = int(request.args.get("x", 0))
+    y_idx = int(request.args.get("y", 0))
+    app.logger.debug(x_idx)
+    
+    xvals = datas[:,x_idx]
+    yvals = datas[:,y_idx]
     mA = np.column_stack((np.ones_like(xvals), xvals))
     result = ols.ols(yvals, mA, 'y', ['const', 'slope'])
     points = np.column_stack((xvals, yvals)).tolist()
