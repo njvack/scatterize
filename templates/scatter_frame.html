@@ -2,7 +2,14 @@
 {% block content -%}
 <p>This is a test page.</p>
 
-<div id="test_scatter">
+<div id="scatter_setup">
+  <p>Plot on x: <select id="x_col"> </select>
+  </p>
+  <p>Plot on y: <select id="y_col"> </select>
+  </p>
+</div>
+
+<div id="scatter_frame">
 </div>
 
 <table id="data">
@@ -16,18 +23,42 @@
 </table>
 
 <script type="text/javascript">
-$(function() {
-  $('#test_scatter').ready(function() {
-    var scatterplot = S.scatterplot("test_scatter", 500, 500);
-    
-    $.ajax({
-      'url' : '{{ url_for("regress_js", filehash=g.filehash)}}',
-      'success' : function(d) {
-        S.data = d;
-        scatterplot.draw_data(d.points);
-      }
-    });
+(function($) {
+  $(document).ready(function() {
+    var scatterplot = S.scatterplot("scatter_frame", 500, 500);
+    var columns = {{ g.column_names|tojson|safe }};
+
+    S.ss = S.single_state(
+      '{{url_for("regress_js", filehash=g.filehash)}}',
+      columns,
+      '#x_col',
+      '#y_col'
+    );
+    console.log("Updating controls");
+    S.ss.update_controls();
+
+    //var st = S.state();
+    //st.set_state();
+    //if (st.get_mode() == "need_params") {
+    //} else if (st.get_mode() == "single") {
+    //  var ajax_url = $.param.querystring('{{url_for("regress_js", filehash=g.filehash)}}', st.get_state());
+    //  console.log(ajax_url);
+    //  $.ajax({
+    //    'url' : ajax_url,
+    //    'success' : function(d) {
+    //      S.data = d;
+    //      scatterplot.draw_data(d.points);
+    //    }
+    //  });
+    //}
   });
-});
+  
+  $(window).bind("hashchange", function(e) {
+    S.ss.update_controls();
+    console.log("HASHCANGE");
+    console.log(e.fragment);
+  });
+  
+})(jQuery);
 </script>
 {%- endblock %}
