@@ -3,18 +3,21 @@ var S = function($) {
   S_my.scatterplot = function(canvas, w, h) {
     var pub = {};
     var my = {};
-    pub.vis = new pv.Panel()
-      .canvas(canvas)
-      .width(w)
-      .height(h)
-      .bottom(20)
-      .top(20)
-      .left(20)
-      .right(20)
-      .def("point_index", null)
-      .events("all")
-      .event("mousemove", pv.Behavior.point())
-      .event("click", function() {console.log(this.point_index());});
+    
+    my.make_vis = function() {
+      pub.vis = new pv.Panel()
+        .canvas(canvas)
+        .width(w)
+        .height(h)
+        .bottom(20)
+        .top(20)
+        .left(20)
+        .right(20)
+        .def("point_index", null)
+        .events("all")
+        .event("mousemove", pv.Behavior.point())
+        .event("click", function() {console.log(this.point_index());});
+    };
     
     pub.set_points = function(points) {
       pub.points = points;
@@ -39,7 +42,7 @@ var S = function($) {
           this.root.point_index(null);
           return this.strokeStyle(undefined);
           });
-    }
+    };
     
     my.set_scales = function(points) {
       my.x = pv.Scale.linear(pv.min(my.xvals), pv.max(my.xvals)).range(0, w);
@@ -67,6 +70,7 @@ var S = function($) {
     }
     
     pub.draw_data = function(points) {
+      my.make_vis();
       pub.set_points(points);
       my.set_scales(points);
       my.add_rules();
@@ -82,8 +86,8 @@ var S = function($) {
     var pub = {}
     var my = {};
     
-    my.columns = columns;
     my.base_url = base_url;
+    my.columns = columns;
     my.x_control = $(x_control);
     my.y_control = $(y_control);
 
@@ -93,7 +97,7 @@ var S = function($) {
         control.append('<option value="'+i+'">'+list[i]+'</option>');
       }
       control.val(initial_index);
-    }
+    };
     
     my.populate_select(my.x_control, my.columns, 0);
     my.populate_select(my.y_control, my.columns, 1);
@@ -102,7 +106,7 @@ var S = function($) {
       var cur_state = $.bbq.getState();
       my.x_control.val(cur_state.x);
       my.y_control.val(cur_state.y);
-    }
+    };
     
     pub.update_state = function() {
       var opts = {
@@ -110,7 +114,11 @@ var S = function($) {
         'y' : my.y_control.val()
       }
       $.bbq.pushState(opts, 2);
-      }
+    };
+    
+    pub.get_url = function() {
+      return $.param.querystring(my.base_url, $.bbq.getState(), 2);
+    };
     
     my.x_control.change(function() { pub.update_state(); });
     my.y_control.change(function() { pub.update_state(); });
