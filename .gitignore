@@ -2,3 +2,4 @@
 settings.py
 env
 .DS_Store
+.sass-cache
