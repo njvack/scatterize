@@ -3,3 +3,5 @@ settings.py
 env
 .DS_Store
 .sass-cache
+config
+Capfile
