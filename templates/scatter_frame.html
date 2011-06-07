@@ -25,7 +25,6 @@
 <script type="text/javascript">
 (function($) {
   $(document).ready(function() {
-    S.my_sp = S.scatterplot("scatter_frame", 500, 500);
     var columns = {{ g.column_names|tojson|safe }};
 
     S.ss = S.single_state(
@@ -36,7 +35,7 @@
     );
     console.log("Updating controls");
     S.ss.update_controls();
-    $(window).trigger("hashchange");
+    $(window).trigger("hashchange")
   });
   
   $(window).bind("hashchange", function(e) {
@@ -47,9 +46,11 @@
       'url' : regress_url,
       'success' : function(d) {
         S.data = d;
-        S.my_sp.draw_data(d.points);
+        $("#scatter_frame").empty();
+        var scatterplot = S.scatterplot("scatter_frame", 500, 500);
+        scatterplot.draw_data(d.points);
       }
-    })
+    });
   });
   
 })(jQuery);
