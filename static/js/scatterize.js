@@ -9,7 +9,11 @@ var S = {
       .bottom(20)
       .top(20)
       .left(20)
-      .right(20);
+      .right(20)
+      .def("point_index", null)
+      .events("all")
+      .event("mousemove", pv.Behavior.point())
+      .event("click", function() {console.log(this.point_index());});
     
     pub.set_points = function(points) {
       pub.points = points;
@@ -18,10 +22,22 @@ var S = {
     };
     
     pub.draw_points = function(points) {
-      pub.vis.add(pv.Dot)
+      pub.vis.add(pv.Panel)
         .data(points)
+      .add(pv.Dot)
         .left(function(p) {return my.x(p[0]);})
-        .bottom(function(p) {return my.y(p[1]);});
+        .bottom(function(p) {return my.y(p[1]);})
+        .strokeStyle("steelblue")
+        .def("strokeStyle", "steelblue")
+        .fillStyle(function() { return this.strokeStyle().alpha(0.4);})
+        .event("point", function() {
+          this.root.point_index(this.parent.index);
+          return this.strokeStyle("orange");
+          })
+        .event("unpoint", function() {
+          this.root.point_index(null);
+          return this.strokeStyle(undefined);
+          });
     }
     
     my.set_scales = function(points) {
@@ -59,5 +75,47 @@ var S = {
     
     pub.my = my; // debugging fun
     return pub;
-  }
+  },
+  
+  'single_state': function(base_url, columns, x_control, y_control) {
+    var pub = {}
+    var my = {};
+    
+    my.columns = columns;
+    my.base_url = base_url;
+    my.x_control = $(x_control);
+    my.y_control = $(y_control);
+
+    my.populate_select = function(control, list, initial_index) {
+      if (!initial_index) { initial_index = 0; }
+      for (i = 0; i < list.length; i++) {
+        control.append('<option value="'+i+'">'+list[i]+'</option>');
+      }
+      control.val(initial_index);
+    }
+    
+    my.populate_select(my.x_control, my.columns, 0);
+    my.populate_select(my.y_control, my.columns, 1);
+    
+    pub.update_controls = function() {
+      var cur_state = $.bbq.getState();
+      my.x_control.val(cur_state.x);
+      my.y_control.val(cur_state.y);
+    }
+    
+    pub.update_state = function() {
+      var opts = {
+        'x' : my.x_control.val(),
+        'y' : my.y_control.val()
+      }
+      $.bbq.pushState(opts, 2);
+      }
+    
+    my.x_control.change(function() { pub.update_state(); });
+    my.y_control.change(function() { pub.update_state(); });
+    
+    pub.my = my;
+    return pub;
+  },
+ 
 }
