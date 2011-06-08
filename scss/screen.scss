@@ -6,3 +6,38 @@
 
 // Import all the default blueprint modules so that we can access their mixins.
 @import "blueprint";
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+#wrapper {
+  @include container;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#scatter_frame {
+  @include column(14);
+}
+
+#scatter_controls {
+  @include column(10, true);
+  
+  ul, ol {
+    list-style: none;
+  }
+}
+
+table#data {
+  clear:both;
+}
+
+table {
+  line-height: 2;
+}
+
+td {
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+}

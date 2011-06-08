@@ -2,7 +2,7 @@
 {%- import "macros.html" as macros %}
 <html>
 <head>
-  <title>Hi</title>
+  <title>Scatterize!</title>
   {{ macros.css_link("screen.css", asset_tag=g.time) }}
   {{ macros.js_include("jquery-1.6.1.min.js", asset_tag=g.time) }}
   {{ macros.js_include("jquery.ba-bbq.js", asset_tag=g.time) }}
@@ -11,6 +11,8 @@
   {{ macros.js_include("scatterize.js", asset_tag=g.time) }}
 </head>
 <body>
+  <div id="wrapper">
   {% block content %}{% endblock %}
+  </div>
 </body>
 </html>

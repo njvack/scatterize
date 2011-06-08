@@ -56,3 +56,62 @@ table {
 a img {
   border: none;
 }
+
+/* line 10, ../../scss/screen.scss */
+body {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+/* line 14, ../../scss/screen.scss */
+#wrapper {
+  width: 950px;
+  margin: 0 auto;
+  overflow: hidden;
+  *zoom: 1;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* line 20, ../../scss/screen.scss */
+#scatter_frame {
+  display: inline;
+  float: left;
+  margin-right: 10px;
+  width: 550px;
+}
+/* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
+* html #scatter_frame {
+  overflow-x: hidden;
+}
+
+/* line 24, ../../scss/screen.scss */
+#scatter_controls {
+  display: inline;
+  float: left;
+  margin-right: 0;
+  width: 390px;
+}
+/* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
+* html #scatter_controls {
+  overflow-x: hidden;
+}
+/* line 27, ../../scss/screen.scss */
+#scatter_controls ul, #scatter_controls ol {
+  list-style: none;
+}
+
+/* line 32, ../../scss/screen.scss */
+table#data {
+  clear: both;
+}
+
+/* line 36, ../../scss/screen.scss */
+table {
+  line-height: 2;
+}
+
+/* line 40, ../../scss/screen.scss */
+td {
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+}
