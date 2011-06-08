@@ -1,15 +1,21 @@
 {%- extends "base.html" %}
 {% block content -%}
-<p>This is a test page.</p>
-
-<div id="scatter_setup">
-  <p>Plot on x: <select id="x_col"> </select>
-  </p>
-  <p>Plot on y: <select id="y_col"> </select>
-  </p>
+<div id="scatter_frame">
 </div>
 
-<div id="scatter_frame">
+<div id="scatter_controls">
+  <div id="y_data">Plot on y: <select id="y_col"> </select>
+  </div>
+  <div id="x_data">Plot on x: <select id="x_col"> </select>
+  </div>
+  <div id="nuisances">
+    <h3>Nuisance variables</h3>
+    <ul id="nuisance_active">
+    </ul>
+    <ul id="nuisance_inactive">
+    </ul>
+  </div>
+  
 </div>
 
 <table id="data">
@@ -31,14 +37,15 @@
       '{{url_for("regress_js", filehash=g.filehash)}}',
       columns,
       '#x_col',
-      '#y_col'
+      '#y_col',
+      '#nuisance_active',
+      '#nuisance_inactive'
     );
-    console.log("Updating controls");
-    S.ss.update_controls();
     $(window).trigger("hashchange")
   });
   
   $(window).bind("hashchange", function(e) {
+    console.log("Hashchange!");
     S.ss.update_controls();
     var regress_url = S.ss.get_url();
     console.log("Let's get from "+regress_url);

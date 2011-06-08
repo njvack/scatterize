@@ -109,7 +109,10 @@ var S = function($) {
     return pub;
   };
   
-  S_my.single_state = function(base_url, columns, x_control, y_control) {
+  S_my.single_state = function(
+      base_url, columns, x_control, y_control, 
+      active_nuisance_list, inactive_nuisance_list
+    ) {
     var pub = {}
     var my = {};
     
@@ -117,6 +120,8 @@ var S = function($) {
     my.columns = columns;
     my.x_control = $(x_control);
     my.y_control = $(y_control);
+    my.active_nuisance_list = $(active_nuisance_list);
+    my.inactive_nuisance_list = $(inactive_nuisance_list);
 
     my.populate_select = function(control, list, initial_index) {
       if (!initial_index) { initial_index = 0; }
@@ -126,21 +131,112 @@ var S = function($) {
       control.val(initial_index);
     };
     
-    my.populate_select(my.x_control, my.columns, 0);
-    my.populate_select(my.y_control, my.columns, 1);
-    
-    pub.update_controls = function() {
-      var cur_state = $.bbq.getState();
-      my.x_control.val(cur_state.x);
-      my.y_control.val(cur_state.y);
-    };
-    
     pub.update_state = function() {
+      console.log("Updating state!");
       var opts = {
         'x' : my.x_control.val(),
-        'y' : my.y_control.val()
-      }
+        'y' : my.y_control.val(),
+      };
+      var xy_ints = intify([my.x_control.val(), my.y_control.val()]);
+      var nuisance_ids = $.grep(my.checked_nuisance_vals(), function(v) {
+        return !(xy_ints.indexOf(v) > -1)
+      });
+      var nuisance_list = nuisance_ids.join(",");
+      if (nuisance_list !== '') { opts.n = nuisance_list; }
+      console.log($.param.fragment("", opts));
       $.bbq.pushState(opts, 2);
+    };
+        
+    my.generate_nuisance_lists = function() {
+      var st = $.bbq.getState();
+      var nuis_idxs = csv_split(st.n);
+      var xy_idxs = intify([st.x, st.y]);
+      var col_list_decorated = my.decorate_column_list_selectable(
+        my.columns, xy_idxs);
+      var sel_nuis_cols = [];
+      var unsel_nuis_cols = [];
+      $.each(col_list_decorated, function(i, e) {
+        var io = nuis_idxs.indexOf(i);
+        if (nuis_idxs.indexOf(i) > -1) {
+          sel_nuis_cols.push(e);
+        } else {
+          unsel_nuis_cols.push(e);
+        }
+      });
+      return {
+        "selected": sel_nuis_cols,
+        "unselected": unsel_nuis_cols
+      }
+    };
+    
+    my.populate_nuisance_lists = function() {
+      var lists = my.generate_nuisance_lists();
+      my.active_nuisance_list.empty();
+      for (var i = 0; i < lists.selected.length; i++) {
+        my.active_nuisance_list.append(
+          '<li>'+my.make_nuisance_selector(lists.selected[i], true)+'</li>'
+        );
+      }
+      my.inactive_nuisance_list.empty();
+      for (var i = 0; i < lists.unselected.length; i++) {
+        my.inactive_nuisance_list.append(
+          '<li>'+my.make_nuisance_selector(lists.unselected[i], false)+'</li>'
+        );
+      }
+      my.active_nuisance_list.find("input").change(function() {
+        pub.update_state();
+      });
+      my.inactive_nuisance_list.find("input").change(function() {
+        pub.update_state();
+      });
+    };
+    
+    my.checked_nuisance_vals = function() {
+      var l = [];
+      var act_checked = my.active_nuisance_list.find("input:checked");
+      var inact_checked = my.inactive_nuisance_list.find("input:checked");
+      $.each([act_checked, inact_checked], function(i, elts) {
+        $.each(elts, function(i, elt) {l.push(elt.value);});
+      });
+      return intify(l).sort();
+      
+    };
+    
+    my.decorate_column_list_selectable = function(columns, disallowed_idxs) {
+      var d_idxs_num = S.intify(disallowed_idxs);
+      var out = [];
+      for (var i = 0; i < columns.length; i++) {
+        var name = columns[i];
+        var in_disallowed = d_idxs_num.indexOf(i) > -1;
+        out.push({name:name, i: i, allowed: !in_disallowed});
+      }
+      return out;
+    };
+    
+    my.make_nuisance_selector = function(n, check) {
+      // Makes something like 
+      // <input type="checkbox" id="n_X" name="n_X" value="X" />
+      // <label for="n_X">Column name</label>
+      var dis_str = ' disabled="disabled" ';
+      if (n.allowed) { dis_str = ' '; }
+      var checked_str = ' ';
+      if (n.allowed && check) { checked_str = ' checked = "checked" '; }
+      var n_str = '"n_'+n.i+'"';
+      out_str = '<input type="checkbox"'+checked_str+dis_str+'id = '+n_str+' value="'+n.i+'" />';
+      out_str += '<label for='+n_str+'>'+n.name+'</label>';
+      return out_str;
+    }
+    
+    my.populate_select(my.x_control, my.columns, 0);
+    my.populate_select(my.y_control, my.columns, 0);
+    
+    pub.update_controls = function() {
+      console.log("Update controls");
+      var cur_state = $.bbq.getState();
+      console.log(cur_state);
+      my.x_control.val(cur_state.x);
+      my.y_control.val(cur_state.y);
+      my.populate_nuisance_lists();
     };
     
     pub.get_url = function() {
