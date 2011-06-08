@@ -94,15 +94,53 @@ def regress_js(filehash):
     app.logger.debug(request.args)
     x_idx = int(request.args.get("x", 0))
     y_idx = int(request.args.get("y", 0))
+    nuis_idxs = []
+    nlist = request.args.get("n", "").strip()
+    if nlist != "":
+        nuis_idxs = [int(i) for i in nlist.split(",")]
     app.logger.debug(x_idx)
     
-    xvals = datas[:,x_idx]
     yvals = datas[:,y_idx]
-    mA = np.column_stack((np.ones_like(xvals), xvals))
-    result = ols.ols(yvals, mA, 'y', ['const', 'slope'])
-    points = np.column_stack((xvals, yvals)).tolist()
+    const_term = np.ones_like(yvals)
+    x_var = datas[:,x_idx]
+    nuisance_vars = datas[:,nuis_idxs]
+    
+    mA = np.column_stack((const_term, x_var, nuisance_vars))
+    result = ols.ols(yvals, mA, 'y', ['const', 'x'])
+    
+    coef_result = {
+        "const": {
+            'b': result.b[0],
+            't': result.t[0],
+            'p': result.p[0],
+            'se' : result.se[0]
+        },
+        "x": {
+            'b': result.b[1],
+            't': result.t[1],
+            'p': result.p[1],
+            'se' : result.se[1]
+        }
+    }
+    
+    for i, col_idx in enumerate(nuis_idxs):
+        res_i = i+2
+        coef_result["n_%s" % col_idx] = {
+            'b': result.b[res_i],
+            't': result.t[res_i],
+            'p': result.p[res_i],
+            'se' : result.se[res_i]
+        }
+    
+    model_result = {
+        "Rsq": result.R2,
+        "RsqAdj": result.R2adj,
+        "F" : result.F,
+        "Fpv" : result.Fpv
+    }
+    points = np.column_stack((x_var, yvals)).tolist()
     return flask.jsonify(points=points, 
-        b=result.b.tolist(), p=result.p.tolist(), t=result.t.tolist())
+        coef_result=coef_result, model_result=model_result)
     
 if __name__ == "__main__":
     app.debug = True
