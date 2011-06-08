@@ -84,10 +84,14 @@ var S = function($) {
     my.add_rules = function() {
       pub.vis.add(pv.Rule)
         .data(my.x.ticks())
-        .left(my.x);
+        .left(my.x)
+        .strokeStyle("#CCC")
+      .anchor("bottom").add(pv.Label)
+        .text(my.x.tickFormat);
       pub.vis.add(pv.Rule)
         .data(my.y.ticks())
         .bottom(my.y)
+        .strokeStyle("#CCC")
       .anchor("left").add(pv.Label)
         .text(my.y.tickFormat);
     }
