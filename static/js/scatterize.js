@@ -1,5 +1,28 @@
+if (!(window.console && window.console.log)) {
+  window.console = {
+    log: function() {}
+  }
+}
+
 var S = function($) {
-  var S_my = {}
+  var S_my = {};
+  
+  function intify(string_ar) {
+    return $.map(string_ar, function(e) {
+      return parseInt(e, 10);
+    });
+  }
+  S_my.intify = intify;
+  
+  function csv_split(str) {
+    var splitted = []
+    if (str && str !== "") {
+     splitted = str.split(",") 
+    }
+    return intify(splitted);
+  }
+  S_my.csv_split = csv_split;
+  
   S_my.scatterplot = function(canvas, w, h) {
     var pub = {};
     var my = {};
