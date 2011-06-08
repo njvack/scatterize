@@ -6,14 +6,13 @@ import csv
 import numpy as np
 
 import ols
+import settings
 
 app = flask.Flask(__name__)
 
-ASSET_TIME = int(time.time())
-STORAGE_DIR = "/Users/njvack/tmp/scatterize"
 
 def add_time_to_global():
-    g.time = ASSET_TIME
+    g.time = settings.ASSET_TIME
 
 app.before_request(add_time_to_global)
 
@@ -64,7 +63,7 @@ def upload():
     rows = list(reader)
     h.update(str(rows))
     filename = "%s.csv" % (h.hexdigest())
-    with open("%s/%s" % (STORAGE_DIR, filename), 'w') as outfile:
+    with open("%s/%s" % (settings.STORAGE_DIR, filename), 'w') as outfile:
         writer = csv.writer(outfile, dialect="excel")
         writer.writerows(rows)
     g.filename = filename
@@ -74,7 +73,7 @@ def upload():
 @app.route("/d/<filehash>")
 def scatter_frame(filehash):
     rows = []
-    with open("%s/%s.csv" % (STORAGE_DIR, filehash), 'rt') as csvfile:
+    with open("%s/%s.csv" % (settings.STORAGE_DIR, filehash), 'rt') as csvfile:
         reader = csv.reader(csvfile, dialect="excel")
         rows = list(reader)
     g.column_names = rows[0]
@@ -85,7 +84,7 @@ def scatter_frame(filehash):
 
 @app.route("/d/<filehash>/regress.js")
 def regress_js(filehash):
-    filename = "%s/%s.csv" % (STORAGE_DIR, filehash)
+    filename = "%s/%s.csv" % (settings.STORAGE_DIR, filehash)
     with open(filename, 'rt') as csvfile:
         reader = csv.reader(csvfile, dialect="excel")
         headers = reader.next()
