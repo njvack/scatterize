@@ -8,9 +8,12 @@ _BOOOOOOOO-RING._
 
 Scatterize lets you upload a CSV file, plot the data, and in your browser in real-time, exclude outlier points and include nuisance variables. Every variation of your plot gives you a distinct URL -- so you can prepare your chart and send it to a colleague.
 
-Someday it'll let you do robust regression, too.
+Planned features:
 
-And on another day it'll let you take one variable and correlate it with a whole bunch of other variables.
+* Missing data support
+* Spearman's (rank-order) statistics
+* Robust regression
+* Bulk regression -- choose a DV and a set of variables of interest; get a quick t, p, and R^2 for each.
 
 The code is available here at https://github.com/njvack/scatterize, and there's a demo up at http://someday.example.com/scatterize
 
