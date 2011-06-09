@@ -1,0 +1,5 @@
+import time
+
+ASSET_TIME = int(time.time())
+STORAGE_DIR = "/tmp/scatterize"
+STATIC_PATH = "/static"
