@@ -6,6 +6,7 @@ import csv
 import numpy as np
 
 import ols
+from utils import json_float
 import settings
 
 app = flask.Flask(__name__)
@@ -110,33 +111,33 @@ def regress_js(filehash):
     
     coef_result = {
         "const": {
-            'b': result.b[0],
-            't': result.t[0],
-            'p': result.p[0],
-            'se' : result.se[0]
+            'b'  : json_float(result.b[0]),
+            't'  : json_float(result.t[0]),
+            'p'  : json_float(result.p[0]),
+            'se' : json_float(result.se[0])
         },
         "x": {
-            'b': result.b[1],
-            't': result.t[1],
-            'p': result.p[1],
-            'se' : result.se[1]
+            'b'  : json_float(result.b[1]),
+            't'  : json_float(result.t[1]),
+            'p'  : json_float(result.p[1]),
+            'se' : json_float(result.se[1])
         }
     }
     
     for i, col_idx in enumerate(nuis_idxs):
         res_i = i+2
         coef_result["n_%s" % col_idx] = {
-            'b': result.b[res_i],
-            't': result.t[res_i],
-            'p': result.p[res_i],
-            'se' : result.se[res_i]
+            'b'  : json_float(result.b[res_i]),
+            't'  : json_float(result.t[res_i]),
+            'p'  : json_float(result.p[res_i]),
+            'se' : json_float(result.se[res_i])
         }
     
     model_result = {
-        "Rsq": result.R2,
-        "RsqAdj": result.R2adj,
-        "F" : result.F,
-        "Fpv" : result.Fpv
+        "Rsq"    : json_float(result.R2),
+        "RsqAdj" : json_float(result.R2adj),
+        "F"      : json_float(result.F),
+        "Fpv"    : json_float(result.Fpv)
     }
     points = np.column_stack((x_var, yvals)).tolist()
     return flask.jsonify(points=points, 

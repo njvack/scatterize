@@ -51,11 +51,18 @@
     console.log("Let's get from "+regress_url);
     $.ajax({
       'url' : regress_url,
-      'success' : function(d) {
-        S.data = d;
+      'success' : function(data) {
+        console.log(data);
+        S.data = data;
         $("#scatter_frame").empty();
         var scatterplot = S.scatterplot("scatter_frame", 500, 500);
-        scatterplot.draw_data(d.points);
+        scatterplot.draw_data(data.points);
+      },
+      'failure' : function(r, str) {
+        // Happens in the case of, say, a singular matrix error
+        console.log("Fail");
+        console.log(r);
+        console.log(str);
       }
     });
   });
