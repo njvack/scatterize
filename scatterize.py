@@ -101,13 +101,14 @@ def regress_js(filehash):
         nuis_idxs = [int(i) for i in nlist.split(",")]
     app.logger.debug(x_idx)
     
-    yvals = datas[:,y_idx]
-    const_term = np.ones_like(yvals)
+    dv = datas[:,y_idx]
+    const_term = np.ones_like(dv)
     x_var = datas[:,x_idx]
     nuisance_vars = datas[:,nuis_idxs]
     
     mA = np.column_stack((const_term, x_var, nuisance_vars))
-    result = ols.ols(yvals, mA, 'y', ['const', 'x'])
+    result = ols.ols(dv, mA, 'y', ['const', 'x'])
+    plot_yvals = result.b[0] + (result.b[1]*x_var) + result.e 
     
     coef_result = {
         "const": {
@@ -139,7 +140,7 @@ def regress_js(filehash):
         "F"      : json_float(result.F),
         "Fpv"    : json_float(result.Fpv)
     }
-    points = np.column_stack((x_var, yvals)).tolist()
+    points = np.column_stack((x_var, plot_yvals)).tolist()
     return flask.jsonify(points=points, 
         coef_result=coef_result, model_result=model_result)
     
