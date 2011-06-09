@@ -7,10 +7,11 @@ import numpy as np
 
 import ols
 from utils import json_float
+import wsgi_utils
 import settings
 
-app = flask.Flask(__name__)
-
+app = flask.Flask(__name__, settings.STATIC_PATH)
+app.wsgi_app = wsgi_utils.ReverseProxied(app.wsgi_app)
 
 def add_time_to_global():
     g.time = settings.ASSET_TIME
