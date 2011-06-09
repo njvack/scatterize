@@ -70,7 +70,8 @@ def upload():
         writer.writerows(rows)
     g.filename = filename
     g.rows = rows
-    return flask.render_template("uploaded.html")
+    return flask.redirect(flask.url_for(
+        'scatter_frame', filehash=h.hexdigest()))
 
 @app.route("/d/<filehash>")
 def scatter_frame(filehash):
