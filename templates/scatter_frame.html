@@ -1,6 +1,9 @@
 {%- extends "base.html" %}
 {% block content -%}
 <div id="scatter_frame">
+  <div id="scatterplot">
+  </div>
+  &nbsp;
 </div>
 
 <div id="scatter_controls">
@@ -15,7 +18,9 @@
     <ul id="nuisance_inactive">
     </ul>
   </div>
-  
+</div>
+
+<div id="model_stats">
 </div>
 
 <table id="data">
@@ -54,15 +59,24 @@
       'success' : function(data) {
         console.log(data);
         S.data = data;
-        $("#scatter_frame").empty();
-        var scatterplot = S.scatterplot("scatter_frame", 500, 500);
+        $("#scatterplot").empty();
+        var scatterplot = S.scatterplot("scatterplot", 500, 500);
         scatterplot.draw_data(data.points);
+        S.update_model_stats("#model_stats", data.model_result);
+        S.update_coef_stats("#x_data", data.coef_result.x);
+        for (var key in data.coef_result) {
+          if (key.indexOf("n_") === 0) {
+            var container = $("#"+key).parent();
+            S.update_coef_stats(container, data.coef_result[key]);
+          }
+        }
       },
-      'failure' : function(r, str) {
+      'error' : function(r, str) {
         // Happens in the case of, say, a singular matrix error
         console.log("Fail");
         console.log(r);
         console.log(str);
+        $('#model_stats').empty().append("<h3>Regression error</h3>");
       }
     });
   });

@@ -14,6 +14,11 @@ var S = function($) {
   }
   S_my.intify = intify;
   
+  function short_float(val, places) {
+    if (!places) { places = 4; }
+    return parseFloat(val).toFixed(places);
+  }
+  
   function csv_split(str) {
     var splitted = []
     if (str && str !== "") {
@@ -179,8 +184,11 @@ var S = function($) {
       }
       my.inactive_nuisance_list.empty();
       for (var i = 0; i < lists.unselected.length; i++) {
+        var item = lists.unselected[i];
+        var li = $(document.createElement("li"));
+        if (!item.allowed) { li.addClass("disallowed"); }
         my.inactive_nuisance_list.append(
-          '<li>'+my.make_nuisance_selector(lists.unselected[i], false)+'</li>'
+          li.append(my.make_nuisance_selector(item, false))
         );
       }
       my.active_nuisance_list.find("input").change(function() {
@@ -249,6 +257,32 @@ var S = function($) {
     pub.my = my;
     return pub;
   };
+  
+  function update_model_stats(container, model_stats) {
+    var c = $(container);
+    c.empty();
+    c.append("<div>F: "+short_float(model_stats.F)+"</div>");
+    c.append("<div>p: "+short_float(model_stats.Fpv)+"</div>");
+    c.append("<div>R²: "+short_float(model_stats.Rsq)+"</div>");
+    c.append("<div>Adjusted R²: "+short_float(model_stats.RsqAdj)+"</div>");
+  }
+  S_my.update_model_stats = update_model_stats;
+  
+  function update_coef_stats(container, coef_stats) {
+    sc = $(container).find(".stats");
+    if (sc.length === 0) {
+      sc = $(document.createElement("div")).addClass("stats");
+      $(container).append(sc);
+    } else {
+      sc = $(sc[0]);
+      sc.empty();
+    }
+    sc.append("<div>β: "+short_float(coef_stats.b)+"</div>");
+    sc.append("<div>t: "+short_float(coef_stats.t)+"</div>");
+    sc.append("<div>p: "+short_float(coef_stats.p)+"</div>");
+    
+  }
+  S_my.update_coef_stats = update_coef_stats;
   
   return S_my;
 }(jQuery);

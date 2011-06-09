@@ -88,8 +88,8 @@ body {
 #scatter_controls {
   display: inline;
   float: left;
-  margin-right: 0;
-  width: 390px;
+  margin-right: 10px;
+  width: 190px;
 }
 /* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
 * html #scatter_controls {
@@ -99,18 +99,34 @@ body {
 #scatter_controls ul, #scatter_controls ol {
   list-style: none;
 }
+/* line 31, ../../scss/screen.scss */
+#scatter_controls .disallowed {
+  color: GrayText;
+}
 
-/* line 32, ../../scss/screen.scss */
+/* line 34, ../../scss/screen.scss */
+#model_stats {
+  display: inline;
+  float: left;
+  margin-right: 0;
+  width: 190px;
+}
+/* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
+* html #model_stats {
+  overflow-x: hidden;
+}
+
+/* line 38, ../../scss/screen.scss */
 table#data {
   clear: both;
 }
 
-/* line 36, ../../scss/screen.scss */
+/* line 42, ../../scss/screen.scss */
 table {
   line-height: 2;
 }
 
-/* line 40, ../../scss/screen.scss */
+/* line 46, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;
