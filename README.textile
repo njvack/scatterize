@@ -11,6 +11,7 @@ Scatterize lets you upload a CSV file, plot the data, and in your browser in rea
 Planned features:
 
 * Missing data support
+* Residual diagnostics
 * Spearman's (rank-order) statistics
 * Robust regression
 * Bulk regression -- choose a DV and a set of variables of interest; get a quick t, p, and R^2 for each.
