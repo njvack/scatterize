@@ -6,17 +6,14 @@ import csv
 import numpy as np
 
 import ols
-from utils import json_float
+from utils import json_float, add_url_helpers
 import wsgi_utils
 import settings
 
 app = flask.Flask(__name__, settings.STATIC_PATH)
 app.wsgi_app = wsgi_utils.ReverseProxied(app.wsgi_app)
 
-def add_time_to_global():
-    g.time = settings.ASSET_TIME
-
-app.before_request(add_time_to_global)
+add_url_helpers(app)
 
 @app.route("/demo")
 def demo():

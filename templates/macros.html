@@ -1,7 +1,11 @@
-{% macro css_link(filename, media="all", asset_tag="") -%}
-<link href="{{ url_for('static', filename='css/%s' % filename)}}?{{ asset_tag }}" type="text/css" rel="stylesheet" media="{{media}}" />
+{% macro css_link(filename, media="all") -%}
+<link href="{{ url_for('static', filename='css/%s' % filename)}}" type="text/css" rel="stylesheet" media="{{media}}" />
 {%- endmacro %}
 
-{% macro js_include(filename, media="all", asset_tag="") -%}
-<script type="text/javascript" src="{{ url_for('static', filename='js/%s' % filename)}}?{{ asset_tag }}"> </script>
+{% macro js_include(filename, media="all") -%}
+<script type="text/javascript" src="{{ url_for('static', filename='js/%s' % filename)}}"> </script>
+{%- endmacro %}
+
+{% macro wackytimes() -%}
+{{ bazola() }}
 {%- endmacro %}
