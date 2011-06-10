@@ -13,17 +13,26 @@
   </div>
   <div id="nuisances">
     <h3>Nuisance variables</h3>
-    <ul id="nuisance_active">
-    </ul>
-    <ul id="nuisance_inactive">
+    <ul id="nuisance_vars">
     </ul>
   </div>
 </div>
 
-<div id="model_stats">
+<div id="stats_data">
+  <div id="model_stats">
+  </div>
+  <div id="coef_stats">
+    <div id="const_stats">
+    </div>
+    <div id="x_stats">
+    </div>
+    {% for col in g.column_names -%}
+    <div id="n_{{loop.index0}}_stats"></div>
+    {% endfor -%}
+  </div>
 </div>
 
-<table id="data">
+<table id="raw_data">
   {% for row in g.rows -%}
   <tr>
     {% for d in row -%}
@@ -43,8 +52,7 @@
       columns,
       '#x_col',
       '#y_col',
-      '#nuisance_active',
-      '#nuisance_inactive'
+      '#nuisance_vars'
     );
     $(window).trigger("hashchange");
   });
@@ -65,10 +73,12 @@
         scatterplot.regression_line(
           data.coef_result.x.b, data.coef_result.const.b, "brown");
         S.update_model_stats("#model_stats", data.model_result);
-        S.update_coef_stats("#x_data", data.coef_result.x);
+        $("#coef_stats div").empty();
+        S.update_coef_stats("#x_stats", data.coef_result.x);
+        S.update_coef_stats("#const_stats", data.coef_result.const);
         for (var key in data.coef_result) {
           if (key.indexOf("n_") === 0) {
-            var container = $("#"+key).parent();
+            var container = $("#"+key+"_stats");
             S.update_coef_stats(container, data.coef_result[key]);
           }
         }

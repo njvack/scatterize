@@ -87,7 +87,7 @@ def regress_js(filehash):
     filename = "%s/%s.csv" % (settings.STORAGE_DIR, filehash)
     with open(filename, 'rt') as csvfile:
         reader = csv.reader(csvfile, dialect="excel")
-        headers = reader.next()
+        columns = reader.next()
         csvfile.seek(0)
         datas = np.genfromtxt(csvfile, delimiter=",", skip_header=1)
     
@@ -114,13 +114,17 @@ def regress_js(filehash):
             'b'  : json_float(result.b[0]),
             't'  : json_float(result.t[0]),
             'p'  : json_float(result.p[0]),
-            'se' : json_float(result.se[0])
+            'se' : json_float(result.se[0]),
+            'col_idx' : None,
+            'name' : "Constant"
         },
         "x": {
             'b'  : json_float(result.b[1]),
             't'  : json_float(result.t[1]),
             'p'  : json_float(result.p[1]),
-            'se' : json_float(result.se[1])
+            'se' : json_float(result.se[1]),
+            'col_idx' : x_idx,
+            'name' : columns[x_idx]
         }
     }
     
@@ -130,7 +134,9 @@ def regress_js(filehash):
             'b'  : json_float(result.b[res_i]),
             't'  : json_float(result.t[res_i]),
             'p'  : json_float(result.p[res_i]),
-            'se' : json_float(result.se[res_i])
+            'se' : json_float(result.se[res_i]),
+            'col_idx' : col_idx,
+            'name' : columns[col_idx]
         }
     
     model_result = {

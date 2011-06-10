@@ -9,12 +9,19 @@
 
 body {
   font-family: Helvetica, Arial, sans-serif;
+  padding-top: .5em;
+  padding-bottom: .5em;
+  background-color: #BCF;
 }
 
 #wrapper {
   @include container;
+  padding-top: .5em;
+  padding-bottom: .5em;
   margin-left: auto;
   margin-right: auto;
+  border: 1px solid #999;
+  background-color: #FFF;
 }
 
 #scatter_frame {
@@ -28,19 +35,33 @@ body {
     list-style: none;
   }
   
+  select {
+    max-width: 100%;
+  }
+  
   .disallowed { color: GrayText;}
 }
 
-#model_stats {
+h3 {
+  font-weight: bold;
+  margin-top: 1em;
+  color: #333;
+}
+
+#stats_data {
   @include column(5, true);
 }
 
-table#data {
-  clear:both;
+table#raw_data {
+  @include column(24, true);
+  overflow: scroll;
+  td {
+    font-size: 80%;
+  }
 }
 
 table {
-  line-height: 2;
+  line-height: 1.5;
 }
 
 td {

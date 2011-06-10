@@ -60,19 +60,26 @@ a img {
 /* line 10, ../../scss/screen.scss */
 body {
   font-family: Helvetica, Arial, sans-serif;
+  padding-top: .5em;
+  padding-bottom: .5em;
+  background-color: #BCF;
 }
 
-/* line 14, ../../scss/screen.scss */
+/* line 17, ../../scss/screen.scss */
 #wrapper {
   width: 950px;
   margin: 0 auto;
   overflow: hidden;
   *zoom: 1;
+  padding-top: .5em;
+  padding-bottom: .5em;
   margin-left: auto;
   margin-right: auto;
+  border: 1px solid #999;
+  background-color: #FFF;
 }
 
-/* line 20, ../../scss/screen.scss */
+/* line 27, ../../scss/screen.scss */
 #scatter_frame {
   display: inline;
   float: left;
@@ -84,7 +91,7 @@ body {
   overflow-x: hidden;
 }
 
-/* line 24, ../../scss/screen.scss */
+/* line 31, ../../scss/screen.scss */
 #scatter_controls {
   display: inline;
   float: left;
@@ -95,38 +102,61 @@ body {
 * html #scatter_controls {
   overflow-x: hidden;
 }
-/* line 27, ../../scss/screen.scss */
+/* line 34, ../../scss/screen.scss */
 #scatter_controls ul, #scatter_controls ol {
   list-style: none;
 }
-/* line 31, ../../scss/screen.scss */
+/* line 38, ../../scss/screen.scss */
+#scatter_controls select {
+  max-width: 100%;
+}
+/* line 42, ../../scss/screen.scss */
 #scatter_controls .disallowed {
   color: GrayText;
 }
 
-/* line 34, ../../scss/screen.scss */
-#model_stats {
+/* line 45, ../../scss/screen.scss */
+h3 {
+  font-weight: bold;
+  margin-top: 1em;
+  color: #333;
+}
+
+/* line 51, ../../scss/screen.scss */
+#stats_data {
   display: inline;
   float: left;
   margin-right: 0;
   width: 190px;
 }
 /* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
-* html #model_stats {
+* html #stats_data {
   overflow-x: hidden;
 }
 
-/* line 38, ../../scss/screen.scss */
-table#data {
-  clear: both;
+/* line 55, ../../scss/screen.scss */
+table#raw_data {
+  display: inline;
+  float: left;
+  margin-right: 0;
+  width: 950px;
+  overflow: scroll;
+}
+/* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
+* html table#raw_data {
+  overflow-x: hidden;
+}
+/* line 58, ../../scss/screen.scss */
+table#raw_data td {
+  font-size: 80%;
 }
 
-/* line 42, ../../scss/screen.scss */
+/* line 63, ../../scss/screen.scss */
 table {
-  line-height: 2;
+  line-height: 1.5;
 }
 
-/* line 46, ../../scss/screen.scss */
+/* line 67, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;

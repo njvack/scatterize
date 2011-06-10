@@ -243,14 +243,9 @@ var S = function($) {
   S_my.update_model_stats = update_model_stats;
   
   function update_coef_stats(container, coef_stats) {
-    sc = $(container).find(".stats");
-    if (sc.length === 0) {
-      sc = $(document.createElement("div")).addClass("stats");
-      $(container).append(sc);
-    } else {
-      sc = $(sc[0]);
-      sc.empty();
-    }
+    sc = $(container);
+    sc.empty();
+    sc.append("<h3>"+coef_stats.name+"</h3>");
     sc.append("<div>β: "+short_float(coef_stats.b)+"</div>");
     sc.append("<div>t: "+short_float(coef_stats.t)+"</div>");
     sc.append("<div>p: "+short_float(coef_stats.p)+"</div>");
