@@ -62,6 +62,8 @@
         $("#scatterplot").empty();
         var scatterplot = S.scatterplot("scatterplot", 500, 500);
         scatterplot.draw_data(data.points);
+        scatterplot.regression_line(
+          data.coef_result.x.b, data.coef_result.const.b, "brown");
         S.update_model_stats("#model_stats", data.model_result);
         S.update_coef_stats("#x_data", data.coef_result.x);
         for (var key in data.coef_result) {
