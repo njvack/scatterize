@@ -59,7 +59,6 @@ var S = function($) {
       .add(pv.Dot)
         .left(function(p) {return my.x(p[0]);})
         .bottom(function(p) {return my.y(p[1]);})
-        .strokeStyle("steelblue")
         .def("strokeStyle", "steelblue")
         .fillStyle(function() { return this.strokeStyle().alpha(0.4);})
         .event("point", function() {
@@ -84,6 +83,7 @@ var S = function($) {
         .strokeStyle(color)
         .bottom(function(xval) { return my.y((slope*xval)+intercept);})
         .left(function(xval) { return my.x(xval);});
+      pub.vis.render();
     }
     
     my.add_rules = function() {
