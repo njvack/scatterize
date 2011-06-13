@@ -58,7 +58,7 @@ def upload():
     lines = file_raw.read().splitlines()
     dialect = csv.Sniffer().sniff("\n".join(lines[0:5]))
     reader = csv.reader(lines, dialect=dialect)
-    h = hashlib.sha1()
+    h = hashlib.md5()
     rows = list(reader)
     h.update(str(rows))
     filename = "%s.csv" % (h.hexdigest())
