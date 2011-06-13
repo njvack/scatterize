@@ -68,7 +68,7 @@
         console.log(data);
         S.data = data;
         $("#scatterplot").empty();
-        var scatterplot = S.scatterplot("scatterplot", 500, 500);
+        var scatterplot = S.scatterplot("scatterplot", 460, 460);
         scatterplot.draw_data(data.points);
         scatterplot.regression_line(
           data.coef_result.x.b, data.coef_result.const.b, "brown");
@@ -82,6 +82,13 @@
             S.update_coef_stats(container, data.coef_result[key]);
           }
         }
+        var ylabel = S.ss.y_var_name();
+        var nuisances = S.ss.nuisance_var_names();
+        if (nuisances.length > 0) {
+          ylabel = "Residualized "+ylabel;
+        }
+        scatterplot.add_labels(S.ss.x_var_name(), ylabel);
+        scatterplot.vis.render();
       },
       'error' : function(r, str) {
         // Happens in the case of, say, a singular matrix error

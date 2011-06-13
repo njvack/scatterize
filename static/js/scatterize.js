@@ -31,20 +31,28 @@ var S = function($) {
   S_my.scatterplot = function(canvas, w, h) {
     var pub = {};
     var my = {};
+    my.bottom_margin = 60;
+    my.left_margin = 60;
+    my.top_margin = 10;
+    my.right_margin = 10;
+    my.ylabel_width = 40;
+    my.xlabel_height = 40;
+    
     
     my.make_vis = function() {
       pub.vis = new pv.Panel()
         .canvas(canvas)
         .width(w)
         .height(h)
-        .bottom(20)
-        .top(20)
-        .left(20)
-        .right(20)
+        .bottom(my.bottom_margin)
+        .top(my.top_margin)
+        .left(my.left_margin)
+        .right(my.right_margin)
         .def("point_index", null)
         .events("all")
         .event("mousemove", pv.Behavior.point())
         .event("click", function() {console.log(this.point_index());});
+      
     };
     
     pub.set_points = function(points) {
@@ -101,6 +109,25 @@ var S = function($) {
         .text(my.y.tickFormat);
     }
     
+    pub.add_labels = function(xlabel, ylabel) {
+      pub.vis.add(pv.Panel)
+        .bottom(-my.bottom_margin)
+        .height(my.xlabel_height)
+        .anchor("center")
+      .add(pv.Label)
+        .font("14px sans-serif")
+        .text(xlabel);
+      
+      pub.vis.add(pv.Panel)
+        .left(-my.left_margin)
+        .width(my.ylabel_width)
+        .anchor("center")
+      .add(pv.Label)
+        .font("14px sans-serif")
+        .textAngle(-Math.PI/2)
+        .text(ylabel);
+    }
+    
     pub.draw_data = function(points) {
       my.make_vis();
       pub.set_points(points);
@@ -148,6 +175,25 @@ var S = function($) {
       console.log($.param.fragment("", opts));
       $.bbq.pushState(opts, 2);
     };
+    
+    pub.x_var_name = function() {
+      var xidx = parseInt(my.x_control.val(), 10);
+      return columns[xidx];
+    }
+    
+    pub.y_var_name = function() {
+      var yidx = parseInt(my.y_control.val(), 10);
+      return columns[yidx];
+    }
+    
+    pub.nuisance_var_names = function() {
+      var names = [];
+      var nuisances = my.checked_nuisance_vals();
+      for (var i = 0; i < nuisances.length; i++) {
+        names.push(columns[nuisances[i]]);
+      }
+      return names;
+    }
         
     my.generate_nuisance_list = function() {
       var st = $.bbq.getState();
