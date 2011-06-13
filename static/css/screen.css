@@ -158,9 +158,10 @@ h3 {
 #stats_data th {
   width: 70px;
   text-align: right;
+  font-style: italic;
 }
 
-/* line 82, ../../scss/screen.scss */
+/* line 83, ../../scss/screen.scss */
 table#raw_data {
   display: inline;
   float: left;
@@ -172,13 +173,13 @@ table#raw_data {
 * html table#raw_data {
   overflow-x: hidden;
 }
-/* line 85, ../../scss/screen.scss */
+/* line 86, ../../scss/screen.scss */
 table#raw_data td {
   font-size: 80%;
   line-height: 1.42;
 }
 
-/* line 91, ../../scss/screen.scss */
+/* line 92, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;
