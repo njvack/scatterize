@@ -36,7 +36,7 @@ var S = function($) {
   }
   S_my.add_breaks = add_breaks;
   
-  S_my.scatterplot = function(canvas, w, h) {
+  S_my.scatterplot = function(canvas, w, h, state_mgr) {
     var pub = {};
     var my = {};
     my.bottom_margin = 60;
@@ -45,6 +45,7 @@ var S = function($) {
     my.right_margin = 10;
     my.ylabel_width = 40;
     my.xlabel_height = 40;
+    my.state_mgr = state_mgr;
     
     
     my.make_vis = function() {
@@ -59,8 +60,9 @@ var S = function($) {
         .def("point_index", null)
         .events("all")
         .event("mousemove", pv.Behavior.point())
-        .event("click", function() {console.log(this.point_index());});
-      
+        .event("click", function() {
+          my.state_mgr.toggle_point(this.point_index());
+          });
     };
     
     pub.set_points = function(points) {
@@ -75,7 +77,7 @@ var S = function($) {
       .add(pv.Dot)
         .left(function(p) {return my.x(p[0]);})
         .bottom(function(p) {return my.y(p[1]);})
-        .def("strokeStyle", "steelblue")
+        .def("strokeStyle", function(p) {return my.c(p[2]);})
         .fillStyle(function() { return this.strokeStyle().alpha(0.4);})
         .event("point", function() {
           this.root.point_index(this.parent.index);
@@ -90,6 +92,7 @@ var S = function($) {
     my.set_scales = function(points) {
       my.x = pv.Scale.linear(pv.min(my.xvals), pv.max(my.xvals)).range(0, w);
       my.y = pv.Scale.linear(pv.min(my.yvals), pv.max(my.yvals)).range(0, h);
+      my.c = pv.Scale.linear(0, 1).range("lightgrey", "steelblue");
     };
     
     pub.regression_line = function(slope, intercept, color) {
@@ -159,6 +162,7 @@ var S = function($) {
     my.x_control = $(x_control);
     my.y_control = $(y_control);
     my.nuisance_list = $(nuisance_list);
+    my.censored_points = [];
 
     my.populate_select = function(control, list, initial_index) {
       if (!initial_index) { initial_index = 0; }
@@ -167,6 +171,22 @@ var S = function($) {
       }
       control.val(initial_index);
     };
+    
+    pub.toggle_point = function(rownum) {
+      if (!isFinite(parseInt(rownum, 10))) {
+        console.log("Ooh, not numeric: " + rownum);
+        return; 
+      }
+      var cpi = my.censored_points.indexOf(rownum);
+      if (cpi > -1) {
+        my.censored_points.splice(cpi, 1);
+      } else {
+        my.censored_points.push(rownum);
+      }
+      my.censored_points = my.censored_points.sort();
+      console.log(my.censored_points);
+      pub.update_state();
+    }
     
     pub.update_state = function() {
       console.log("Updating state!");
@@ -180,6 +200,8 @@ var S = function($) {
       });
       var nuisance_list = nuisance_ids.join(",");
       if (nuisance_list !== '') { opts.n = nuisance_list; }
+      var censor_list = my.censored_points.join(",");
+      if (censor_list !== '') { opts.c = censor_list; }
       console.log($.param.fragment("", opts));
       $.bbq.pushState(opts, 2);
     };

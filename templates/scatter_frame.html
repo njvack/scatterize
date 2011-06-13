@@ -68,7 +68,7 @@
         console.log(data);
         S.data = data;
         $("#scatterplot").empty();
-        var scatterplot = S.scatterplot("scatterplot", 460, 460);
+        var scatterplot = S.scatterplot("scatterplot", 460, 460, S.ss);
         scatterplot.draw_data(data.points);
         scatterplot.regression_line(
           data.coef_result.x.b, data.coef_result.const.b, "brown");
@@ -89,6 +89,7 @@
         }
         scatterplot.add_labels(S.ss.x_var_name(), ylabel);
         scatterplot.vis.render();
+        S.scatter_instance = scatterplot;
       },
       'error' : function(r, str) {
         // Happens in the case of, say, a singular matrix error

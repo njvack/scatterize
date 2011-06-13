@@ -98,17 +98,28 @@ def regress_js(filehash):
     nlist = request.args.get("n", "").strip()
     if nlist != "":
         nuis_idxs = [int(i) for i in nlist.split(",")]
+    
+    censor_idxs = []    
+    clist = request.args.get("c", "").strip()
+    if clist != "":
+        censor_idxs = [int(i) for i in clist.split(",")]
+    
     app.logger.debug(x_idx)
     
     dv = datas[:,y_idx]
     const_term = np.ones_like(dv)
     x_var = datas[:,x_idx]
     nuisance_vars = datas[:,nuis_idxs]
+    weights = np.ones_like(dv).astype(np.int)
+    weights[censor_idxs] = 0;
     
     mA = np.column_stack((const_term, x_var, nuisance_vars))
+    mA_masked = mA[weights.astype(bool)]
+    dv_masked = dv[weights.astype(bool)]
     app.logger.debug(mA)
-    result = ols.ols(dv, mA, 'y', ['const', 'x'])
-    plot_yvals = result.b[0] + (result.b[1]*x_var) + result.e 
+    plot_result = ols.ols(dv, mA, 'y', ['const', 'x'])
+    result = ols.ols(dv_masked, mA_masked, 'y', ['const', 'x'])
+    plot_yvals = plot_result.b[0] + (plot_result.b[1]*x_var) + plot_result.e 
     
     coef_result = {
         "const": {
@@ -146,7 +157,7 @@ def regress_js(filehash):
         "F"      : json_float(result.F),
         "Fpv"    : json_float(result.Fpv)
     }
-    points = np.column_stack((x_var, plot_yvals)).tolist()
+    points = np.column_stack((x_var, plot_yvals, weights)).tolist()
     return flask.jsonify(points=points, 
         coef_result=coef_result, model_result=model_result)
     
