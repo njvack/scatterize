@@ -257,7 +257,7 @@ var S = function($) {
       var checked_str = ' ';
       if (n.selected) { checked_str = ' checked = "checked" '; }
       var n_str = '"n_'+n.i+'"';
-      out_str = '<input type="checkbox"'+checked_str+dis_str+'id = '+n_str+' value="'+n.i+'" />';
+      out_str = '<div class="l"><input type="checkbox"'+checked_str+dis_str+'id = '+n_str+' value="'+n.i+'" /></div>';
       out_str += '<label for='+n_str+'>'+add_breaks(n.name)+'</label>';
       return out_str;
     }
@@ -289,10 +289,12 @@ var S = function($) {
     var c = $(container);
     c.empty();
     c.append("<h3>Model fit</h3>");
-    c.append("<div>F: "+short_float(model_stats.F)+"</div>");
-    c.append("<div>p: "+short_float(model_stats.Fpv)+"</div>");
-    c.append("<div>R²: "+short_float(model_stats.Rsq)+"</div>");
-    c.append("<div>Adj. R²: "+short_float(model_stats.RsqAdj)+"</div>");
+    c.append("<table>");
+    c.append("<tr><th>F:</th><td>"+short_float(model_stats.F)+"</td></tr>");
+    c.append("<tr><th>p:</th><td>"+short_float(model_stats.Fpv)+"</td></tr>");
+    c.append("<tr><th>R²:</th><td>"+short_float(model_stats.Rsq)+"</td></tr>");
+    c.append("<tr><th>Adj. R²:</th><td>"+short_float(model_stats.RsqAdj)+"</td></tr>");
+    c.append("</table>");
   }
   S_my.update_model_stats = update_model_stats;
   
@@ -300,10 +302,11 @@ var S = function($) {
     sc = $(container);
     sc.empty();
     sc.append("<h3>"+add_breaks(coef_stats.name)+"</h3>");
-    sc.append("<div>β: "+short_float(coef_stats.b)+"</div>");
-    sc.append("<div>t: "+short_float(coef_stats.t)+"</div>");
-    sc.append("<div>p: "+short_float(coef_stats.p)+"</div>");
-    
+    sc.append("<table>");
+    sc.append("<tr><th>β:</th><td>"+short_float(coef_stats.b)+"</td></tr>");
+    sc.append("<tr><th>t:</th><td> "+short_float(coef_stats.t)+"</td></tr>");
+    sc.append("<tr><th>p:</th><td> "+short_float(coef_stats.p)+"</td></tr>");
+    sc.append("</table>");
   }
   S_my.update_coef_stats = update_coef_stats;
   

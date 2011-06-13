@@ -36,6 +36,25 @@ body {
     list-style: none;
   }
   
+  li {
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+    clear:both;
+    .l {
+      display: inline;
+      float: left;
+      margin-right: 2px;
+      width: 18px;
+      text-align: right;
+    }
+    label {
+      display: inline;
+      float: left;
+      margin-right: 0;
+      width: (5 * $blueprint-grid-outer-width) - ($blueprint-grid-margin + 21px);
+    }
+  }
+  
   select {
     max-width: 100%;
   }
@@ -51,6 +70,13 @@ h3 {
 
 #stats_data {
   @include column(5, true);
+  
+  th {
+    width: (2*$blueprint-grid-outer-width) - $blueprint-grid-margin;
+    text-align: right;
+  }
+  
+  
 }
 
 table#raw_data {
@@ -58,11 +84,8 @@ table#raw_data {
   overflow: scroll;
   td {
     font-size: 80%;
+    line-height: 1.42;
   }
-}
-
-table {
-  line-height: 1.5;
 }
 
 td {
