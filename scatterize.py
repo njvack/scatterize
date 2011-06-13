@@ -5,7 +5,7 @@ import time
 import csv
 import numpy as np
 
-import ols
+from stats import ols
 from utils import json_float, add_url_helpers
 import wsgi_utils
 import settings
@@ -58,7 +58,7 @@ def upload():
     lines = file_raw.read().splitlines()
     dialect = csv.Sniffer().sniff("\n".join(lines[0:5]))
     reader = csv.reader(lines, dialect=dialect)
-    h = hashlib.md5()
+    h = hashlib.sha1()
     rows = list(reader)
     h.update(str(rows))
     filename = "%s.csv" % (h.hexdigest())
@@ -106,6 +106,7 @@ def regress_js(filehash):
     nuisance_vars = datas[:,nuis_idxs]
     
     mA = np.column_stack((const_term, x_var, nuisance_vars))
+    app.logger.debug(mA)
     result = ols.ols(dv, mA, 'y', ['const', 'x'])
     plot_yvals = result.b[0] + (result.b[1]*x_var) + result.e 
     
