@@ -28,6 +28,14 @@ var S = function($) {
   }
   S_my.csv_split = csv_split;
   
+  var underscore_regex = new RegExp("_", "g");
+  var break_regex = new RegExp("([a-z])([^a-z 0-9])", "g");
+  function add_breaks(s) {
+    var replaced = s.replace(underscore_regex, " ");
+    return replaced.replace(break_regex, "$1&#8203;$2");
+  }
+  S_my.add_breaks = add_breaks;
+  
   S_my.scatterplot = function(canvas, w, h) {
     var pub = {};
     var my = {};
@@ -250,7 +258,7 @@ var S = function($) {
       if (n.selected) { checked_str = ' checked = "checked" '; }
       var n_str = '"n_'+n.i+'"';
       out_str = '<input type="checkbox"'+checked_str+dis_str+'id = '+n_str+' value="'+n.i+'" />';
-      out_str += '<label for='+n_str+'>'+n.name+'</label>';
+      out_str += '<label for='+n_str+'>'+add_breaks(n.name)+'</label>';
       return out_str;
     }
     
@@ -291,7 +299,7 @@ var S = function($) {
   function update_coef_stats(container, coef_stats) {
     sc = $(container);
     sc.empty();
-    sc.append("<h3>"+coef_stats.name+"</h3>");
+    sc.append("<h3>"+add_breaks(coef_stats.name)+"</h3>");
     sc.append("<div>β: "+short_float(coef_stats.b)+"</div>");
     sc.append("<div>t: "+short_float(coef_stats.t)+"</div>");
     sc.append("<div>p: "+short_float(coef_stats.p)+"</div>");
