@@ -182,8 +182,8 @@ var S = function($) {
       pub.vis.add(pv.Rule)
         .left(1)
         .strokeStyle("#FFF")
-        .bottom(my.y(ymed)-5)
-        .height(10);
+        .bottom(my.y(ymed)-2)
+        .height(4);
 
       // And y labels
       var yticks = my.yqs.quantiles();
@@ -215,8 +215,8 @@ var S = function($) {
       pub.vis.add(pv.Rule)
         .bottom(1)
         .strokeStyle("#FFF")
-        .left(my.x(xmed)-5)
-        .width(10);
+        .left(my.x(xmed)-2)
+        .width(4);
 
       // And y labels
       var xticks = my.xqs.quantiles();
