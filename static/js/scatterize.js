@@ -47,6 +47,7 @@ var S = function($) {
     my.xlabel_height = 40;
     my.state_mgr = state_mgr;
     my.pad_frac = 0.1; // We'll extend the range by this much.
+    my.formatter = pv.Format.number().fractionDigits(2);
     
     
     my.make_vis = function() {
@@ -73,7 +74,7 @@ var S = function($) {
     };
     
     pub.draw_points = function(points) {
-      pub.vis.add(pv.Panel)
+      var point_panel = pub.vis.add(pv.Panel)
         .data(points)
       .add(pv.Dot)
         .left(function(p) {return my.x(p[0]);})
@@ -89,13 +90,45 @@ var S = function($) {
         .event("point", function() {
           my.state_mgr.hover_index = this.parent.index;
           this.root.hover_index(this.parent.index);
-          this.render();
+          this.parent.render();
           })
         .event("unpoint", function() {
           my.state_mgr.hover_index = null;
           this.root.hover_index(null);
-          this.render();
+          this.parent.render();
           });
+          
+        // Datapoint ticks for X
+        point_panel.add(pv.Rule)
+          .bottom(1)
+          .height(10)
+          .left(function(p) {return my.x(p[0]);})
+          .def("strokeStyle", function(p) { 
+            if (this.parent.index === this.root.hover_index()) {
+              return "#000";
+            }
+            return "#CCC"
+          })
+        .anchor("top").add(pv.Label)
+          .visible(function() {
+            return this.parent.index === this.root.hover_index();})
+          .text(function(p) {return my.formatter(p[0]);});
+        
+        // Datapoint ticks for Y
+        point_panel.add(pv.Rule)
+          .left(1)
+          .width(10)
+          .bottom(function(p) {return my.y(p[1]);})
+          .def("strokeStyle", function(p) { 
+            if (this.parent.index === this.root.hover_index()) {
+              return "#000";
+            }
+            return "#CCC"
+          })
+        .anchor("right").add(pv.Label)
+          .visible(function() {
+            return this.parent.index === this.root.hover_index();})
+          .text(function(p) {return my.formatter(p[1]);});
     };
     
     my.set_scales = function(points) {
@@ -134,10 +167,7 @@ var S = function($) {
       var yqr = my.yqs.quantiles().map(function(v) {return my.y(v);});
       var xmed = pv.median(my.xvals);
       var ymed = pv.median(my.yvals);
-      
-      var formatter = pv.Format.number().fractionDigits(2);
-      
-      console.log(yqr);
+
       // Y axis
       pub.vis.add(pv.Rule)
         .data([yqr[0], yqr[1]])
@@ -162,14 +192,14 @@ var S = function($) {
 
       // And y labels
       var yticks = my.yqs.quantiles();
-      yticks.splice(2, 0, ymed);
+      yticks.push(ymed);
       console.log(yticks);
       pub.vis.add(pv.Rule)
         .data(yticks)
         .bottom(my.y)
         .strokeStyle("None")
       .anchor("left").add(pv.Label)
-        .text(formatter);
+        .text(my.formatter);
       
       // X axis
       pub.vis.add(pv.Rule)
@@ -196,14 +226,12 @@ var S = function($) {
       // And y labels
       var xticks = my.xqs.quantiles();
       xticks.push(xmed);
-      xticks.sort();
-      console.log(xticks);
       pub.vis.add(pv.Rule)
         .data(xticks)
         .left(my.x)
         .strokeStyle("None")
       .anchor("bottom").add(pv.Label)
-        .text(formatter);
+        .text(my.formatter);
     }
     
     pub.add_labels = function(xlabel, ylabel) {
