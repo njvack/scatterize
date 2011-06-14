@@ -80,6 +80,19 @@ body {
 }
 
 /* line 28, ../../scss/screen.scss */
+.single_col {
+  display: inline;
+  float: left;
+  margin-right: 0;
+  width: 710px;
+  padding-left: 120px;
+}
+/* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
+* html .single_col {
+  overflow-x: hidden;
+}
+
+/* line 33, ../../scss/screen.scss */
 #scatter_frame {
   display: inline;
   float: left;
@@ -91,7 +104,7 @@ body {
   overflow-x: hidden;
 }
 
-/* line 32, ../../scss/screen.scss */
+/* line 37, ../../scss/screen.scss */
 #scatter_controls {
   display: inline;
   float: left;
@@ -102,17 +115,17 @@ body {
 * html #scatter_controls {
   overflow-x: hidden;
 }
-/* line 35, ../../scss/screen.scss */
+/* line 40, ../../scss/screen.scss */
 #scatter_controls ul, #scatter_controls ol {
   list-style: none;
 }
-/* line 39, ../../scss/screen.scss */
+/* line 44, ../../scss/screen.scss */
 #scatter_controls li {
   padding-top: 0.25em;
   padding-bottom: 0.25em;
   clear: both;
 }
-/* line 43, ../../scss/screen.scss */
+/* line 48, ../../scss/screen.scss */
 #scatter_controls li .l {
   display: inline;
   float: left;
@@ -120,30 +133,43 @@ body {
   width: 18px;
   text-align: right;
 }
-/* line 50, ../../scss/screen.scss */
+/* line 55, ../../scss/screen.scss */
 #scatter_controls li label {
   display: inline;
   float: left;
   margin-right: 0;
   width: 169px;
 }
-/* line 58, ../../scss/screen.scss */
+/* line 63, ../../scss/screen.scss */
 #scatter_controls select {
   max-width: 100%;
 }
-/* line 62, ../../scss/screen.scss */
+/* line 67, ../../scss/screen.scss */
 #scatter_controls .disallowed {
   color: GrayText;
 }
 
-/* line 65, ../../scss/screen.scss */
+/* line 70, ../../scss/screen.scss */
+h1 {
+  font-size: 183%;
+  margin-top: .3em;
+  margin-bottom: .3em;
+}
+
+/* line 77, ../../scss/screen.scss */
 h3 {
   font-weight: bold;
   margin-top: 1em;
   color: #333;
 }
 
-/* line 71, ../../scss/screen.scss */
+/* line 83, ../../scss/screen.scss */
+p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+/* line 89, ../../scss/screen.scss */
 #stats_data {
   display: inline;
   float: left;
@@ -154,14 +180,14 @@ h3 {
 * html #stats_data {
   overflow-x: hidden;
 }
-/* line 74, ../../scss/screen.scss */
+/* line 92, ../../scss/screen.scss */
 #stats_data th {
   width: 70px;
   text-align: right;
   font-style: italic;
 }
 
-/* line 83, ../../scss/screen.scss */
+/* line 101, ../../scss/screen.scss */
 table#raw_data {
   display: inline;
   float: left;
@@ -173,13 +199,13 @@ table#raw_data {
 * html table#raw_data {
   overflow-x: hidden;
 }
-/* line 86, ../../scss/screen.scss */
+/* line 104, ../../scss/screen.scss */
 table#raw_data td {
   font-size: 80%;
   line-height: 1.42;
 }
 
-/* line 92, ../../scss/screen.scss */
+/* line 110, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;

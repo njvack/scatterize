@@ -25,6 +25,11 @@ body {
   //@include showgrid();
 }
 
+.single_col {
+  @include column(18, true);
+  @include prepend(3);
+}
+
 #scatter_frame {
   @include column(14);
 }
@@ -62,11 +67,23 @@ body {
   .disallowed { color: GrayText;}
 }
 
+h1 {
+  font-size: 183%;
+  margin-top: .3em;
+  margin-bottom: .3em;
+}
+
 h3 {
   font-weight: bold;
   margin-top: 1em;
   color: #333;
 }
+
+p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
 
 #stats_data {
   @include column(5, true);

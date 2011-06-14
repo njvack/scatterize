@@ -1,10 +1,19 @@
 {%- extends "base.html" %}
 {% block content -%}
-<h1>Welcome to scatterize!</h1>
+<div class="single_col">
+  <h1>Welcome to scatterize!</h1>
 
-<form method="post" action="{{ url_for("upload") }}" enctype="multipart/form-data">
-  <p>To get started, upload a CSV file.</p>
-  <input type="file" name="csvfile" />
-  <input type="submit" value="Go for it!" />
-</form>
+  <form method="post" action="{{ url_for("upload") }}" enctype="multipart/form-data">
+    <p>To get started, upload a CSV file.</p>
+    <input type="file" name="csvfile" />
+    <input type="submit" value="Go for it!" />
+  </form>
+  
+  <h3>Your CSV file:</h3>
+  <ul class="inside">
+    <li>Must contain one header row.</li>
+    <li>Can be delimited with commas, tabs, spaces, or whatever.</li>
+    <li>Can be written from a PC, Mac, or unix computer.</li>
+  </ul>
+</div>
 {%- endblock %}
