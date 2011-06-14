@@ -126,18 +126,84 @@ var S = function($) {
     }
     
     my.add_rules = function() {
+      
+      // Draw and label quartile plots on X and Y.
+      my.xqs = pv.Scale.quantile(my.xvals).quantiles(3);
+      var xqr = my.xqs.quantiles().map(function(v) { return my.x(v);});
+      my.yqs = pv.Scale.quantile(my.yvals).quantiles(3);
+      var yqr = my.yqs.quantiles().map(function(v) {return my.y(v);});
+      var xmed = pv.median(my.xvals);
+      var ymed = pv.median(my.yvals);
+      
+      var formatter = pv.Format.number().fractionDigits(2);
+      
+      console.log(yqr);
+      // Y axis
       pub.vis.add(pv.Rule)
-        .data(my.x.ticks())
-        .left(my.x)
-        .strokeStyle("#CCC")
-      .anchor("bottom").add(pv.Label)
-        .text(my.x.tickFormat);
+        .data([yqr[0], yqr[1]])
+        .left(0)
+        .bottom(yqr[0])
+        .height(yqr[1]-yqr[0]);
       pub.vis.add(pv.Rule)
-        .data(my.y.ticks())
+        .left(1)
+        .bottom(yqr[1])
+        .height(yqr[2]-yqr[1]);
+      pub.vis.add(pv.Rule)
+        .left(0)
+        .bottom(yqr[2])
+        .height(yqr[3]-yqr[2]);
+      
+      // Add a little gap for the median
+      pub.vis.add(pv.Rule)
+        .left(1)
+        .strokeStyle("#FFF")
+        .bottom(my.y(ymed)-5)
+        .height(10);
+
+      // And y labels
+      var yticks = my.yqs.quantiles();
+      yticks.splice(2, 0, ymed);
+      console.log(yticks);
+      pub.vis.add(pv.Rule)
+        .data(yticks)
         .bottom(my.y)
-        .strokeStyle("#CCC")
+        .strokeStyle("None")
       .anchor("left").add(pv.Label)
-        .text(my.y.tickFormat);
+        .text(formatter);
+      
+      // X axis
+      pub.vis.add(pv.Rule)
+        .data([xqr[0], xqr[1]])
+        .bottom(0)
+        .left(xqr[0])
+        .width(xqr[1]-xqr[0]);
+      pub.vis.add(pv.Rule)
+        .bottom(1)
+        .left(xqr[1])
+        .width(xqr[2]-xqr[1]);
+      pub.vis.add(pv.Rule)
+        .bottom(0)
+        .left(xqr[2])
+        .width(xqr[3]-xqr[2]);
+      
+      // Add a little gap for the median
+      pub.vis.add(pv.Rule)
+        .bottom(1)
+        .strokeStyle("#FFF")
+        .left(my.x(xmed)-5)
+        .width(10);
+
+      // And y labels
+      var xticks = my.xqs.quantiles();
+      xticks.push(xmed);
+      xticks.sort();
+      console.log(xticks);
+      pub.vis.add(pv.Rule)
+        .data(xticks)
+        .left(my.x)
+        .strokeStyle("None")
+      .anchor("bottom").add(pv.Label)
+        .text(formatter);
     }
     
     pub.add_labels = function(xlabel, ylabel) {
