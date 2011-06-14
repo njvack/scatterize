@@ -49,6 +49,13 @@ var S = function($) {
     my.pad_frac = 0.1; // We'll extend the range by this much.
     my.formatter = pv.Format.number().fractionDigits(2);
     
+    my.ifhov = function(p, val1, val2) {
+      if (val1 === undefined) { val1 = true; val2 = false; }
+      if (p.parent.index === p.root.hover_index()) {
+        return val1;
+      }
+      return val2;
+    };
     
     my.make_vis = function() {
       pub.vis = new pv.Panel()
@@ -80,11 +87,7 @@ var S = function($) {
         .left(function(p) {return my.x(p[0]);})
         .bottom(function(p) {return my.y(p[1]);})
         .def("strokeStyle", function(p) {
-          if (this.parent.index === this.root.hover_index()) {
-            return "orange";
-          } else {
-            return my.c(p[2]);
-          }
+          return my.ifhov(this, "orange", my.c(p[2]));
         })
         .fillStyle(function() { return this.strokeStyle().alpha(0.4);})
         .event("point", function() {
@@ -103,15 +106,11 @@ var S = function($) {
           .bottom(1)
           .height(10)
           .left(function(p) {return my.x(p[0]);})
-          .def("strokeStyle", function(p) { 
-            if (this.parent.index === this.root.hover_index()) {
-              return "#000";
-            }
-            return "#CCC"
+          .def("strokeStyle", function(p) {
+            return my.ifhov(this, "#000", "#CCC");
           })
         .anchor("top").add(pv.Label)
-          .visible(function() {
-            return this.parent.index === this.root.hover_index();})
+          .visible(function() {return my.ifhov(this);})
           .text(function(p) {return my.formatter(p[0]);});
         
         // Datapoint ticks for Y
@@ -120,14 +119,10 @@ var S = function($) {
           .width(10)
           .bottom(function(p) {return my.y(p[1]);})
           .def("strokeStyle", function(p) { 
-            if (this.parent.index === this.root.hover_index()) {
-              return "#000";
-            }
-            return "#CCC"
+            return my.ifhov(this, "#000", "#CCC");
           })
         .anchor("right").add(pv.Label)
-          .visible(function() {
-            return this.parent.index === this.root.hover_index();})
+          .visible(function() {return my.ifhov(this);})
           .text(function(p) {return my.formatter(p[1]);});
     };
     
