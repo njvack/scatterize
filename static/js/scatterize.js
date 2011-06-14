@@ -104,10 +104,10 @@ var S = function($) {
         // Datapoint ticks for X
         point_panel.add(pv.Rule)
           .bottom(1)
-          .height(10)
+          .height(function() {return my.ifhov(this, 10, 6);})
           .left(function(p) {return my.x(p[0]);})
           .def("strokeStyle", function(p) {
-            return my.ifhov(this, "#000", "#CCC");
+            return my.ifhov(this, "#000", "#999");
           })
         .anchor("top").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
@@ -116,10 +116,10 @@ var S = function($) {
         // Datapoint ticks for Y
         point_panel.add(pv.Rule)
           .left(1)
-          .width(10)
+          .width(function() {return my.ifhov(this, 10, 6);})
           .bottom(function(p) {return my.y(p[1]);})
           .def("strokeStyle", function(p) { 
-            return my.ifhov(this, "#000", "#CCC");
+            return my.ifhov(this, "#000", "#999");
           })
         .anchor("right").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
