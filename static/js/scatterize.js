@@ -57,12 +57,12 @@ var S = function($) {
         .top(my.top_margin)
         .left(my.left_margin)
         .right(my.right_margin)
-        .def("point_index", null)
+        .def("hover_index", my.state_mgr.hover_index)
         .events("all")
         .event("mousemove", pv.Behavior.point())
         .event("click", function() {
-          my.state_mgr.toggle_point(this.point_index());
-          });
+          my.state_mgr.toggle_point(this.hover_index());
+        });
     };
     
     pub.set_points = function(points) {
@@ -77,15 +77,23 @@ var S = function($) {
       .add(pv.Dot)
         .left(function(p) {return my.x(p[0]);})
         .bottom(function(p) {return my.y(p[1]);})
-        .def("strokeStyle", function(p) {return my.c(p[2]);})
+        .def("strokeStyle", function(p) {
+          if (this.parent.index === this.root.hover_index()) {
+            return "orange";
+          } else {
+            return my.c(p[2]);
+          }
+        })
         .fillStyle(function() { return this.strokeStyle().alpha(0.4);})
         .event("point", function() {
-          this.root.point_index(this.parent.index);
-          return this.strokeStyle("orange");
+          my.state_mgr.hover_index = this.parent.index;
+          this.root.hover_index(this.parent.index);
+          this.render();
           })
         .event("unpoint", function() {
-          this.root.point_index(null);
-          return this.strokeStyle(undefined);
+          my.state_mgr.hover_index = null;
+          this.root.hover_index(null);
+          this.render();
           });
     };
     
