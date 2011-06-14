@@ -181,7 +181,7 @@ var S = function($) {
       pub.vis.add(pv.Rule)
         .left(0)
         .bottom(yqr[2])
-        .height(yqr[3]-yqr[2]);
+        .height(1+yqr[3]-yqr[2]); // Mind the gap!
       
       // Add a little gap for the median
       pub.vis.add(pv.Rule)
@@ -214,7 +214,7 @@ var S = function($) {
       pub.vis.add(pv.Rule)
         .bottom(0)
         .left(xqr[2])
-        .width(xqr[3]-xqr[2]);
+        .width(1+xqr[3]-xqr[2]); // Fix the corner
       
       // Add a little gap for the median
       pub.vis.add(pv.Rule)
@@ -257,8 +257,8 @@ var S = function($) {
       my.make_vis();
       pub.set_points(points);
       my.set_scales(points);
-      my.add_rules();
       pub.draw_points(points)
+      my.add_rules();
       pub.vis.render();
     }
     
