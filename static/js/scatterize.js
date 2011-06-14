@@ -46,6 +46,7 @@ var S = function($) {
     my.ylabel_width = 40;
     my.xlabel_height = 40;
     my.state_mgr = state_mgr;
+    my.pad_frac = 0.05; // We'll extend the range by this much.
     
     
     my.make_vis = function() {
@@ -98,15 +99,26 @@ var S = function($) {
     };
     
     my.set_scales = function(points) {
-      my.x = pv.Scale.linear(pv.min(my.xvals), pv.max(my.xvals)).range(0, w);
-      my.y = pv.Scale.linear(pv.min(my.yvals), pv.max(my.yvals)).range(0, h);
+      var xmin = pv.min(my.xvals),
+        ymin = pv.min(my.yvals),
+        xmax = pv.max(my.xvals),
+        ymax = pv.max(my.yvals);
+      
+      var xrange = xmax-xmin;
+      var yrange = ymax-ymin;
+      var xpad = my.pad_frac * xrange;
+      var ypad = my.pad_frac * yrange;
+      
+      my.x = pv.Scale.linear(xmin-xpad, xmax+xpad).range(0, w);
+      my.y = pv.Scale.linear(ymin-ypad, ymax+ypad).range(0, h);
       my.c = pv.Scale.linear(0, 1).range("lightgrey", "steelblue");
     };
     
     pub.regression_line = function(slope, intercept, color) {
       if (!color) { color = "#000"; }
+      var xextrema = my.x.range().map(function(v) { return my.x.invert(v);});
       pub.vis.add(pv.Line)
-        .data(my.xvals)
+        .data(xextrema)
         .strokeStyle(color)
         .bottom(function(xval) { return my.y((slope*xval)+intercept);})
         .left(function(xval) { return my.x(xval);});
