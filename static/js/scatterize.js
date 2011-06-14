@@ -46,7 +46,7 @@ var S = function($) {
     my.ylabel_width = 40;
     my.xlabel_height = 40;
     my.state_mgr = state_mgr;
-    my.pad_frac = 0.05; // We'll extend the range by this much.
+    my.pad_frac = 0.1; // We'll extend the range by this much.
     
     
     my.make_vis = function() {
@@ -109,8 +109,8 @@ var S = function($) {
       var xpad = my.pad_frac * xrange;
       var ypad = my.pad_frac * yrange;
       
-      my.x = pv.Scale.linear(xmin-xpad, xmax+xpad).range(0, w);
-      my.y = pv.Scale.linear(ymin-ypad, ymax+ypad).range(0, h);
+      my.x = pv.Scale.linear(xmin-xpad, xmax).range(0, w);
+      my.y = pv.Scale.linear(ymin-ypad, ymax).range(0, h);
       my.c = pv.Scale.linear(0, 1).range("lightgrey", "steelblue");
     };
     
