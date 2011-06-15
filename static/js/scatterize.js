@@ -397,12 +397,20 @@ var S = function($) {
     my.populate_select(my.y_control, my.columns, 0);
     
     pub.update_controls = function() {
+      // Update the controls on the page and our internal tracking of
+      // censored points from the URL hash
       console.log("Update controls");
       var cur_state = $.bbq.getState();
       console.log(cur_state);
       my.x_control.val(cur_state.x);
       my.y_control.val(cur_state.y);
       my.populate_nuisance_lists();
+      var cstr = cur_state.c || "";
+      var clist = [];
+      if (cstr !== "") {
+        clist = intify(cstr.split(","));
+      }
+      my.censored_points = clist;
     };
     
     pub.get_url = function() {
