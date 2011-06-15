@@ -3,7 +3,10 @@
 <div id="scatter_frame">
   <div id="scatterplot">
   </div>
-  &nbsp;
+  <form id = "save_form" action="{{url_for('save_svg')}}" method="POST">
+    <input type="hidden" name="svg_data" id="svg_data" value=""/>
+    <input type="submit" value="Save plot" id="save_button" />
+  </form>
 </div>
 
 <div id="scatter_controls">
@@ -56,6 +59,13 @@
     );
     $(window).trigger("hashchange");
   });
+  
+  $("#save_button").click(function(e) {
+    var scatter_parent = $("#scatterplot");
+    scatter_parent.children("svg").attr("xmlns", "http://www.w3.org/2000/svg");
+    $("#svg_data").val(scatter_parent.html());
+    console.log($("#svg_data"));
+  }),
   
   $(window).bind("hashchange", function(e) {
     console.log("Hashchange!");

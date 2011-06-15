@@ -98,13 +98,22 @@ body {
   float: left;
   margin-right: 10px;
   width: 550px;
+  position: relative;
 }
 /* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
 * html #scatter_frame {
   overflow-x: hidden;
 }
 
-/* line 37, ../../scss/screen.scss */
+/* line 38, ../../scss/screen.scss */
+#save_form {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  font-size: 80%;
+}
+
+/* line 45, ../../scss/screen.scss */
 #scatter_controls {
   display: inline;
   float: left;
@@ -115,17 +124,17 @@ body {
 * html #scatter_controls {
   overflow-x: hidden;
 }
-/* line 40, ../../scss/screen.scss */
+/* line 48, ../../scss/screen.scss */
 #scatter_controls ul, #scatter_controls ol {
   list-style: none;
 }
-/* line 44, ../../scss/screen.scss */
+/* line 52, ../../scss/screen.scss */
 #scatter_controls li {
   padding-top: 0.25em;
   padding-bottom: 0.25em;
   clear: both;
 }
-/* line 48, ../../scss/screen.scss */
+/* line 56, ../../scss/screen.scss */
 #scatter_controls li .l {
   display: inline;
   float: left;
@@ -133,43 +142,43 @@ body {
   width: 18px;
   text-align: right;
 }
-/* line 55, ../../scss/screen.scss */
+/* line 63, ../../scss/screen.scss */
 #scatter_controls li label {
   display: inline;
   float: left;
   margin-right: 0;
   width: 169px;
 }
-/* line 63, ../../scss/screen.scss */
+/* line 71, ../../scss/screen.scss */
 #scatter_controls select {
   max-width: 100%;
 }
-/* line 67, ../../scss/screen.scss */
+/* line 75, ../../scss/screen.scss */
 #scatter_controls .disallowed {
   color: GrayText;
 }
 
-/* line 70, ../../scss/screen.scss */
+/* line 78, ../../scss/screen.scss */
 h1 {
   font-size: 183%;
   margin-top: .3em;
   margin-bottom: .3em;
 }
 
-/* line 77, ../../scss/screen.scss */
+/* line 84, ../../scss/screen.scss */
 h3 {
   font-weight: bold;
   margin-top: 1em;
   color: #333;
 }
 
-/* line 83, ../../scss/screen.scss */
+/* line 90, ../../scss/screen.scss */
 p {
   margin-top: 1em;
   margin-bottom: 1em;
 }
 
-/* line 89, ../../scss/screen.scss */
+/* line 96, ../../scss/screen.scss */
 #stats_data {
   display: inline;
   float: left;
@@ -180,14 +189,14 @@ p {
 * html #stats_data {
   overflow-x: hidden;
 }
-/* line 92, ../../scss/screen.scss */
+/* line 99, ../../scss/screen.scss */
 #stats_data th {
   width: 70px;
   text-align: right;
   font-style: italic;
 }
 
-/* line 101, ../../scss/screen.scss */
+/* line 108, ../../scss/screen.scss */
 table#raw_data {
   display: inline;
   float: left;
@@ -199,13 +208,13 @@ table#raw_data {
 * html table#raw_data {
   overflow-x: hidden;
 }
-/* line 104, ../../scss/screen.scss */
+/* line 111, ../../scss/screen.scss */
 table#raw_data td {
   font-size: 80%;
   line-height: 1.42;
 }
 
-/* line 110, ../../scss/screen.scss */
+/* line 117, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;

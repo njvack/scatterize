@@ -32,6 +32,14 @@ body {
 
 #scatter_frame {
   @include column(14);
+  position: relative;
+}
+
+#save_form {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  font-size: 80%;
 }
 
 #scatter_controls {

@@ -51,6 +51,18 @@ def scatter():
 def index():
     return flask.render_template("index.html")
 
+@app.route("/save_svg", methods=["GET", "POST"])
+def save_svg():
+    preamble = """<?xml version="1.0" standalone="no"?>
+
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+"""
+    svgdata = request.form.get("svg_data", "")
+    app.logger.debug(svgdata)
+    response = flask.make_response(preamble+svgdata)
+    response.headers["Content-Disposition"] = "attachment; filename=plot.svg"
+    return response
+
 @app.route("/d", methods=["POST"])
 def upload():
     import hashlib
