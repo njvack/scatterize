@@ -58,7 +58,6 @@ def save_svg():
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 """
     svgdata = request.form.get("svg_data", "")
-    app.logger.debug(svgdata)
     response = flask.make_response(preamble+svgdata)
     response.headers["Content-Disposition"] = "attachment; filename=plot.svg"
     return response
@@ -103,7 +102,6 @@ def regress_js(filehash):
         csvfile.seek(0)
         datas = np.genfromtxt(csvfile, delimiter=",", skip_header=1)
     
-    app.logger.debug(request.args)
     x_idx = int(request.args.get("x", 0))
     y_idx = int(request.args.get("y", 0))
     nuis_idxs = []
@@ -116,22 +114,25 @@ def regress_js(filehash):
     if clist != "":
         censor_idxs = [int(i) for i in clist.split(",")]
     
-    app.logger.debug(x_idx)
+    needed_cols = [y_idx, x_idx] + nuis_idxs;
+    needed_data = datas[:,needed_cols]
+    data_present = np.isfinite(needed_data)
+    good_rows = np.all(data_present, axis=1)
+    filtered_data = datas[good_rows]
     
-    dv = datas[:,y_idx]
+    dv = filtered_data[:,y_idx]
     const_term = np.ones_like(dv)
-    x_var = datas[:,x_idx]
-    nuisance_vars = datas[:,nuis_idxs]
+    x_var = filtered_data[:,x_idx]
+    nuisance_vars = filtered_data[:,nuis_idxs]
     weights = np.ones_like(dv).astype(np.int)
     weights[censor_idxs] = 0;
     
     mA = np.column_stack((const_term, x_var, nuisance_vars))
     mA_masked = mA[weights.astype(bool)]
     dv_masked = dv[weights.astype(bool)]
-    app.logger.debug(mA)
     plot_result = ols.ols(dv, mA, 'y', ['const', 'x'])
     result = ols.ols(dv_masked, mA_masked, 'y', ['const', 'x'])
-    plot_yvals = plot_result.b[0] + (plot_result.b[1]*x_var) + plot_result.e 
+    plot_yvals = plot_result.b[0] + (plot_result.b[1]*x_var) + plot_result.e
     
     coef_result = {
         "const": {
