@@ -56,19 +56,19 @@ def upload():
     import hashlib
     file_raw = request.files['csvfile']
     lines = file_raw.read().splitlines()
-    dialect = csv.Sniffer().sniff("\n".join(lines[0:5]))
+    dialect = csv.Sniffer().sniff("\n".join(lines[0:settings.SNIFF_LINES]))
     reader = csv.reader(lines, dialect=dialect)
-    h = hashlib.md5()
+    h = hashlib.sha1()
     rows = list(reader)
     h.update(str(rows))
-    filename = "%s.csv" % (h.hexdigest())
+    short_hash = h.hexdigest()[0:settings.HASH_PREFIX_CHARS]
+    filename = "%s.csv" % (short_hash)
     with open("%s/%s" % (settings.STORAGE_DIR, filename), 'w') as outfile:
         writer = csv.writer(outfile, dialect="excel")
         writer.writerows(rows)
     g.filename = filename
     g.rows = rows
-    return flask.redirect(flask.url_for(
-        'scatter_frame', filehash=h.hexdigest()))
+    return flask.redirect(flask.url_for('scatter_frame', filehash=short_hash))
 
 @app.route("/d/<filehash>")
 def scatter_frame(filehash):

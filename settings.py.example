@@ -1,5 +1,8 @@
 import time
 
-ASSET_TIME = int(time.time())
+ASSET_TIME = int(time.time()) # For cache-busting asset tags
 STORAGE_DIR = "/tmp/scatterize"
 STATIC_PATH = "/static"
+
+SNIFF_LINES = 5  # The number of lines in the CSV file we'll look at
+HASH_PREFIX_CHARS = 10 # For github-style URL shortening
