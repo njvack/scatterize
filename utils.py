@@ -1,11 +1,5 @@
-import numpy as np
 import flask
 import settings
-
-def json_float(val):
-    if np.isnan(val) or np.isinf(val):
-        return str(val)
-    return val
 
 def add_url_helpers(app):
     
