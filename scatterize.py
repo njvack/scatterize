@@ -86,8 +86,10 @@ def regress_js(filehash):
     if clist != "":
         censor_idxs = [int(i) for i in clist.split(",")]
     
+    mtype = request.args.get("m", "OLS")
+    
     sr = StatsRunner(datas, columns, y_idx, x_idx, nuis_idxs, censor_idxs, 
-        'OLS')
+        mtype)
     result = sr.run()
     return flask.jsonify(result)
 

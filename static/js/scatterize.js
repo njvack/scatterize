@@ -262,7 +262,7 @@ var S = function($) {
   };
   
   S_my.single_state = function(
-      base_url, columns, x_control, y_control, nuisance_list) {
+      base_url, columns, x_control, y_control, nuisance_list, model_control) {
     var pub = {}
     var my = {};
     
@@ -271,6 +271,7 @@ var S = function($) {
     my.x_control = $(x_control);
     my.y_control = $(y_control);
     my.nuisance_list = $(nuisance_list);
+    my.model_control = $(model_control);
     my.censored_points = [];
 
     my.populate_select = function(control, list, initial_index) {
@@ -302,6 +303,7 @@ var S = function($) {
       var opts = {
         'x' : my.x_control.val(),
         'y' : my.y_control.val(),
+        'm' : my.model_control.val()
       };
       var xy_ints = intify([my.x_control.val(), my.y_control.val()]);
       var nuisance_ids = $.grep(my.checked_nuisance_vals(), function(v) {
@@ -404,6 +406,7 @@ var S = function($) {
       console.log(cur_state);
       my.x_control.val(cur_state.x);
       my.y_control.val(cur_state.y);
+      my.model_control.val(cur_state.m)
       my.populate_nuisance_lists();
       var cstr = cur_state.c || "";
       var clist = [];
@@ -419,6 +422,7 @@ var S = function($) {
     
     my.x_control.change(function() { pub.update_state(); });
     my.y_control.change(function() { pub.update_state(); });
+    my.model_control.change(function() { pub.update_state(); });
     
     pub.my = my;
     return pub;

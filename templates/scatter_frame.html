@@ -14,6 +14,12 @@
   </div>
   <div id="x_data">Plot on x: <select id="x_col"> </select>
   </div>
+  <div id="model_type">Model type:
+    <select id="model_select"> 
+      <option value="OLS">OLS</option>
+      <option value="RLM">Robust (Huber's T)</option>
+    </select>
+  </div>
   <div id="nuisances">
     <h3>Nuisance variables</h3>
     <ul id="nuisance_vars">
@@ -55,7 +61,8 @@
       columns,
       '#x_col',
       '#y_col',
-      '#nuisance_vars'
+      '#nuisance_vars',
+      '#model_select'
     );
     $(window).trigger("hashchange");
   });

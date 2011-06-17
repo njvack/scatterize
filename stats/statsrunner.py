@@ -21,6 +21,10 @@ class StatsRunner(object):
             'OLS' : {
                 'model_fx' : self._run_ols,
                 'json_fx'  : self._jsonify_ols
+            },
+            'RLM' : {
+                'model_fx' : self._run_rlm,
+                'json_fx'  : self._jsonify_rlm
             }
         }
         
@@ -35,10 +39,9 @@ class StatsRunner(object):
         iv = filtered_data[:,self.iv_idx]
         nuisance_v = filtered_data[:,self.nuis_idxs]
         weights = np.ones_like(dv).astype(np.int)
-        weights[self.censor_rows] = 0
         censor_ar = np.zeros((len(weights), len(self.censor_rows)))
         for i, r in enumerate(self.censor_rows):
-            censor_ar[rownum][i] = 1.
+            censor_ar[r][i] = 1.
         X = np.column_stack((const_term, iv, nuisance_v, censor_ar))
         
         self.result = model_types[self.model]['model_fx'](dv, X)
@@ -46,7 +49,8 @@ class StatsRunner(object):
         # This is ugly! Must refactor.
         if (self.model == "RLM"):
             weights = result.weights
-        
+        weights[self.censor_rows] = 0
+
         plot_yvals = result.params[0]+(result.params[1]*iv)+result.resid
         self.points = np.column_stack((iv, plot_yvals, weights))
         
@@ -96,3 +100,53 @@ class StatsRunner(object):
         
         return dict(points=points.tolist(), coef_result=coef_result, 
             model_result=model_result)
+        
+
+    def _run_rlm(self, endog, exog):
+        rlm_model = sm.RLM(endog, exog, M=sm.robust.norms.HuberT())
+        
+        return rlm_model.fit()
+        
+    def _jsonify_rlm(self, model_result, points):
+        mr = model_result
+        coef_result = {}
+        coef_result['const'] = {
+            'b'         : json_float(mr.params[0]),
+            't'         : json_float(mr.tvalues[0]),
+            'p'         : json_float(np.nan),
+            'se'        : json_float(mr.bse[0]),
+            'col_idx'   : None,
+            'name'      : "Constant"
+        }
+        
+        coef_result['x'] = {
+            'b'         : json_float(mr.params[1]),
+            't'         : json_float(mr.tvalues[1]),
+            'p'         : json_float(np.nan),
+            'se'        : json_float(mr.bse[1]),
+            'col_idx'   : self.iv_idx,
+            'name'      : self.column_names[self.iv_idx]
+        }
+        
+        for i, col_idx in enumerate(self.nuis_idxs):
+            res_i = i+2
+            coef_result["n_%s" % col_idx] = {
+                'b'  : json_float(mr.params[res_i]),
+                't'  : json_float(mr.tvalues[res_i]),
+                'p'  : json_float(np.nan),
+                'se' : json_float(mr.bse[res_i]),
+                'col_idx' : col_idx,
+                'name' : self.column_names[col_idx]
+            }
+        
+        model_result = {
+            "Rsq"    : json_float(np.nan),
+            "RsqAdj" : json_float(np.nan),
+            "F"      : json_float(np.nan),
+            "Fpv"    : json_float(np.nan)
+        }
+        
+        return dict(points=points.tolist(), coef_result=coef_result, 
+            model_result=model_result)
+        
+
