@@ -9,9 +9,16 @@
 
 body {
   font-family: Helvetica, Arial, sans-serif;
-  padding-top: .5em;
   padding-bottom: .5em;
   background-color: #BCF;
+}
+
+#header {
+  text-align: center;
+  background-color: #FFF;
+  margin-bottom: 1em;
+  line-height: 1.5;
+  border-bottom: 1px solid #999;
 }
 
 #wrapper {

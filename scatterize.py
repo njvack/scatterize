@@ -50,6 +50,10 @@ def scatter():
 @app.route("/")
 def index():
     return flask.render_template("index.html")
+    
+@app.route("/about")
+def about():
+    return flask.render_template("about.html")
 
 @app.route("/save_svg", methods=["GET", "POST"])
 def save_svg():
