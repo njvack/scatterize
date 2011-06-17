@@ -4,8 +4,8 @@ from flask import g, request
 import time
 import csv
 import numpy as np
+from scikits.statsmodels import api as sm
 
-from stats import ols
 from utils import json_float, add_url_helpers
 import wsgi_utils
 import settings
@@ -134,24 +134,24 @@ def regress_js(filehash):
     mA = np.column_stack((const_term, x_var, nuisance_vars))
     mA_masked = mA[weights.astype(bool)]
     dv_masked = dv[weights.astype(bool)]
-    plot_result = ols.ols(dv, mA, 'y', ['const', 'x'])
-    result = ols.ols(dv_masked, mA_masked, 'y', ['const', 'x'])
-    plot_yvals = plot_result.b[0] + (plot_result.b[1]*x_var) + plot_result.e
+    plot_result = sm.OLS(dv, mA).fit()
+    result = sm.OLS(dv_masked, mA_masked).fit()
+    plot_yvals = plot_result.params[0] + (plot_result.params[1]*x_var) + plot_result.resid
     
     coef_result = {
         "const": {
-            'b'  : json_float(result.b[0]),
-            't'  : json_float(result.t[0]),
-            'p'  : json_float(result.p[0]),
-            'se' : json_float(result.se[0]),
+            'b'  : json_float(result.params[0]),
+            't'  : json_float(result.tvalues[0]),
+            'p'  : json_float(result.pvalues[0]),
+            'se' : json_float(result.bse[0]),
             'col_idx' : None,
             'name' : "Constant"
         },
         "x": {
-            'b'  : json_float(result.b[1]),
-            't'  : json_float(result.t[1]),
-            'p'  : json_float(result.p[1]),
-            'se' : json_float(result.se[1]),
+            'b'  : json_float(result.params[1]),
+            't'  : json_float(result.tvalues[1]),
+            'p'  : json_float(result.pvalues[1]),
+            'se' : json_float(result.bse[1]),
             'col_idx' : x_idx,
             'name' : columns[x_idx]
         }
@@ -160,19 +160,19 @@ def regress_js(filehash):
     for i, col_idx in enumerate(nuis_idxs):
         res_i = i+2
         coef_result["n_%s" % col_idx] = {
-            'b'  : json_float(result.b[res_i]),
-            't'  : json_float(result.t[res_i]),
-            'p'  : json_float(result.p[res_i]),
-            'se' : json_float(result.se[res_i]),
+            'b'  : json_float(result.params[res_i]),
+            't'  : json_float(result.tvalues[res_i]),
+            'p'  : json_float(result.pvalues[res_i]),
+            'se' : json_float(result.bse[res_i]),
             'col_idx' : col_idx,
             'name' : columns[col_idx]
         }
     
     model_result = {
-        "Rsq"    : json_float(result.R2),
-        "RsqAdj" : json_float(result.R2adj),
-        "F"      : json_float(result.F),
-        "Fpv"    : json_float(result.Fpv)
+        "Rsq"    : json_float(result.rsquared),
+        "RsqAdj" : json_float(result.rsquared_adj),
+        "F"      : json_float(result.fvalue),
+        "Fpv"    : json_float(result.f_pvalue)
     }
     points = np.column_stack((x_var, plot_yvals, weights)).tolist()
     return flask.jsonify(points=points, 
