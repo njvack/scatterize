@@ -107,7 +107,7 @@ var S = function($) {
           .height(function() {return my.ifhov(this, 10, 6);})
           .left(function(p) {return my.x(p[0]);})
           .def("strokeStyle", function(p) {
-            return my.ifhov(this, "#000", "#999");
+            return my.ifhov(this, "rgba(0,0,0,1)", "rgba(0,0,0,0.25)");
           })
         .anchor("top").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
@@ -119,7 +119,7 @@ var S = function($) {
           .width(function() {return my.ifhov(this, 10, 6);})
           .bottom(function(p) {return my.y(p[1]);})
           .def("strokeStyle", function(p) { 
-            return my.ifhov(this, "#000", "#999");
+            return my.ifhov(this, "rgba(0,0,0,1)", "rgba(0,0,0,0.25)");
           })
         .anchor("right").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
