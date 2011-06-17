@@ -15,38 +15,6 @@ app.wsgi_app = wsgi_utils.ReverseProxied(app.wsgi_app)
 
 add_url_helpers(app)
 
-@app.route("/demo")
-def demo():
-    return flask.render_template("demo.html")
-
-@app.route("/demo_scatter.js")
-def scatter():
-    points = np.random.randint(50, 200)
-    er_sd = np.random.uniform(5, 50)
-    b0 = np.random.uniform(-20, 20)
-    b1 = np.random.uniform(-20, 20)
-    x = np.random.normal(loc=np.random.uniform(-10, 10), scale=100, size=points)
-    y = (b0*np.ones(points))+(b1*x)
-    err = np.random.normal(loc=0, scale=100, size=points)
-    y += err
-    
-    params = {
-        'n' : points,
-        'b0' : b0,
-        'b1' : b1,
-        'err': err.tolist()
-    }
-    
-    points = np.column_stack((x,y)).tolist()
-    r = ols.ols(y, np.column_stack((np.ones_like(x), x)), 'y', ['const', 'x'])
-    regression_data = {
-        'b' : r.b.tolist(),
-        't' : r.t.tolist(),
-        'p' : r.p.tolist()
-    }
-    
-    return flask.jsonify(params=params, points=points, result=regression_data)
-
 @app.route("/")
 def index():
     return flask.render_template("index.html")
