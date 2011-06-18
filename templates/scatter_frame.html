@@ -88,11 +88,11 @@
         var scatterplot = S.scatterplot("scatterplot", 460, 460, S.ss);
         scatterplot.draw_data(data.points);
         scatterplot.regression_line(
-          data.coef_result.x.b, data.coef_result.const.b, "brown");
+          data.coef_result.x.b, data.coef_result['const'].b, "brown");
         S.update_model_stats("#model_stats", data.model_result);
         $("#coef_stats div").empty();
         S.update_coef_stats("#x_stats", data.coef_result.x);
-        S.update_coef_stats("#const_stats", data.coef_result.const);
+        S.update_coef_stats("#const_stats", data.coef_result['const']);
         for (var key in data.coef_result) {
           if (key.indexOf("n_") === 0) {
             var container = $("#"+key+"_stats");
