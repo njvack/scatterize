@@ -14,6 +14,14 @@
   </div>
   <div id="x_data">Plot on x: <select id="x_col"> </select>
   </div>
+  <div id="highlighter">Highlight points by group:
+    <select id="highlight_col">
+      <option value=""></option>
+      {% for col in g.column_names -%}
+      <option value="{{loop.index0}}">{{col}}</option>
+      {% endfor -%}
+    </select>
+  </div>
   <div id="model_type">Model type:
     <select id="model_select"> 
       <option value="OLS">OLS</option>
@@ -61,6 +69,7 @@
       columns,
       '#x_col',
       '#y_col',
+      "#highlight_col",
       '#nuisance_vars',
       '#model_select'
     );

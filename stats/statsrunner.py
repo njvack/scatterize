@@ -1,20 +1,22 @@
-from utils import json_float
+import csv
 import numpy as np
 import scikits.statsmodels.api as sm
+from utils import json_float
 
 class StatsRunner(object):
     """The thing you'll use to actually run your statistics."""
-    def __init__(self, data_ar, column_names, dv_idx, iv_idx, nuis_idxs, 
-            censor_rows, model="OLS", model_options={}):
+    def __init__(self, filename, dv_idx, iv_idx, nuis_idxs, 
+            highlight_idx, censor_rows, model="OLS", model_options={}, logger=None):
         super(StatsRunner, self).__init__()
-        self.data_ar = data_ar
-        self.column_names = column_names
+        self.filename = filename
         self.dv_idx = dv_idx
         self.iv_idx = iv_idx
         self.nuis_idxs = nuis_idxs
+        self.highlight_idx = highlight_idx
         self.censor_rows = censor_rows
         self.model = model
         self.model_options = model_options
+        self.logger = logger
     
     def run(self):
         model_types = {
@@ -27,6 +29,22 @@ class StatsRunner(object):
                 'json_fx'  : self._jsonify_rlm
             }
         }
+        
+        with open(self.filename, 'rt') as csvfile:
+            reader = csv.reader(csvfile, dialect="excel")
+            self.column_names = reader.next()
+            csvfile.seek(0)
+            self.data_ar = np.genfromtxt(csvfile, delimiter=",", skip_header=1)
+            group_map = {}
+            point_groups = []
+            csvfile.seek(0)
+            reader.next()
+            group_assignment, group_map = self._map_point_groups(
+                reader, self.highlight_idx)
+            if self.logger:
+                self.logger.debug(self.highlight_idx)
+                self.logger.debug(group_assignment)
+                self.logger.debug(group_map)
         
         modeled_idxs = [self.dv_idx, self.iv_idx] + self.nuis_idxs
         modeled_data = self.data_ar[:,modeled_idxs]
@@ -52,9 +70,33 @@ class StatsRunner(object):
         weights[self.censor_rows] = 0
 
         plot_yvals = result.params[0]+(result.params[1]*iv)+result.resid
-        self.points = np.column_stack((iv, plot_yvals, weights))
+        point_groups = np.array(group_assignment)
+        self.points = np.column_stack((iv, plot_yvals, weights, point_groups))
         
         return model_types[self.model]['json_fx'](self.result, self.points)
+        
+    def _map_point_groups(self, data_iter, group_idx):
+        self.logger.debug("Hello")
+        gi_int = -1
+        try:
+            gi_int = int(group_idx)
+        except:
+            pass # This is OK.
+        group_assignment = []
+        group_map = {}
+        group_num = 0
+        for r in data_iter:
+            self.logger.debug(gi_int)
+            if gi_int >= 0:
+                self.logger.debug(r[gi_int])
+                glabel = r[gi_int]
+                if not glabel in group_map:
+                    group_map[glabel] = group_num
+                    group_num += 1
+                group_assignment.append(group_map[glabel])
+            else:
+                group_assignment.append(0)
+        return (group_assignment, group_map)
         
     def _run_ols(self, endog, exog):
         return sm.OLS(endog, exog).fit()

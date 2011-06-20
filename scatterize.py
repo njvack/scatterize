@@ -68,11 +68,6 @@ def scatter_frame(filehash):
 @app.route("/d/<filehash>/regress.js")
 def regress_js(filehash):
     filename = "%s/%s.csv" % (settings.STORAGE_DIR, filehash)
-    with open(filename, 'rt') as csvfile:
-        reader = csv.reader(csvfile, dialect="excel")
-        columns = reader.next()
-        csvfile.seek(0)
-        datas = np.genfromtxt(csvfile, delimiter=",", skip_header=1)
     
     x_idx = int(request.args.get("x", 0))
     y_idx = int(request.args.get("y", 0))
@@ -87,9 +82,10 @@ def regress_js(filehash):
         censor_idxs = [int(i) for i in clist.split(",")]
     
     mtype = request.args.get("m", "OLS")
+    highlight_idx = request.args.get("h", None)
     
-    sr = StatsRunner(datas, columns, y_idx, x_idx, nuis_idxs, censor_idxs, 
-        mtype)
+    sr = StatsRunner(filename, y_idx, x_idx, nuis_idxs, 
+        highlight_idx, censor_idxs, mtype, logger=app.logger)
     result = sr.run()
     return flask.jsonify(result)
 
