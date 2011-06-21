@@ -1,3 +1,14 @@
+# coding: utf8
+# Part of scatterize -- a statistical exploration tool
+#
+# Copyright (c) 2011 Board of Regents of the University of Wisconsin System
+# 
+# scatterize is licensed under the GPLv3 -- see LICENSE for details.
+# 
+# copied wholesale from Flask's "Fixing SCRIPT_NAME/url_scheme When
+# Behind Reverse Proxy:"
+# http://flask.pocoo.org/snippets/35/
+
 class ReverseProxied(object):
     '''Wrap the application in this middleware and configure the 
     front-end server to add these headers, to let you quietly bind 

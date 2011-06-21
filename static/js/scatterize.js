@@ -1,3 +1,19 @@
+/* 
+ * Part of scatterize -- a statistical exploration tool
+ *
+ * Copyright (c) 2011 Board of Regents of the University of Wisconsin System
+ * 
+ * scatterize is licensed under the GPLv3 -- see LICENSE for details.
+ *
+ * Written by Nathan Vack <njvack@wisc.edu> at the Waisman Laborotory
+ * for Brain Imaging and Behavior, University of Wisconsin - Madison.
+ *
+ * Color schemes from the excellent ColorBrewer tool: http://colorbrewer2.org/
+ *
+ * Chart designs inspired by Edward Tufte's (also excellent) "The Visual 
+ * Display of Quantitative Data"
+ * 
+ */
 if (!(window.console && window.console.log)) {
   window.console = {
     log: function() {}

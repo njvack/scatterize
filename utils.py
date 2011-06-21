@@ -1,3 +1,13 @@
+# coding: utf8
+# Part of scatterize -- a statistical exploration tool
+#
+# Copyright (c) 2011 Board of Regents of the University of Wisconsin System
+# 
+# scatterize is licensed under the GPLv3 -- see LICENSE for details.
+#
+# Adapted from the Flask Static URL Cache Buster:
+# http://flask.pocoo.org/snippets/40/
+
 import flask
 import settings
 
