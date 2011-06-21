@@ -6,7 +6,7 @@ from utils import json_float
 class StatsRunner(object):
     """The thing you'll use to actually run your statistics."""
     def __init__(self, filename, dv_idx, iv_idx, nuis_idxs, 
-            highlight_idx, censor_rows, model="OLS", model_options={}, logger=None):
+            highlight_idx, censor_rows, model="OLS", model_options={}):
         super(StatsRunner, self).__init__()
         self.filename = filename
         self.dv_idx = dv_idx
@@ -16,7 +16,6 @@ class StatsRunner(object):
         self.censor_rows = censor_rows
         self.model = model
         self.model_options = model_options
-        self.logger = logger
     
     def run(self):
         model_types = {
@@ -41,10 +40,6 @@ class StatsRunner(object):
             reader.next()
             group_assignment, group_map = self._map_point_groups(
                 reader, self.highlight_idx)
-            if self.logger:
-                self.logger.debug(self.highlight_idx)
-                self.logger.debug(group_assignment)
-                self.logger.debug(group_map)
         
         modeled_idxs = [self.dv_idx, self.iv_idx] + self.nuis_idxs
         modeled_data = self.data_ar[:,modeled_idxs]
@@ -76,7 +71,6 @@ class StatsRunner(object):
         return model_types[self.model]['json_fx'](self.result, self.points)
         
     def _map_point_groups(self, data_iter, group_idx):
-        self.logger.debug("Hello")
         gi_int = -1
         try:
             gi_int = int(group_idx)
@@ -86,9 +80,7 @@ class StatsRunner(object):
         group_map = {}
         group_num = 0
         for r in data_iter:
-            self.logger.debug(gi_int)
             if gi_int >= 0:
-                self.logger.debug(r[gi_int])
                 glabel = r[gi_int]
                 if not glabel in group_map:
                     group_map[glabel] = group_num

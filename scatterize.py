@@ -85,7 +85,7 @@ def regress_js(filehash):
     highlight_idx = request.args.get("h", None)
     
     sr = StatsRunner(filename, y_idx, x_idx, nuis_idxs, 
-        highlight_idx, censor_idxs, mtype, logger=app.logger)
+        highlight_idx, censor_idxs, mtype)
     result = sr.run()
     return flask.jsonify(result)
 
