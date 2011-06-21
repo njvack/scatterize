@@ -77,6 +77,18 @@ class StatsRunner(object):
         plot_yvals = result.params[0]+(result.params[1]*iv)+result.resid
         point_groups = np.array(group_assignment)
         self.points = np.column_stack((iv, plot_yvals, weights, point_groups))
+        self.all_point_data = np.column_stack((self.points, dv, X))
+
+        self.all_point_cols = ['x', 'y', 'weight', 'group', 
+            'dv_%s' % self.column_names[self.dv_idx], 
+            'const',
+            'iv_%s' % self.column_names[self.iv_idx]]
+        
+        for i, n_idx in enumerate(self.nuis_idxs):
+            self.all_point_cols.append(
+                "nuis_%s_%s" % (i, self.column_names[n_idx]))
+        for i in range(len(self.censor_rows)):
+            self.all_point_cols.append("censor_%s" % i)
         
         return model_types[self.model]['json_fx'](self.result, self.points)
         
@@ -143,7 +155,9 @@ class StatsRunner(object):
         }
         
         return dict(points=points.tolist(), coef_result=coef_result, 
-            model_result=model_result)
+            model_result=model_result, 
+            all_point_data=self.all_point_data.tolist(),
+            all_point_cols=self.all_point_cols)
         
 
     def _run_rlm(self, endog, exog):
@@ -191,6 +205,8 @@ class StatsRunner(object):
         }
         
         return dict(points=points.tolist(), coef_result=coef_result, 
-            model_result=model_result)
+            model_result=model_result,
+            all_point_data=self.all_point_data.tolist(),
+            all_point_cols=self.all_point_cols)
         
 

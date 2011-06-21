@@ -309,12 +309,13 @@ var S = function($) {
   };
   
   S_my.single_state = function(
-      base_url, columns, x_control, y_control, highlight_control,
-      nuisance_list, model_control) {
+      regress_js_url, regress_csv_url, columns, x_control, y_control, 
+      highlight_control, nuisance_list, model_control) {
     var pub = {}
     var my = {};
     
-    my.base_url = base_url;
+    my.base_url = regress_js_url;
+    my.regress_csv_url = regress_csv_url;
     my.columns = columns;
     my.x_control = $(x_control);
     my.y_control = $(y_control);
@@ -472,6 +473,10 @@ var S = function($) {
     
     pub.get_url = function() {
       return $.param.querystring(my.base_url, $.bbq.getState(), 2);
+    };
+    
+    pub.get_csv_url = function() {
+      return $.param.querystring(my.regress_csv_url, $.bbq.getState(), 2);
     };
     
     my.x_control.change(function() { pub.update_state(); });

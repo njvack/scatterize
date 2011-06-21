@@ -100,7 +100,47 @@ def regress_js(filehash):
     sr = StatsRunner(filename, y_idx, x_idx, nuis_idxs, 
         highlight_idx, censor_idxs, mtype)
     result = sr.run()
+    # Trim a couple things from the result -- won't need 'em
+    del result['all_point_data']
+    del result['all_point_cols']
     return flask.jsonify(result)
+
+@app.route("/d/<filehash>/regress.csv")
+def regress_csv(filehash):
+    import StringIO
+    filename = "%s/%s.csv" % (settings.STORAGE_DIR, filehash)
+    
+    x_idx = int(request.args.get("x", 0))
+    y_idx = int(request.args.get("y", 0))
+    nuis_idxs = []
+    nlist = request.args.get("n", "").strip()
+    if nlist != "":
+        nuis_idxs = [int(i) for i in nlist.split(",")]
+    
+    censor_idxs = []    
+    clist = request.args.get("c", "").strip()
+    if clist != "":
+        censor_idxs = [int(i) for i in clist.split(",")]
+    
+    mtype = request.args.get("m", "OLS")
+    highlight_idx = request.args.get("h", None)
+    
+    sr = StatsRunner(filename, y_idx, x_idx, nuis_idxs, 
+        highlight_idx, censor_idxs, mtype)
+    result = sr.run()
+    
+    # Build us a string in memory
+    out_buf = StringIO.StringIO()
+    writer = csv.writer(out_buf, delimiter=",", quotechar='"', 
+        quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(result['all_point_cols'])
+    for row in result['all_point_data']:
+        writer.writerow(row)
+    
+    response = flask.make_response(out_buf.getvalue())
+    response.headers["Content-Disposition"] = "attachment;filename=data.csv"
+    response.headers["Content-Type"] = "text/csv"
+    return response
 
 if __name__ == "__main__":
     app.debug = True
