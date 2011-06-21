@@ -6,6 +6,7 @@
   <form id = "save_form" action="{{url_for('save_svg')}}" method="POST">
     <input type="hidden" name="svg_data" id="svg_data" value=""/>
     <input type="submit" value="Save plot" id="save_button" />
+    <a href="" id="download_link">Download data</a>
   </form>
 </div>
 
@@ -66,6 +67,7 @@
 
     S.ss = S.single_state(
       '{{url_for("regress_js", filehash=g.filehash)}}',
+      '{{url_for("regress_csv", filehash=g.filehash)}}',
       columns,
       '#x_col',
       '#y_col',
@@ -87,6 +89,8 @@
     console.log("Hashchange!");
     S.ss.update_controls();
     var regress_url = S.ss.get_url();
+    $("#download_link").attr("href", S.ss.get_csv_url());
+    
     console.log("Let's get from "+regress_url);
     $.ajax({
       'url' : regress_url,
