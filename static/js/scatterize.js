@@ -7,6 +7,18 @@ if (!(window.console && window.console.log)) {
 var S = function($) {
   var S_my = {};
   
+  // From colorbrewer2.org, "paired"
+  S_my.colors = pv.colors(
+    "rgb(31, 120, 180)", // blue
+    "rgb(51, 160, 44)", // green
+    "rgb(227, 26, 28)", // red
+    "rgb(255, 127, 0)", // orange
+    "rgb(166, 206, 227)", // lightblue
+    "rgb(178, 223, 138)", // lightgreen
+    "rgb(251, 154, 153)", // lightred
+    "rgb(253, 191, 111)" // lightorange
+  );
+  
   function intify(string_ar) {
     return $.map(string_ar, function(e) {
       return parseInt(e, 10);
@@ -51,7 +63,7 @@ var S = function($) {
     
     my.ifhov = function(p, val1, val2) {
       if (val1 === undefined) { val1 = true; val2 = false; }
-      if (p.parent.index === p.root.hover_index()) {
+      if (p.parent.global_idx() === p.root.hover_index()) {
         return val1;
       }
       return val2;
@@ -76,31 +88,36 @@ var S = function($) {
     
     pub.set_points = function(points) {
       pub.points = points;
+      for (var i = 0; i < points.length; i++) {
+        pub.points[i].global_idx = i;
+      }
       my.xvals = points.map(function(p) {return p[0]; });
       my.yvals = points.map(function(p) {return p[1]; });
     };
     
-    pub.draw_points = function(points) {
+    my.draw_point_group = function(points, color_scale) {
       var point_panel = pub.vis.add(pv.Panel)
         .data(points)
+      .add(pv.Panel)
+        .def("global_idx", function(p) {return p.global_idx; })
       .add(pv.Dot)
         .left(function(p) {return my.x(p[0]);})
         .bottom(function(p) {return my.y(p[1]);})
         .def("strokeStyle", function(p) {
-          return my.ifhov(this, "orange", my.c(p[2]));
+          return my.ifhov(this, "orange", color_scale(p[2]));
         })
         .fillStyle(function() { return this.strokeStyle().alpha(0.4);})
         .event("point", function() {
-          my.state_mgr.hover_index = this.parent.index;
-          this.root.hover_index(this.parent.index);
+          my.state_mgr.hover_index = this.parent.global_idx();
+          this.root.hover_index(this.parent.global_idx());
           this.parent.render();
           })
-        .event("unpoint", function() {
+        .event("unpoint", function(p) {
           my.state_mgr.hover_index = null;
           this.root.hover_index(null);
           this.parent.render();
           });
-          
+      
         // Datapoint ticks for X
         point_panel.add(pv.Rule)
           .bottom(1)
@@ -112,7 +129,7 @@ var S = function($) {
         .anchor("top").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
           .text(function(p) {return my.formatter(p[0]);});
-        
+      
         // Datapoint ticks for Y
         point_panel.add(pv.Rule)
           .left(1)
@@ -124,6 +141,21 @@ var S = function($) {
         .anchor("right").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
           .text(function(p) {return my.formatter(p[1]);});
+    };
+    
+    pub.draw_points = function(points) {
+      var point_groups = pv.uniq(points.map(function(p) {return p[3]; }));
+      var i;
+      var color_scales = []
+      for (i=0; i < point_groups.length; i++) {
+        var color_index = (i%S.colors.range().length);
+        var group_color_scale = pv.Scale.linear(1,0).range(
+          S.colors.range()[color_index], 'lightgrey');
+        var filtered_points = points.filter(function(p) {
+          return p[3] === point_groups[i];
+        });
+        my.draw_point_group(filtered_points, group_color_scale);
+      }
     };
     
     my.set_scales = function(points) {
@@ -188,7 +220,6 @@ var S = function($) {
       // And y labels
       var yticks = my.yqs.quantiles();
       yticks.push(ymed);
-      console.log(yticks);
       pub.vis.add(pv.Rule)
         .data(yticks)
         .bottom(my.y)
@@ -262,7 +293,8 @@ var S = function($) {
   };
   
   S_my.single_state = function(
-      base_url, columns, x_control, y_control, nuisance_list, model_control) {
+      base_url, columns, x_control, y_control, highlight_control,
+      nuisance_list, model_control) {
     var pub = {}
     var my = {};
     
@@ -270,6 +302,7 @@ var S = function($) {
     my.columns = columns;
     my.x_control = $(x_control);
     my.y_control = $(y_control);
+    my.highlight_control = $(highlight_control);
     my.nuisance_list = $(nuisance_list);
     my.model_control = $(model_control);
     my.censored_points = [];
@@ -309,6 +342,10 @@ var S = function($) {
       var nuisance_ids = $.grep(my.checked_nuisance_vals(), function(v) {
         return !(xy_ints.indexOf(v) > -1)
       });
+      var highlight_idx = my.highlight_control.val();
+      if (highlight_idx !== "") {
+        opts.h = highlight_idx;
+      }
       var nuisance_list = nuisance_ids.join(",");
       if (nuisance_list !== '') { opts.n = nuisance_list; }
       var censor_list = my.censored_points.join(",");
@@ -406,6 +443,7 @@ var S = function($) {
       console.log(cur_state);
       my.x_control.val(cur_state.x);
       my.y_control.val(cur_state.y);
+      my.highlight_control.val(cur_state.h || "");
       my.model_control.val(cur_state.m)
       my.populate_nuisance_lists();
       var cstr = cur_state.c || "";
@@ -422,6 +460,7 @@ var S = function($) {
     
     my.x_control.change(function() { pub.update_state(); });
     my.y_control.change(function() { pub.update_state(); });
+    my.highlight_control.change(function() { pub.update_state(); });
     my.model_control.change(function() { pub.update_state(); });
     
     pub.my = my;
