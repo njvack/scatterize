@@ -48,6 +48,7 @@ def save_svg():
 @app.route("/d", methods=["POST"])
 def upload():
     import hashlib
+    import base64
     file_raw = request.files['csvfile']
     lines = file_raw.read().splitlines()
     dialect = csv.Sniffer().sniff("\n".join(lines[0:settings.SNIFF_LINES]))
@@ -55,7 +56,8 @@ def upload():
     h = hashlib.sha1()
     rows = list(reader)
     h.update(str(rows))
-    short_hash = h.hexdigest()[0:settings.HASH_PREFIX_CHARS]
+    full_hash = base64.urlsafe_b64encode(h.digest())
+    short_hash = full_hash[0:settings.HASH_PREFIX_CHARS]
     filename = "%s.csv" % (short_hash)
     with open("%s/%s" % (settings.STORAGE_DIR, filename), 'w') as outfile:
         writer = csv.writer(outfile, dialect="excel")
