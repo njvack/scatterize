@@ -90,7 +90,7 @@
     S.ss.update_controls();
     var regress_url = S.ss.get_url();
     $("#download_link").attr("href", S.ss.get_csv_url());
-    
+
     console.log("Let's get from "+regress_url);
     $.ajax({
       'url' : regress_url,
