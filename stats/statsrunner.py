@@ -66,15 +66,19 @@ class StatsRunner(object):
         for i, r in enumerate(self.censor_rows):
             censor_ar[r][i] = 1.
         X = np.column_stack((const_term, iv, nuisance_v, censor_ar))
+        X_nocen = np.column_stack((const_term, iv, nuisance_v))
         
         self.result = model_types[self.model]['model_fx'](dv, X)
         result = self.result
+        result_nocen = model_types[self.model]['model_fx'](dv, X_nocen)
+        plot_resid = result.resid.copy()
+        plot_resid[self.censor_rows] = result_nocen.resid[self.censor_rows]
         # This is ugly! Must refactor.
         if (self.model == "RLM"):
             weights = result.weights
         weights[self.censor_rows] = 0
 
-        plot_yvals = result.params[0]+(result.params[1]*iv)+result.resid
+        plot_yvals = result.params[0]+(result.params[1]*iv)+plot_resid
         point_groups = np.array(group_assignment)
         self.points = np.column_stack((iv, plot_yvals, weights, point_groups))
         self.all_point_data = np.column_stack((self.points, dv, X))
