@@ -12,6 +12,8 @@ import csv
 import numpy as np
 import scikits.statsmodels.api as sm
 from utils import json_float
+import logging
+logger = logging.getLogger("statsrunner")
 
 class StatsRunner(object):
     """The thing you'll use to actually run your statistics."""

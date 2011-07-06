@@ -17,6 +17,7 @@ import csv
 import numpy as np
 
 from utils import add_url_helpers
+from stats import statsrunner
 from stats.statsrunner import StatsRunner
 import wsgi_utils
 import settings
@@ -25,6 +26,8 @@ app = flask.Flask(__name__, settings.STATIC_PATH)
 app.wsgi_app = wsgi_utils.ReverseProxied(app.wsgi_app)
 
 add_url_helpers(app)
+
+statsrunner.logger = app.logger
 
 @app.route("/")
 def index():
