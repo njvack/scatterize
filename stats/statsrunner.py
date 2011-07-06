@@ -58,6 +58,7 @@ class StatsRunner(object):
         possible_rows = np.all(np.isfinite(modeled_data), axis=1) # A mask!
         filtered_data = self.data_ar[possible_rows]
         # The UI forces our censor_rows to be relative to possible_rows.
+        logger.debug(filtered_data)
         
         dv = filtered_data[:,self.dv_idx]
         const_term = np.ones_like(dv)
@@ -81,7 +82,11 @@ class StatsRunner(object):
         weights[self.censor_rows] = 0
 
         plot_yvals = result.params[0]+(result.params[1]*iv)+plot_resid
-        point_groups = np.array(group_assignment)
+        point_groups = np.array(group_assignment)[possible_rows]
+        logger.debug(iv.shape)
+        logger.debug(plot_yvals.shape)
+        logger.debug(weights.shape)
+        logger.debug(point_groups.shape)
         self.points = np.column_stack((iv, plot_yvals, weights, point_groups))
         self.all_point_data = np.column_stack((self.points, dv, X))
 
