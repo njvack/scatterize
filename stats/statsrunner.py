@@ -182,7 +182,7 @@ class StatsRunner(object):
         coef_result['const'] = {
             'b'         : json_float(mr.params[0]),
             't'         : json_float(mr.tvalues[0]),
-            'p'         : json_float(np.nan),
+            'p'         : json_float(mr.pvalues[0]),
             'se'        : json_float(mr.bse[0]),
             'col_idx'   : None,
             'name'      : "Constant"
@@ -191,7 +191,7 @@ class StatsRunner(object):
         coef_result['x'] = {
             'b'         : json_float(mr.params[1]),
             't'         : json_float(mr.tvalues[1]),
-            'p'         : json_float(np.nan),
+            'p'         : json_float(mr.pvalues[1]),
             'se'        : json_float(mr.bse[1]),
             'col_idx'   : self.iv_idx,
             'name'      : self.column_names[self.iv_idx]
@@ -202,7 +202,7 @@ class StatsRunner(object):
             coef_result["n_%s" % col_idx] = {
                 'b'  : json_float(mr.params[res_i]),
                 't'  : json_float(mr.tvalues[res_i]),
-                'p'  : json_float(np.nan),
+                'p'  : json_float(mr.pvalues[res_i]),
                 'se' : json_float(mr.bse[res_i]),
                 'col_idx' : col_idx,
                 'name' : self.column_names[col_idx]
