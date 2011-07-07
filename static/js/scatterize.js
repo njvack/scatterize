@@ -26,8 +26,8 @@ var S = function($) {
   // From colorbrewer2.org, "paired"
   S_my.colors = pv.colors(
     "rgb(31, 120, 180)", // blue
-    "rgb(51, 160, 44)", // green
-    "rgb(227, 26, 28)", // red
+    "rgb(51, 190, 77)", // green
+    "rgb(183, 5, 7)", // red
     "rgb(255, 127, 0)", // orange
     "rgb(166, 206, 227)", // lightblue
     "rgb(178, 223, 138)", // lightgreen
