@@ -51,6 +51,11 @@
 </div>
 
 <table id="raw_data">
+  <tr>
+    {% for d in g.column_names -%}
+      <td>{{d}}</td>
+    {% endfor -%}
+  </tr>
   {% for row in g.rows -%}
   <tr>
     {% for d in row -%}

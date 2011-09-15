@@ -8,19 +8,24 @@
 # Written by Nathan Vack <njvack@wisc.edu> at the Waisman Laborotory
 # for Brain Imaging and Behavior, University of Wisconsin - Madison.
 
+import os
 import csv
 import numpy as np
 import scikits.statsmodels.api as sm
+
+import settings
 from utils import json_float
+
 import logging
 logger = logging.getLogger("statsrunner")
 
+
 class StatsRunner(object):
     """The thing you'll use to actually run your statistics."""
-    def __init__(self, filename, dv_idx, iv_idx, nuis_idxs, 
+    def __init__(self, stats_data, dv_idx, iv_idx, nuis_idxs, 
             highlight_idx, censor_rows, model="OLS", model_options={}):
         super(StatsRunner, self).__init__()
-        self.filename = filename
+        self.stats_data = stats_data
         self.dv_idx = dv_idx
         self.iv_idx = iv_idx
         self.nuis_idxs = nuis_idxs
@@ -28,8 +33,11 @@ class StatsRunner(object):
         self.censor_rows = censor_rows
         self.model = model
         self.model_options = model_options
-    
+
     def run(self):
+        """
+        Reads a CSV file and runs some stats on it.
+        """
         model_types = {
             'OLS' : {
                 'model_fx' : self._run_ols,
@@ -40,36 +48,29 @@ class StatsRunner(object):
                 'json_fx'  : self._jsonify_rlm
             }
         }
+        data_array = self.stats_data.data_array
+        column_names = self.stats_data.column_names
         
-        with open(self.filename, 'rt') as csvfile:
-            reader = csv.reader(csvfile, dialect="excel")
-            self.column_names = reader.next()
-            csvfile.seek(0)
-            self.data_ar = np.genfromtxt(csvfile, delimiter=",", skip_header=1)
-            group_map = {}
-            point_groups = []
-            csvfile.seek(0)
-            reader.next()
-            group_assignment, group_map = self._map_point_groups(
-                reader, self.highlight_idx)
-        
+        row_count = data_array.shape[0]
         modeled_idxs = [self.dv_idx, self.iv_idx] + self.nuis_idxs
-        modeled_data = self.data_ar[:,modeled_idxs]
+        modeled_data = data_array[:,modeled_idxs]
         possible_rows = np.all(np.isfinite(modeled_data), axis=1) # A mask!
-        filtered_data = self.data_ar[possible_rows]
+        filtered_data = data_array[possible_rows]
         # The UI forces our censor_rows to be relative to possible_rows.
         logger.debug(filtered_data)
+        censor_ar = np.zeros((row_count, len(self.censor_rows)))
+        for i, r in enumerate(self.censor_rows):
+            censor_ar[r][i] = 1.
+        filtered_censor_ar = censor_ar[possible_rows]
         
         dv = filtered_data[:,self.dv_idx]
         const_term = np.ones_like(dv)
         iv = filtered_data[:,self.iv_idx]
         nuisance_v = filtered_data[:,self.nuis_idxs]
         weights = np.ones_like(dv).astype(np.int)
-        censor_ar = np.zeros((len(weights), len(self.censor_rows)))
-        for i, r in enumerate(self.censor_rows):
-            censor_ar[r][i] = 1.
-        X = np.column_stack((const_term, iv, nuisance_v, censor_ar))
+        X = np.column_stack((const_term, iv, nuisance_v, filtered_censor_ar))
         X_nocen = np.column_stack((const_term, iv, nuisance_v))
+        logger.debug(X)
         
         self.result = model_types[self.model]['model_fx'](dv, X)
         result = self.result
@@ -82,7 +83,8 @@ class StatsRunner(object):
         weights[self.censor_rows] = 0
 
         plot_yvals = result.params[0]+(result.params[1]*iv)+plot_resid
-        point_groups = np.array(group_assignment)[possible_rows]
+        #point_groups = np.array(group_assignment)[possible_rows]
+        point_groups = np.zeros_like(weights)
         logger.debug(iv.shape)
         logger.debug(plot_yvals.shape)
         logger.debug(weights.shape)
@@ -91,13 +93,13 @@ class StatsRunner(object):
         self.all_point_data = np.column_stack((self.points, dv, X))
 
         self.all_point_cols = ['x', 'y', 'weight', 'group', 
-            'dv_%s' % self.column_names[self.dv_idx], 
+            'dv_%s' % column_names[self.dv_idx], 
             'const',
-            'iv_%s' % self.column_names[self.iv_idx]]
+            'iv_%s' % column_names[self.iv_idx]]
         
         for i, n_idx in enumerate(self.nuis_idxs):
             self.all_point_cols.append(
-                "nuis_%s_%s" % (i, self.column_names[n_idx]))
+                "nuis_%s_%s" % (i, column_names[n_idx]))
         for i in range(len(self.censor_rows)):
             self.all_point_cols.append("censor_%s" % i)
         
@@ -144,7 +146,7 @@ class StatsRunner(object):
             'p'         : json_float(mr.pvalues[1]),
             'se'        : json_float(mr.bse[1]),
             'col_idx'   : self.iv_idx,
-            'name'      : self.column_names[self.iv_idx]
+            'name'      : self.stats_data.column_names[self.iv_idx]
         }
         
         for i, col_idx in enumerate(self.nuis_idxs):
@@ -155,7 +157,7 @@ class StatsRunner(object):
                 'p'  : json_float(mr.pvalues[res_i]),
                 'se' : json_float(mr.bse[res_i]),
                 'col_idx' : col_idx,
-                'name' : self.column_names[col_idx]
+                'name' : self.stats_data.column_names[col_idx]
             }
         
         model_result = {
@@ -194,7 +196,7 @@ class StatsRunner(object):
             'p'         : json_float(mr.pvalues[1]),
             'se'        : json_float(mr.bse[1]),
             'col_idx'   : self.iv_idx,
-            'name'      : self.column_names[self.iv_idx]
+            'name'      : self.stats_data.column_names[self.iv_idx]
         }
         
         for i, col_idx in enumerate(self.nuis_idxs):
@@ -205,7 +207,7 @@ class StatsRunner(object):
                 'p'  : json_float(mr.pvalues[res_i]),
                 'se' : json_float(mr.bse[res_i]),
                 'col_idx' : col_idx,
-                'name' : self.column_names[col_idx]
+                'name' : self.stats_data.column_names[col_idx]
             }
         
         model_result = {
@@ -220,4 +222,3 @@ class StatsRunner(object):
             all_point_data=self.all_point_data.tolist(),
             all_point_cols=self.all_point_cols)
         
-

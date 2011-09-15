@@ -12,13 +12,16 @@
 
 import flask
 from flask import g, request
+
 import time
 import csv
 import numpy as np
 
 from utils import add_url_helpers
-from stats import statsrunner
+from stats import statsrunner, statsfile
 from stats.statsrunner import StatsRunner
+from stats.statsfile import CSVFileHandler
+
 import wsgi_utils
 import settings
 
@@ -28,6 +31,7 @@ app.wsgi_app = wsgi_utils.ReverseProxied(app.wsgi_app)
 add_url_helpers(app)
 
 statsrunner.logger = app.logger
+statsfile.logger = app.logger
 
 @app.route("/")
 def index():
@@ -50,41 +54,29 @@ def save_svg():
 
 @app.route("/d", methods=["POST"])
 def upload():
-    import hashlib
-    import base64
     file_raw = request.files['csvfile']
-    lines = file_raw.read().splitlines()
-    dialect = csv.Sniffer().sniff("\n".join(lines[0:settings.SNIFF_LINES]))
-    reader = csv.reader(lines, dialect=dialect)
-    h = hashlib.sha1()
-    rows = list(reader)
-    h.update(str(rows))
-    full_hash = base64.urlsafe_b64encode(h.digest())
-    short_hash = full_hash[0:settings.HASH_PREFIX_CHARS]
-    filename = "%s.csv" % (short_hash)
-    with open("%s/%s" % (settings.STORAGE_DIR, filename), 'w') as outfile:
-        writer = csv.writer(outfile, dialect="excel")
-        writer.writerows(rows)
-    g.filename = filename
-    g.rows = rows
+    file_handler = CSVFileHandler(settings.STORAGE_DIR)
+    short_hash = file_handler.save_upload(
+        request.files['csvfile'], 
+        hash_len=settings.HASH_PREFIX_CHARS,
+        sniff_lines=settings.SNIFF_LINES)
+
     return flask.redirect(flask.url_for('scatter_frame', filehash=short_hash))
 
 @app.route("/d/<filehash>")
 def scatter_frame(filehash):
-    rows = []
-    with open("%s/%s.csv" % (settings.STORAGE_DIR, filehash), 'rt') as csvfile:
-        reader = csv.reader(csvfile, dialect="excel")
-        rows = list(reader)
-    g.column_names = rows[0]
-    g.rows = rows
     g.filehash = filehash
+    file_handler = CSVFileHandler(settings.STORAGE_DIR)
+    stats_data = file_handler.load_file(filehash)
+    g.column_names = stats_data.column_names
+    g.rows = stats_data.data_list
     
     return flask.render_template("scatter_frame.html")
 
 @app.route("/d/<filehash>/regress.js")
 def regress_js(filehash):
-    filename = "%s/%s.csv" % (settings.STORAGE_DIR, filehash)
-    
+    file_handler = CSVFileHandler(settings.STORAGE_DIR)
+    stats_data = file_handler.load_file(filehash)
     x_idx = int(request.args.get("x", 0))
     y_idx = int(request.args.get("y", 0))
     nuis_idxs = []
@@ -100,7 +92,7 @@ def regress_js(filehash):
     mtype = request.args.get("m", "OLS")
     highlight_idx = request.args.get("h", None)
     
-    sr = StatsRunner(filename, y_idx, x_idx, nuis_idxs, 
+    sr = StatsRunner(stats_data, y_idx, x_idx, nuis_idxs, 
         highlight_idx, censor_idxs, mtype)
     result = sr.run()
     # Trim a couple things from the result -- won't need 'em
