@@ -103,7 +103,11 @@ def regress_js(filehash):
 @app.route("/d/<filehash>/regress.csv")
 def regress_csv(filehash):
     import StringIO
-    filename = "%s/%s.csv" % (settings.STORAGE_DIR, filehash)
+    file_handler = CSVFileHandler(settings.STORAGE_DIR)
+    try:
+        stats_data = file_handler.load_file(filehash)
+    except:
+        flask.abort(404)
     
     x_idx = int(request.args.get("x", 0))
     y_idx = int(request.args.get("y", 0))
@@ -120,7 +124,7 @@ def regress_csv(filehash):
     mtype = request.args.get("m", "OLS")
     highlight_idx = request.args.get("h", None)
     
-    sr = StatsRunner(filename, y_idx, x_idx, nuis_idxs, 
+    sr = StatsRunner(stats_data, y_idx, x_idx, nuis_idxs, 
         highlight_idx, censor_idxs, mtype)
     result = sr.run()
     
