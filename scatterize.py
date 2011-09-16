@@ -91,8 +91,9 @@ def regress_js(filehash):
         flask.abort(404)
 
     regression_params = RegressionParams.build_from_flask_args(request.args)
-    sr = StatsRunner(stats_data, regression_params)
-    result = sr.run()
+    sr = statsrunner.OLSStatsRunner(stats_data, regression_params)
+    sr.run()
+    result = sr.to_dict()
 
     # Trim a couple things from the result -- won't need 'em
     del result['all_point_data']

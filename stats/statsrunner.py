@@ -55,6 +55,10 @@ class RegressionParams(object):
 
         return cls(mtype, y_idx, x_idx, nuis_idxs, highlight_idx, censor_idxs)
 
+    @property
+    def modeled_idxs(self):
+        return [self.dv_idx, self.iv_idx] + self.nuis_idxs
+
 
 class StatsRunner(object):
     """The thing you'll use to actually run your statistics."""
@@ -244,3 +248,139 @@ class StatsRunner(object):
             model_result=model_result,
             all_point_data=self.all_point_data.tolist(),
             all_point_cols=self.all_point_cols)
+
+
+class ParametricStatsRunner(object):
+    def __init__(self, stats_data, regression_params):
+        self.stats_data = stats_data
+        self.regression_params = regression_params
+        super(ParametricStatsRunner, self).__init__()
+    
+    def _build_design_matrix(self):
+        data = self.stats_data.data_array
+        logger.debug(data.shape)
+        params = self.regression_params
+        iv = data[:, params.iv_idx]
+        const = np.ones_like(iv)
+        nuisances = data[:, params.nuis_idxs]
+        censors = self._build_censor_array()
+        logger.debug("Const shape: %s" % const.shape)
+        logger.debug("IV shape: %s" % iv.shape)
+        logger.debug("nuis shape: %s" % str(nuisances.shape))
+        logger.debug("censor shape: %s" % str(censors.shape))
+        return np.column_stack((const, iv, nuisances, censors))
+    
+    def _design_matrix_allowable_rows(self):
+        data = self.stats_data.data_array
+        params = self.regression_params
+        modeled_data = data[:, params.modeled_idxs]
+        possible_rows = np.all(np.isfinite(modeled_data), axis=1)
+        return possible_rows
+    
+    def _build_censor_array(self):
+        data = self.stats_data.data_array
+        params = self.regression_params
+        censor_ar = np.zeros((data.shape[0], len(params.censor_idxs)))
+        for i, r in enumerate(params.censor_idxs):
+            censor_ar[r][i] = 1.
+        return censor_ar
+        
+    def _nonzero_column_mask(self, design_matrix):
+        dm_nonzeros = design_matrix <> 0.0
+        return np.any(dm_nonzeros, axis=0)
+    
+    def _all_point_cols(self, nonzero_column_mask):
+        params = self.regression_params
+        column_names = self.stats_data.column_names
+        
+        plot_cols = ['x', 'y', 'weight', 'group']
+
+        dm_cols = ['const', 'iv_%s' % column_names[params.iv_idx]]
+        for i, n_idx in enumerate(params.nuis_idxs):
+            dm_cols.append(
+                "nuis_%s_%s" % (i, column_names[n_idx]))
+        for i in range(len(params.censor_idxs)):
+            dm_cols.append("censor_%s" % i)
+        
+        keep_cols = np.where(nonzero_column_mask)[0].tolist()
+        logger.debug(keep_cols)
+        logger.debug(dm_cols)
+        dm_filtered = [dm_cols[i] for i in keep_cols]
+        return plot_cols + dm_filtered
+
+
+class  OLSStatsRunner(ParametricStatsRunner):
+    
+    def __init__(self, stats_data, regression_params):
+        super(OLSStatsRunner, self).__init__(stats_data, regression_params)
+    
+    def run(self):
+        data = self.stats_data.data_array
+        params = self.regression_params
+        dv = data[:, params.dv_idx]
+        iv = data[:, params.iv_idx]
+        dm = self._build_design_matrix()
+        include_rows = self._design_matrix_allowable_rows()
+        logger.debug(include_rows)
+        dm_filtered = dm[include_rows]
+        dv_filtered = dv[include_rows]
+        iv_filtered = iv[include_rows]
+        include_cols = self._nonzero_column_mask(dm_filtered)
+        dm_to_run = dm_filtered[:, include_cols]
+        logger.debug("DM shape: %s, row filter: %s, col filter: %s" %(
+            dm.shape, dm_filtered.shape, dm_to_run.shape))
+
+        result = sm.OLS(dv_filtered, dm_to_run).fit()
+        self.include_cols = include_cols
+        self.result = result
+    
+    def to_dict(self):
+        mr = self.result
+        column_names = self.stats_data.column_names
+        coef_result = {}
+        coef_result['const'] = {
+            'b'         : json_float(mr.params[0]),
+            't'         : json_float(mr.tvalues[0]),
+            'p'         : json_float(mr.pvalues[0]),
+            'se'        : json_float(mr.bse[0]),
+            'col_idx'   : None,
+            'name'      : "Constant"}
+
+        coef_result['x'] = {
+            'b'         : json_float(mr.params[1]),
+            't'         : json_float(mr.tvalues[1]),
+            'p'         : json_float(mr.pvalues[1]),
+            'se'        : json_float(mr.bse[1]),
+            'col_idx'   : self.regression_params.iv_idx,
+            'name'      : column_names[self.regression_params.iv_idx]}
+
+        for i, col_idx in enumerate(self.regression_params.nuis_idxs):
+            res_i = i+2
+            coef_result["n_%s" % col_idx] = {
+                'b'  : json_float(mr.params[res_i]),
+                't'  : json_float(mr.tvalues[res_i]),
+                'p'  : json_float(mr.pvalues[res_i]),
+                'se' : json_float(mr.bse[res_i]),
+                'col_idx' : col_idx,
+                'name' : column_names[col_idx]}
+
+        model_result = {
+            "Rsq"    : json_float(mr.rsquared),
+            "RsqAdj" : json_float(mr.rsquared_adj),
+            "F"      : json_float(mr.fvalue),
+            "Fpv"    : json_float(mr.f_pvalue)}
+
+        xvals = mr.model.exog[:, 1]
+        yvals = mr.params[0] + xvals*mr.params[1] + mr.resid
+        weights = np.ones_like(xvals)
+        groups = np.zeros_like(xvals)
+        points = np.column_stack((xvals, yvals, weights, groups))
+        
+        all_point_data = np.column_stack((
+            points, mr.model.endog, mr.model.exog))
+        
+        return dict(points=points.tolist(), coef_result=coef_result,
+            model_result=model_result,
+            all_point_data=all_point_data.tolist(),
+            all_point_cols=self._all_point_cols(self.include_cols))
+        
