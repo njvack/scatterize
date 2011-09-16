@@ -67,7 +67,10 @@ def upload():
 def scatter_frame(filehash):
     g.filehash = filehash
     file_handler = CSVFileHandler(settings.STORAGE_DIR)
-    stats_data = file_handler.load_file(filehash)
+    try:
+        stats_data = file_handler.load_file(filehash)
+    except:
+        flask.abort(404)
     g.column_names = stats_data.column_names
     g.rows = stats_data.data_list
     
@@ -76,7 +79,10 @@ def scatter_frame(filehash):
 @app.route("/d/<filehash>/regress.js")
 def regress_js(filehash):
     file_handler = CSVFileHandler(settings.STORAGE_DIR)
-    stats_data = file_handler.load_file(filehash)
+    try:
+        stats_data = file_handler.load_file(filehash)
+    except:
+        flask.abort(404)
     x_idx = int(request.args.get("x", 0))
     y_idx = int(request.args.get("y", 0))
     nuis_idxs = []
