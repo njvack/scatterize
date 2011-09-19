@@ -79,7 +79,7 @@ var S = function($) {
     
     my.ifhov = function(p, val1, val2) {
       if (val1 === undefined) { val1 = true; val2 = false; }
-      if (p.parent.global_idx() === p.root.hover_index()) {
+      if (p.parent.row_id() === p.root.hover_index()) {
         return val1;
       }
       return val2;
@@ -103,29 +103,35 @@ var S = function($) {
     };
     
     pub.set_points = function(points) {
+      var the_point;
       pub.points = points;
       for (var i = 0; i < points.length; i++) {
-        pub.points[i].global_idx = i;
+        the_point = points[i];
+        the_point.row_id = the_point[0];
+        the_point.x = the_point[1];
+        the_point.y = the_point[2];
+        the_point.weight = the_point[3];
+        the_point.group_id = the_point[4];
       }
-      my.xvals = points.map(function(p) {return p[0]; });
-      my.yvals = points.map(function(p) {return p[1]; });
+      my.xvals = points.map(function(p) {return p.x; });
+      my.yvals = points.map(function(p) {return p.y; });
     };
     
     my.draw_point_group = function(points, color_scale) {
       var point_panel = pub.vis.add(pv.Panel)
         .data(points)
       .add(pv.Panel)
-        .def("global_idx", function(p) {return p.global_idx; })
+        .def("row_id", function(p) {return p.row_id; })
       .add(pv.Dot)
-        .left(function(p) {return my.x(p[0]);})
-        .bottom(function(p) {return my.y(p[1]);})
+        .left(function(p) {return my.x(p.x);})
+        .bottom(function(p) {return my.y(p.y);})
         .def("strokeStyle", function(p) {
-          return my.ifhov(this, "orange", color_scale(p[2]));
+          return my.ifhov(this, "orange", color_scale(p.weight));
         })
         .fillStyle(function() { return this.strokeStyle().alpha(0.4);})
         .event("point", function() {
-          my.state_mgr.hover_index = this.parent.global_idx();
-          this.root.hover_index(this.parent.global_idx());
+          my.state_mgr.hover_index = this.parent.row_id();
+          this.root.hover_index(this.parent.row_id());
           this.parent.render();
           })
         .event("unpoint", function(p) {
@@ -138,29 +144,29 @@ var S = function($) {
         point_panel.add(pv.Rule)
           .bottom(1)
           .height(function() {return my.ifhov(this, 10, 6);})
-          .left(function(p) {return my.x(p[0]);})
+          .left(function(p) {return my.x(p.x);})
           .def("strokeStyle", function(p) {
             return my.ifhov(this, "rgba(0,0,0,1)", "rgba(0,0,0,0.25)");
           })
         .anchor("top").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
-          .text(function(p) {return my.formatter(p[0]);});
+          .text(function(p) {return my.formatter(p.x);});
       
         // Datapoint ticks for Y
         point_panel.add(pv.Rule)
           .left(1)
           .width(function() {return my.ifhov(this, 10, 6);})
-          .bottom(function(p) {return my.y(p[1]);})
+          .bottom(function(p) {return my.y(p.y);})
           .def("strokeStyle", function(p) { 
             return my.ifhov(this, "rgba(0,0,0,1)", "rgba(0,0,0,0.25)");
           })
         .anchor("right").add(pv.Label)
           .visible(function() {return my.ifhov(this);})
-          .text(function(p) {return my.formatter(p[1]);});
+          .text(function(p) {return my.formatter(p.y);});
     };
     
     pub.draw_points = function(points) {
-      var point_groups = pv.uniq(points.map(function(p) {return p[3]; }));
+      var point_groups = pv.uniq(points.map(function(p) {return p.group_id; }));
       var i;
       var color_scales = []
       for (i=0; i < point_groups.length; i++) {
@@ -168,7 +174,7 @@ var S = function($) {
         var group_color_scale = pv.Scale.linear(1,0).range(
           S.colors.range()[color_index], 'lightgrey');
         var filtered_points = points.filter(function(p) {
-          return p[3] === point_groups[i];
+          return p[4] === point_groups[i];
         });
         my.draw_point_group(filtered_points, group_color_scale);
       }

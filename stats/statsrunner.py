@@ -285,6 +285,9 @@ class ParametricStatsRunner(object):
             censor_ar[r][i] = 1.
         return censor_ar
 
+    def _row_id_array(self):
+        return np.arange(self.stats_data.data_array.shape[0])
+
     def _non_censored_mask(self):
         data = self.stats_data.data_array
         params = self.regression_params
@@ -300,7 +303,7 @@ class ParametricStatsRunner(object):
         params = self.regression_params
         column_names = self.stats_data.column_names
 
-        plot_cols = ['x', 'y', 'weight', 'group']
+        plot_cols = ['rowid', 'x', 'y', 'weight', 'group']
 
         dm_cols = ['const', 'iv_%s' % column_names[params.iv_idx]]
         for i, n_idx in enumerate(params.nuis_idxs):
@@ -382,8 +385,9 @@ class  OLSStatsRunner(ParametricStatsRunner):
 
         all_weights = self._non_censored_mask()
         weights = all_weights[self._design_matrix_allowable_rows()]
+        rowids = self._row_id_array()[self._design_matrix_allowable_rows()]
         groups = np.zeros_like(xvals)
-        points = np.column_stack((xvals, yvals, weights, groups))
+        points = np.column_stack((rowids, xvals, yvals, weights, groups))
 
         all_point_data = np.column_stack((
             points, mr.model.endog, mr.model.exog))
