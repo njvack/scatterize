@@ -37,16 +37,7 @@
 </div>
 
 <div id="stats_data">
-  <div id="model_stats">
-  </div>
-  <div id="coef_stats">
-    <div id="const_stats">
-    </div>
-    <div id="x_stats">
-    </div>
-    {% for col in g.column_names -%}
-    <div id="n_{{loop.index0}}_stats"></div>
-    {% endfor -%}
+  <div id="stats_diags">
   </div>
 </div>
 
@@ -106,17 +97,9 @@
         var scatterplot = S.scatterplot("scatterplot", 460, 460, S.ss);
         scatterplot.draw_data(data.points);
         scatterplot.regression_line(
-          data.coef_result.x.b, data.coef_result['const'].b, "brown");
-        S.update_model_stats("#model_stats", data.model_result);
-        $("#coef_stats div").empty();
-        S.update_coef_stats("#x_stats", data.coef_result.x);
-        S.update_coef_stats("#const_stats", data.coef_result['const']);
-        for (var key in data.coef_result) {
-          if (key.indexOf("n_") === 0) {
-            var container = $("#"+key+"_stats");
-            S.update_coef_stats(container, data.coef_result[key]);
-          }
-        }
+          data.regression_line.slope, data.regression_line.const, "brown");
+        S.update_stats_diags("#stats_diags", data.stats_diagnostics);
+
         var ylabel = S.ss.y_var_name();
         var nuisances = S.ss.nuisance_var_names();
         if (nuisances.length > 0) {

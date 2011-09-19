@@ -251,6 +251,7 @@ class StatsRunner(object):
 
 
 class ParametricStatsRunner(object):
+
     def __init__(self, stats_data, regression_params):
         self.stats_data = stats_data
         self.regression_params = regression_params
@@ -344,41 +345,44 @@ class  OLSStatsRunner(ParametricStatsRunner):
         self.include_cols = include_cols
         self.result = result
 
-    def to_dict(self):
+    def diagnostics_list(self):
         mr = self.result
         column_names = self.stats_data.column_names
-        coef_result = {}
-        coef_result['const'] = {
-            'b'         : json_float(mr.params[0]),
-            't'         : json_float(mr.tvalues[0]),
-            'p'         : json_float(mr.pvalues[0]),
-            'se'        : json_float(mr.bse[0]),
-            'col_idx'   : None,
-            'name'      : "Constant"}
+        diags = []
+        diags.append({'title': 'Model fit',
+            'data': [
+                ['Rsq', json_float(mr.rsquared)],
+                ['RsqAdj', json_float(mr.rsquared_adj)],
+                ['F', json_float(mr.fvalue)],
+                ['Fpv', json_float(mr.f_pvalue)]]})
 
-        coef_result['x'] = {
-            'b'         : json_float(mr.params[1]),
-            't'         : json_float(mr.tvalues[1]),
-            'p'         : json_float(mr.pvalues[1]),
-            'se'        : json_float(mr.bse[1]),
-            'col_idx'   : self.regression_params.iv_idx,
-            'name'      : column_names[self.regression_params.iv_idx]}
+        diags.append({'title': 'Constant',
+            'data': [
+                ['b', json_float(mr.params[0])],
+                ['t', json_float(mr.tvalues[0])],
+                ['p', json_float(mr.pvalues[0])],
+                ['se', json_float(mr.bse[0])]]})
+
+        diags.append({'title': column_names[self.regression_params.iv_idx],
+            'data': [
+                ['b', json_float(mr.params[1])],
+                ['t', json_float(mr.tvalues[1])],
+                ['p', json_float(mr.pvalues[1])],
+                ['se', json_float(mr.bse[1])]]})
 
         for i, col_idx in enumerate(self.regression_params.nuis_idxs):
             res_i = i+2
-            coef_result["n_%s" % col_idx] = {
-                'b'  : json_float(mr.params[res_i]),
-                't'  : json_float(mr.tvalues[res_i]),
-                'p'  : json_float(mr.pvalues[res_i]),
-                'se' : json_float(mr.bse[res_i]),
-                'col_idx' : col_idx,
-                'name' : column_names[col_idx]}
+            diags.append({'title': column_names[col_idx],
+                'data': [
+                    ['b', json_float(mr.params[res_i])],
+                    ['t', json_float(mr.tvalues[res_i])],
+                    ['p', json_float(mr.pvalues[res_i])],
+                    ['se', json_float(mr.bse[res_i])]]})
+        return diags
 
-        model_result = {
-            "Rsq"    : json_float(mr.rsquared),
-            "RsqAdj" : json_float(mr.rsquared_adj),
-            "F"      : json_float(mr.fvalue),
-            "Fpv"    : json_float(mr.f_pvalue)}
+    def to_dict(self):
+        mr = self.result
+        column_names = self.stats_data.column_names
 
         xvals = mr.model.exog[:, 1]
         yvals = mr.params[0] + xvals*mr.params[1] + mr.resid
@@ -392,7 +396,10 @@ class  OLSStatsRunner(ParametricStatsRunner):
         all_point_data = np.column_stack((
             points, mr.model.endog, mr.model.exog))
 
-        return dict(points=points.tolist(), coef_result=coef_result,
-            model_result=model_result,
+        regression_line = {'const': mr.params[0], 'slope': mr.params[1]}
+        return dict(
+            points=points.tolist(),
+            stats_diagnostics=self.diagnostics_list(),
             all_point_data=all_point_data.tolist(),
-            all_point_cols=self._all_point_cols(self.include_cols))
+            all_point_cols=self._all_point_cols(self.include_cols),
+            regression_line=regression_line)

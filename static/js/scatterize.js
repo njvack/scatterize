@@ -500,30 +500,21 @@ var S = function($) {
     return pub;
   };
   
-  function update_model_stats(container, model_stats) {
-    var c = $(container);
+  function update_stats_diags(container, diag_data) {
+    var c = $(container), de, dv;
     c.empty();
-    c.append("<h3>Model fit</h3>");
-    c.append("<table>");
-    c.append("<tr><th>F:</th><td>"+short_float(model_stats.F)+"</td></tr>");
-    c.append("<tr><th>p:</th><td>"+short_float(model_stats.Fpv)+"</td></tr>");
-    c.append("<tr><th>R²:</th><td>"+short_float(model_stats.Rsq)+"</td></tr>");
-    c.append("<tr><th>Adj. R²:</th><td>"+short_float(model_stats.RsqAdj)+"</td></tr>");
-    c.append("</table>");
+    for (var i=0; i < diag_data.length; i++) {
+      de = diag_data[i];
+      c.append("<h3>"+de.title+"</h3>");
+      c.append("<table>");
+      for (var j = 0; j < de.data.length; j++) {
+        dv = de.data[j];
+        c.append("<tr><th>"+dv[0]+":</th><td>"+short_float(dv[1])+"</td></tr>")
+      }
+      c.append("</table>");
+    }
   }
-  S_my.update_model_stats = update_model_stats;
-  
-  function update_coef_stats(container, coef_stats) {
-    sc = $(container);
-    sc.empty();
-    sc.append("<h3>"+add_breaks(coef_stats.name)+"</h3>");
-    sc.append("<table>");
-    sc.append("<tr><th>β:</th><td>"+short_float(coef_stats.b)+"</td></tr>");
-    sc.append("<tr><th>t:</th><td> "+short_float(coef_stats.t)+"</td></tr>");
-    sc.append("<tr><th>p:</th><td> "+short_float(coef_stats.p)+"</td></tr>");
-    sc.append("</table>");
-  }
-  S_my.update_coef_stats = update_coef_stats;
+  S_my.update_stats_diags = update_stats_diags;
   
   return S_my;
 }(jQuery);
