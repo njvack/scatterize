@@ -255,7 +255,7 @@ class ParametricStatsRunner(object):
         self.stats_data = stats_data
         self.regression_params = regression_params
         super(ParametricStatsRunner, self).__init__()
-    
+
     def _build_design_matrix(self):
         data = self.stats_data.data_array
         logger.debug(data.shape)
@@ -269,14 +269,14 @@ class ParametricStatsRunner(object):
         logger.debug("nuis shape: %s" % str(nuisances.shape))
         logger.debug("censor shape: %s" % str(censors.shape))
         return np.column_stack((const, iv, nuisances, censors))
-    
+
     def _design_matrix_allowable_rows(self):
         data = self.stats_data.data_array
         params = self.regression_params
         modeled_data = data[:, params.modeled_idxs]
         possible_rows = np.all(np.isfinite(modeled_data), axis=1)
         return possible_rows
-    
+
     def _build_censor_array(self):
         data = self.stats_data.data_array
         params = self.regression_params
@@ -284,15 +284,22 @@ class ParametricStatsRunner(object):
         for i, r in enumerate(params.censor_idxs):
             censor_ar[r][i] = 1.
         return censor_ar
-        
+
+    def _non_censored_mask(self):
+        data = self.stats_data.data_array
+        params = self.regression_params
+        mask = np.ones((data.shape[0]), dtype=bool)
+        mask[params.censor_idxs] = False
+        return mask
+
     def _nonzero_column_mask(self, design_matrix):
         dm_nonzeros = design_matrix <> 0.0
         return np.any(dm_nonzeros, axis=0)
-    
+
     def _all_point_cols(self, nonzero_column_mask):
         params = self.regression_params
         column_names = self.stats_data.column_names
-        
+
         plot_cols = ['x', 'y', 'weight', 'group']
 
         dm_cols = ['const', 'iv_%s' % column_names[params.iv_idx]]
@@ -301,7 +308,7 @@ class ParametricStatsRunner(object):
                 "nuis_%s_%s" % (i, column_names[n_idx]))
         for i in range(len(params.censor_idxs)):
             dm_cols.append("censor_%s" % i)
-        
+
         keep_cols = np.where(nonzero_column_mask)[0].tolist()
         logger.debug(keep_cols)
         logger.debug(dm_cols)
@@ -310,10 +317,10 @@ class ParametricStatsRunner(object):
 
 
 class  OLSStatsRunner(ParametricStatsRunner):
-    
+
     def __init__(self, stats_data, regression_params):
         super(OLSStatsRunner, self).__init__(stats_data, regression_params)
-    
+
     def run(self):
         data = self.stats_data.data_array
         params = self.regression_params
@@ -333,7 +340,7 @@ class  OLSStatsRunner(ParametricStatsRunner):
         result = sm.OLS(dv_filtered, dm_to_run).fit()
         self.include_cols = include_cols
         self.result = result
-    
+
     def to_dict(self):
         mr = self.result
         column_names = self.stats_data.column_names
@@ -372,15 +379,16 @@ class  OLSStatsRunner(ParametricStatsRunner):
 
         xvals = mr.model.exog[:, 1]
         yvals = mr.params[0] + xvals*mr.params[1] + mr.resid
-        weights = np.ones_like(xvals)
+
+        all_weights = self._non_censored_mask()
+        weights = all_weights[self._design_matrix_allowable_rows()]
         groups = np.zeros_like(xvals)
         points = np.column_stack((xvals, yvals, weights, groups))
-        
+
         all_point_data = np.column_stack((
             points, mr.model.endog, mr.model.exog))
-        
+
         return dict(points=points.tolist(), coef_result=coef_result,
             model_result=model_result,
             all_point_data=all_point_data.tolist(),
             all_point_cols=self._all_point_cols(self.include_cols))
-        
