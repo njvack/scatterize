@@ -132,12 +132,12 @@ var S = function($) {
         .event("point", function() {
           my.state_mgr.hover_index = this.parent.row_id();
           this.root.hover_index(this.parent.row_id());
-          this.parent.render();
+          this.root.render();
           })
         .event("unpoint", function(p) {
           my.state_mgr.hover_index = null;
           this.root.hover_index(null);
-          this.parent.render();
+          this.root.render();
           });
       
         // Datapoint ticks for X
