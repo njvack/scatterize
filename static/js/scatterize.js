@@ -44,7 +44,13 @@ var S = function($) {
   
   function short_float(val, places) {
     if (!places) { places = 4; }
-    return parseFloat(val).toFixed(places);
+    var vf = parseFloat(val),
+      exponent = Math.abs(Math.log(Math.abs(val))/Math.log(10)),
+      out_str = vf.toFixed(places);
+    
+    if (exponent >= places) { out_str = vf.toExponential(places-1); }
+    
+    return out_str;
   }
   
   function csv_split(str) {
