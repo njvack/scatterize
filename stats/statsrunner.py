@@ -354,21 +354,21 @@ class  OLSStatsRunner(ParametricStatsRunner):
                 ['Rsq', json_float(mr.rsquared)],
                 ['RsqAdj', json_float(mr.rsquared_adj)],
                 ['F', json_float(mr.fvalue)],
-                ['Fpv', json_float(mr.f_pvalue)]]})
+                ['p', json_float(mr.f_pvalue)]]})
 
         diags.append({'title': 'Constant',
             'data': [
                 ['b', json_float(mr.params[0])],
                 ['t', json_float(mr.tvalues[0])],
                 ['p', json_float(mr.pvalues[0])],
-                ['se', json_float(mr.bse[0])]]})
+                ['se', json_float(mr.bse[0]), {'hide': True}]]})
 
         diags.append({'title': column_names[self.regression_params.iv_idx],
             'data': [
                 ['b', json_float(mr.params[1])],
                 ['t', json_float(mr.tvalues[1])],
                 ['p', json_float(mr.pvalues[1])],
-                ['se', json_float(mr.bse[1])]]})
+                ['se', json_float(mr.bse[1]), {'hide': True}]]})
 
         for i, col_idx in enumerate(self.regression_params.nuis_idxs):
             res_i = i+2

@@ -501,7 +501,7 @@ var S = function($) {
   };
   
   function update_stats_diags(container, diag_data) {
-    var c = $(container), de, dv;
+    var c = $(container), de, dv, opts;
     c.empty();
     for (var i=0; i < diag_data.length; i++) {
       de = diag_data[i];
@@ -509,12 +509,27 @@ var S = function($) {
       c.append("<table>");
       for (var j = 0; j < de.data.length; j++) {
         dv = de.data[j];
-        c.append("<tr><th>"+dv[0]+":</th><td>"+short_float(dv[1])+"</td></tr>")
+        opts = dv[2] || {};
+        if (!opts.hide) {
+          c.append(
+            "<tr><th>"+format_stats_name(dv[0])+":</th><td>"+
+            short_float(dv[1])+"</td></tr>");
+        }
       }
       c.append("</table>");
     }
-  }
+  };
   S_my.update_stats_diags = update_stats_diags;
+  
+  S_my.STATS_DISPLAY = {
+    'Rsq': 'R&sup2;',
+    'RsqAdj': 'Adj. R&sup2;',
+    'b': '&beta;'
+  }
+  
+  format_stats_name = function(key) {
+    return (S_my.STATS_DISPLAY[key] || key);
+  };
   
   return S_my;
 }(jQuery);
