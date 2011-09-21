@@ -52,6 +52,8 @@ class RegressionParams(object):
 
         mtype = args.get("m", "OLS")
         highlight_idx = args.get("h", None)
+        if highlight_idx is not None:
+            highlight_idx = int(highlight_idx)
 
         return cls(mtype, y_idx, x_idx, nuis_idxs, highlight_idx, censor_idxs)
 
@@ -319,6 +321,21 @@ class ParametricStatsRunner(object):
         dm_filtered = [dm_cols[i] for i in keep_cols]
         return plot_cols + dm_filtered
 
+    def _group_data(self):
+        ar = np.zeros(len(self.stats_data.data_list))
+        output = {
+            'group_list': [],
+            'group_array': ar}
+
+        idx = self.regression_params.highlight_idx
+        if (idx):
+            highlight_data = [row[idx] for row in self.stats_data.data_list]
+            grouper = PointGrouper(highlight_data)
+            output['group_list'] = grouper.group_list()
+            output['group_array'] = grouper.group_array()
+
+        return output
+
     def run(self):
         data = self.stats_data.data_array
         params = self.regression_params
@@ -346,8 +363,11 @@ class ParametricStatsRunner(object):
         xvals = mr.model.exog[:, 1]
         yvals = mr.params[0] + xvals*mr.params[1] + mr.resid
 
-        rowids = self._row_id_array()[self._design_matrix_allowable_rows()]
-        groups = np.zeros_like(xvals)
+        good_rows = self._design_matrix_allowable_rows()
+        rowids = self._row_id_array()[good_rows]
+        group_data = self._group_data()
+
+        groups = group_data['group_array'][good_rows]
         points = np.column_stack(
             (rowids, xvals, yvals, self.weights(), groups))
 
@@ -355,12 +375,14 @@ class ParametricStatsRunner(object):
             points, mr.model.endog, mr.model.exog))
 
         regression_line = {'const': mr.params[0], 'slope': mr.params[1]}
+
         return dict(
             points=points.tolist(),
             stats_diagnostics=self.diagnostics_list(),
             all_point_data=all_point_data.tolist(),
             all_point_cols=self._all_point_cols(self.include_cols),
-            regression_line=regression_line)
+            regression_line=regression_line,
+            group_list=group_data['group_list'])
 
 
 class  OLSStatsRunner(ParametricStatsRunner):
@@ -448,3 +470,33 @@ class RLMStatsRunner(ParametricStatsRunner):
                     ['se', json_float(mr.bse[res_i])]]})
         return diags
 
+
+class PointGrouper(object):
+
+    def __init__(self, groupable_list):
+        self.groupable_list = groupable_list
+        self.stripped_keys = self._strip_keys(groupable_list)
+
+    def _strip_keys(self, l):
+        return [str(val).strip() for val in l]
+
+    def group_list(self):
+
+        def sort_fx(key):
+            """
+            Return a tuple for sorting == will be
+            (blank, key.strip())
+            this will ensure blank entries get sorted last.
+            And
+            """
+            return ((len(key) == 0), key)
+
+        return sorted(set(self.stripped_keys), key=sort_fx)
+
+    def group_dict(self):
+        return dict([[key, idx] for idx, key in enumerate(self.group_list())])
+
+    def group_array(self):
+        d = self.group_dict()
+        key_idxes = [d[k] for k in self.stripped_keys]
+        return np.array(key_idxes)
