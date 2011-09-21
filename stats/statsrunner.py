@@ -319,12 +319,6 @@ class ParametricStatsRunner(object):
         dm_filtered = [dm_cols[i] for i in keep_cols]
         return plot_cols + dm_filtered
 
-
-class  OLSStatsRunner(ParametricStatsRunner):
-
-    def __init__(self, stats_data, regression_params):
-        super(OLSStatsRunner, self).__init__(stats_data, regression_params)
-
     def run(self):
         data = self.stats_data.data_array
         params = self.regression_params
@@ -341,9 +335,44 @@ class  OLSStatsRunner(ParametricStatsRunner):
         logger.debug("DM shape: %s, row filter: %s, col filter: %s" %(
             dm.shape, dm_filtered.shape, dm_to_run.shape))
 
-        result = sm.OLS(dv_filtered, dm_to_run).fit()
+        result = self.model_class(dv_filtered, dm_to_run).fit()
         self.include_cols = include_cols
         self.result = result
+
+    def to_dict(self):
+        mr = self.result
+        column_names = self.stats_data.column_names
+
+        xvals = mr.model.exog[:, 1]
+        yvals = mr.params[0] + xvals*mr.params[1] + mr.resid
+
+        rowids = self._row_id_array()[self._design_matrix_allowable_rows()]
+        groups = np.zeros_like(xvals)
+        points = np.column_stack(
+            (rowids, xvals, yvals, self.weights(), groups))
+
+        all_point_data = np.column_stack((
+            points, mr.model.endog, mr.model.exog))
+
+        regression_line = {'const': mr.params[0], 'slope': mr.params[1]}
+        return dict(
+            points=points.tolist(),
+            stats_diagnostics=self.diagnostics_list(),
+            all_point_data=all_point_data.tolist(),
+            all_point_cols=self._all_point_cols(self.include_cols),
+            regression_line=regression_line)
+
+
+class  OLSStatsRunner(ParametricStatsRunner):
+
+    def __init__(self, stats_data, regression_params):
+        super(OLSStatsRunner, self).__init__(stats_data, regression_params)
+        self.model_class = sm.OLS
+
+    def weights(self):
+        all_weights = self._non_censored_mask()
+        weights = all_weights[self._design_matrix_allowable_rows()]
+        return weights
 
     def diagnostics_list(self):
         mr = self.result
@@ -380,26 +409,42 @@ class  OLSStatsRunner(ParametricStatsRunner):
                     ['se', json_float(mr.bse[res_i])]]})
         return diags
 
-    def to_dict(self):
+
+class RLMStatsRunner(ParametricStatsRunner):
+
+    def __init__(self, stats_data, regression_params):
+        super(OLSStatsRunner, self).__init__(stats_data, regression_params)
+        self.model_class = sm.OLS
+
+    def weights(self):
+        return self.result.weights
+
+    def diagnostics_list(self):
         mr = self.result
         column_names = self.stats_data.column_names
+        diags = []
 
-        xvals = mr.model.exog[:, 1]
-        yvals = mr.params[0] + xvals*mr.params[1] + mr.resid
+        diags.append({'title': 'Constant',
+            'data': [
+                ['b', json_float(mr.params[0])],
+                ['t', json_float(mr.tvalues[0])],
+                ['p', json_float(mr.pvalues[0])],
+                ['se', json_float(mr.bse[0]), {'hide': True}]]})
 
-        all_weights = self._non_censored_mask()
-        weights = all_weights[self._design_matrix_allowable_rows()]
-        rowids = self._row_id_array()[self._design_matrix_allowable_rows()]
-        groups = np.zeros_like(xvals)
-        points = np.column_stack((rowids, xvals, yvals, weights, groups))
+        diags.append({'title': column_names[self.regression_params.iv_idx],
+            'data': [
+                ['b', json_float(mr.params[1])],
+                ['t', json_float(mr.tvalues[1])],
+                ['p', json_float(mr.pvalues[1])],
+                ['se', json_float(mr.bse[1]), {'hide': True}]]})
 
-        all_point_data = np.column_stack((
-            points, mr.model.endog, mr.model.exog))
+        for i, col_idx in enumerate(self.regression_params.nuis_idxs):
+            res_i = i+2
+            diags.append({'title': column_names[col_idx],
+                'data': [
+                    ['b', json_float(mr.params[res_i])],
+                    ['t', json_float(mr.tvalues[res_i])],
+                    ['p', json_float(mr.pvalues[res_i])],
+                    ['se', json_float(mr.bse[res_i])]]})
+        return diags
 
-        regression_line = {'const': mr.params[0], 'slope': mr.params[1]}
-        return dict(
-            points=points.tolist(),
-            stats_diagnostics=self.diagnostics_list(),
-            all_point_data=all_point_data.tolist(),
-            all_point_cols=self._all_point_cols(self.include_cols),
-            regression_line=regression_line)
