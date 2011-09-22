@@ -112,7 +112,8 @@ def regress_csv(filehash):
 
     regression_params = RegressionParams.build_from_flask_args(request.args)
     sr = get_stats_runner(stats_data, regression_params)
-    result = sr.run()
+    sr.run()
+    result = sr.to_dict()
 
     # Build us a string in memory
     out_buf = StringIO.StringIO()
