@@ -11,6 +11,7 @@
 import os
 import csv
 import numpy as np
+from scipy import stats as ss
 import scikits.statsmodels.api as sm
 
 import settings
@@ -65,19 +66,41 @@ class RegressionParams(object):
 def get_stats_runner(stats_data, regression_params):
     model_runners = {
         'OLS': OLSStatsRunner,
-        'RLM': RLMStatsRunner}
+        'RLM': RLMStatsRunner,
+        'SR': SpearmanStatsRunner}
 
     cls = model_runners[regression_params.model_type]
 
     return cls(stats_data, regression_params)
 
 
-class ParametricStatsRunner(object):
+class GenericStatsRunner(object):
 
     def __init__(self, stats_data, regression_params):
         self.stats_data = stats_data
         self.regression_params = regression_params
-        super(ParametricStatsRunner, self).__init__()
+        super(GenericStatsRunner, self).__init__()
+
+    def _group_data(self):
+        ar = np.zeros(len(self.stats_data.data_list))
+        output = {
+            'group_list': [],
+            'group_array': ar}
+
+        idx = self.regression_params.highlight_idx
+        if (idx):
+            highlight_data = [row[idx] for row in self.stats_data.data_list]
+            grouper = PointGrouper(highlight_data)
+            output['group_list'] = grouper.group_list()
+            output['group_array'] = grouper.group_array()
+
+        return output
+
+    def _row_id_array(self):
+        return np.arange(self.stats_data.data_array.shape[0])
+
+
+class ParametricStatsRunner(GenericStatsRunner):
 
     def _build_design_matrix(self):
         data = self.stats_data.data_array
@@ -108,9 +131,6 @@ class ParametricStatsRunner(object):
             censor_ar[r][i] = 1.
         return censor_ar
 
-    def _row_id_array(self):
-        return np.arange(self.stats_data.data_array.shape[0])
-
     def _non_censored_mask(self):
         data = self.stats_data.data_array
         params = self.regression_params
@@ -140,21 +160,6 @@ class ParametricStatsRunner(object):
         logger.debug(dm_cols)
         dm_filtered = [dm_cols[i] for i in keep_cols]
         return plot_cols + dm_filtered
-
-    def _group_data(self):
-        ar = np.zeros(len(self.stats_data.data_list))
-        output = {
-            'group_list': [],
-            'group_array': ar}
-
-        idx = self.regression_params.highlight_idx
-        if (idx):
-            highlight_data = [row[idx] for row in self.stats_data.data_list]
-            grouper = PointGrouper(highlight_data)
-            output['group_list'] = grouper.group_list()
-            output['group_array'] = grouper.group_array()
-
-        return output
 
     def run(self):
         data = self.stats_data.data_array
@@ -293,6 +298,81 @@ class RLMStatsRunner(ParametricStatsRunner):
                     ['p', json_float(mr.pvalues[res_i])],
                     ['se', json_float(mr.bse[res_i])]]})
         return diags
+
+
+class SpearmanStatsRunner(GenericStatsRunner):
+    """
+    Computes Spearman's Rho:
+    http://en.wikipedia.org/wiki/Spearman's_rank_correlation_coefficient
+    on two variables. Note that this method does not allow covariates,
+    and I think it won't allow censoring either. So there.
+    """
+
+    def _modeled_data(self):
+        data = self.stats_data.data_array
+        params = self.regression_params
+        xvals = data[:, params.iv_idx]
+        yvals = data[:, params.dv_idx]
+        return np.column_stack((xvals, yvals))
+
+    def _possible_rows(self):
+        possible_rows = np.all(np.isfinite(self._modeled_data()), axis=1)
+        return possible_rows
+
+    def _all_point_cols(self):
+        column_names = self.stats_data.column_names
+        params = self.regression_params
+        iv_name = column_names[params.iv_idx]
+        dv_name = column_names[params.dv_idx]
+        rx_name = "rank_%s" % iv_name
+        ry_name = "rank_%s" % dv_name
+        cols = ['rowid', rx_name, ry_name, 'weight', 'group', iv_name, dv_name]
+        return cols
+
+    def run(self):
+        xy_points = self._modeled_data()[self._possible_rows()]
+        iv = xy_points[:, 0]
+        dv = xy_points[:, 1]
+        rho, p = ss.spearmanr(iv, dv)
+        self.result = {
+            'rho': rho,
+            'p': p,
+            'iv': iv,
+            'dv': dv}
+
+    def diagnostics_list(self):
+        diags = []
+        diags.append({'title': 'Spearman Rank',
+            'data': [
+                ['rho', json_float(self.result.get('rho'))],
+                ['p', json_float(self.result.get('p'))]]})
+        return diags
+
+    def to_dict(self):
+        result = self.result
+        good_rows = self._possible_rows()
+        row_ids = self._row_id_array()[good_rows]
+        group_data = self._group_data()
+
+        groups = group_data['group_array'][good_rows]
+        iv = result['iv']
+        dv = result['dv']
+        weights = np.ones_like(iv)
+        xvals = ss.rankdata(iv)
+        yvals = ss.rankdata(dv)
+        logger.debug(xvals)
+        logger.debug(yvals)
+        points = np.column_stack((row_ids, xvals, yvals, weights, groups))
+        all_point_data = np.column_stack((points, iv, dv))
+        logger.debug(self._all_point_cols)
+        col_names = self._all_point_cols()
+
+        return dict(
+            points=points.tolist(),
+            stats_diagnostics=self.diagnostics_list(),
+            all_point_data=all_point_data.tolist(),
+            all_point_cols=self._all_point_cols(),
+            group_list=group_data['group_list'])
 
 
 class PointGrouper(object):

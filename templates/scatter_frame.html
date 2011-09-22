@@ -27,6 +27,7 @@
     <select id="model_select"> 
       <option value="OLS">OLS</option>
       <option value="RLM">Robust (Huber's T)</option>
+      <option value="SR">Spearman's &rho;</option>
     </select>
   </div>
   <div id="nuisances">
@@ -96,8 +97,10 @@
         $("#scatterplot").empty();
         var scatterplot = S.scatterplot("scatterplot", 460, 460, S.ss);
         scatterplot.draw_data(data.points);
-        scatterplot.regression_line(
-          data.regression_line.slope, data.regression_line.const, "brown");
+        if (data.regression_line) {
+          scatterplot.regression_line(
+            data.regression_line.slope, data.regression_line.const, "brown");
+        }
         S.update_stats_diags("#stats_diags", data.stats_diagnostics);
 
         var ylabel = S.ss.y_var_name();

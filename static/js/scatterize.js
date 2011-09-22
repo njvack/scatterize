@@ -524,7 +524,8 @@ var S = function($) {
   S_my.STATS_DISPLAY = {
     'Rsq': 'R&sup2;',
     'RsqAdj': 'Adj. R&sup2;',
-    'b': '&beta;'
+    'b': '&beta;',
+    'rho': "&rho;"
   }
   
   format_stats_name = function(key) {
