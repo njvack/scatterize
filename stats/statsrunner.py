@@ -161,6 +161,15 @@ class ParametricStatsRunner(GenericStatsRunner):
         dm_filtered = [dm_cols[i] for i in keep_cols]
         return plot_cols + dm_filtered
 
+    def _x_y_labels(self):
+        params = self.regression_params
+        column_names = self.stats_data.column_names
+        xl = column_names[params.iv_idx]
+        yl = column_names[params.dv_idx]
+        if len(params.nuis_idxs) > 0:
+            yl = "Residualized %s" % yl
+        return [xl, yl]
+
     def run(self):
         data = self.stats_data.data_array
         params = self.regression_params
@@ -200,6 +209,7 @@ class ParametricStatsRunner(GenericStatsRunner):
             points, mr.model.endog, mr.model.exog))
 
         regression_line = {'const': mr.params[0], 'slope': mr.params[1]}
+        x_label, y_label = self._x_y_labels()
 
         return dict(
             points=points.tolist(),
@@ -207,7 +217,9 @@ class ParametricStatsRunner(GenericStatsRunner):
             all_point_data=all_point_data.tolist(),
             all_point_cols=self._all_point_cols(self.include_cols),
             regression_line=regression_line,
-            group_list=group_data['group_list'])
+            group_list=group_data['group_list'],
+            x_label=x_label,
+            y_label=y_label)
 
 
 class  OLSStatsRunner(ParametricStatsRunner):
@@ -324,10 +336,18 @@ class SpearmanStatsRunner(GenericStatsRunner):
         params = self.regression_params
         iv_name = column_names[params.iv_idx]
         dv_name = column_names[params.dv_idx]
-        rx_name = "rank_%s" % iv_name
-        ry_name = "rank_%s" % dv_name
+        rx_name, ry_name = self._x_y_labels()
         cols = ['rowid', rx_name, ry_name, 'weight', 'group', iv_name, dv_name]
         return cols
+
+    def _x_y_labels(self):
+        column_names = self.stats_data.column_names
+        params = self.regression_params
+        iv_name = column_names[params.iv_idx]
+        dv_name = column_names[params.dv_idx]
+        rx_name = "%s rank" % iv_name
+        ry_name = "%s rank" % dv_name
+        return [rx_name, ry_name]
 
     def run(self):
         xy_points = self._modeled_data()[self._possible_rows()]
@@ -366,13 +386,16 @@ class SpearmanStatsRunner(GenericStatsRunner):
         all_point_data = np.column_stack((points, iv, dv))
         logger.debug(self._all_point_cols)
         col_names = self._all_point_cols()
+        x_label, y_label = self._x_y_labels()
 
         return dict(
             points=points.tolist(),
             stats_diagnostics=self.diagnostics_list(),
             all_point_data=all_point_data.tolist(),
             all_point_cols=self._all_point_cols(),
-            group_list=group_data['group_list'])
+            group_list=group_data['group_list'],
+            x_label=x_label,
+            y_label=y_label)
 
 
 class PointGrouper(object):

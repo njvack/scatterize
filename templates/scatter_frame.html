@@ -103,12 +103,7 @@
         }
         S.update_stats_diags("#stats_diags", data.stats_diagnostics);
 
-        var ylabel = S.ss.y_var_name();
-        var nuisances = S.ss.nuisance_var_names();
-        if (nuisances.length > 0) {
-          ylabel = "Residualized "+ylabel;
-        }
-        scatterplot.add_labels(S.ss.x_var_name(), ylabel);
+        scatterplot.add_labels(data.x_label, data.y_label);
         scatterplot.vis.render();
         S.scatter_instance = scatterplot;
       },
