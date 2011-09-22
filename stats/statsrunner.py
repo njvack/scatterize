@@ -99,6 +99,13 @@ class GenericStatsRunner(object):
     def _row_id_array(self):
         return np.arange(self.stats_data.data_array.shape[0])
 
+    def _non_censored_mask(self):
+        data = self.stats_data.data_array
+        params = self.regression_params
+        mask = np.ones((data.shape[0]), dtype=bool)
+        mask[params.censor_idxs] = False
+        return mask
+
 
 class ParametricStatsRunner(GenericStatsRunner):
 
@@ -130,13 +137,6 @@ class ParametricStatsRunner(GenericStatsRunner):
         for i, r in enumerate(params.censor_idxs):
             censor_ar[r][i] = 1.
         return censor_ar
-
-    def _non_censored_mask(self):
-        data = self.stats_data.data_array
-        params = self.regression_params
-        mask = np.ones((data.shape[0]), dtype=bool)
-        mask[params.censor_idxs] = False
-        return mask
 
     def _nonzero_column_mask(self, design_matrix):
         dm_nonzeros = design_matrix <> 0.0
@@ -316,8 +316,7 @@ class SpearmanStatsRunner(GenericStatsRunner):
     """
     Computes Spearman's Rho:
     http://en.wikipedia.org/wiki/Spearman's_rank_correlation_coefficient
-    on two variables. Note that this method does not allow covariates,
-    and I think it won't allow censoring either. So there.
+    on two variables. Note that this method does not allow covariates.
     """
 
     def _modeled_data(self):
@@ -350,15 +349,20 @@ class SpearmanStatsRunner(GenericStatsRunner):
         return [rx_name, ry_name]
 
     def run(self):
-        xy_points = self._modeled_data()[self._possible_rows()]
-        iv = xy_points[:, 0]
-        dv = xy_points[:, 1]
+        xy_points = self._modeled_data()
+        good_rows = self._possible_rows()
+        noncensored_rows = self._non_censored_mask()
+        mask = np.logical_and(good_rows, noncensored_rows)
+        valid_points = xy_points[good_rows]
+        used_points = xy_points[mask]
+        iv = used_points[:, 0]
+        dv = used_points[:, 1]
         rho, p = ss.spearmanr(iv, dv)
         self.result = {
             'rho': rho,
             'p': p,
-            'iv': iv,
-            'dv': dv}
+            'iv': valid_points[:, 0],
+            'dv': valid_points[:, 1]}
 
     def diagnostics_list(self):
         diags = []
@@ -377,7 +381,9 @@ class SpearmanStatsRunner(GenericStatsRunner):
         groups = group_data['group_array'][good_rows]
         iv = result['iv']
         dv = result['dv']
-        weights = np.ones_like(iv)
+        weights = self._non_censored_mask()[good_rows]
+        logger.debug(repr(iv.shape))
+        logger.debug(repr(weights.shape))
         xvals = ss.rankdata(iv)
         yvals = ss.rankdata(dv)
         logger.debug(xvals)
