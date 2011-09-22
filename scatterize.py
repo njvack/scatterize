@@ -19,7 +19,7 @@ import numpy as np
 
 from utils import add_url_helpers
 from stats import statsrunner, statsfile
-from stats.statsrunner import RegressionParams, StatsRunner
+from stats.statsrunner import RegressionParams, get_stats_runner
 from stats.statsfile import CSVFileHandler
 
 import wsgi_utils
@@ -91,7 +91,7 @@ def regress_js(filehash):
         flask.abort(404)
 
     regression_params = RegressionParams.build_from_flask_args(request.args)
-    sr = statsrunner.OLSStatsRunner(stats_data, regression_params)
+    sr = get_stats_runner(stats_data, regression_params)
     sr.run()
     result = sr.to_dict()
 
@@ -111,7 +111,7 @@ def regress_csv(filehash):
         flask.abort(404)
 
     regression_params = RegressionParams.build_from_flask_args(request.args)
-    sr = StatsRunner(stats_data, regression_params)
+    sr = get_stats_runner(stats_data, regression_params)
     result = sr.run()
 
     # Build us a string in memory
