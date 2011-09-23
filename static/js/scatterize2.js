@@ -30,7 +30,7 @@ var S2 = function($, d3) {
     svg.attr('height', my.height)
       .attr('width', my.width)
       .attr("xmlns", "http://www.w3.org/2000/svg")
-      .attr('style', 'background-color: red;');
+      .attr('style', 'background-color: #EEF;');
     
     
     my.data_canvas = svg.append('svg:g')
@@ -39,7 +39,7 @@ var S2 = function($, d3) {
       .append('svg:rect')
       .attr('width', my.data_width)
       .attr('height', my.data_height)
-      .style('fill', 'steelblue');
+      .style('fill', '#CCE');
     
     pub.set_data = function(points) {
       my.point_data = points.map(function(p) {
