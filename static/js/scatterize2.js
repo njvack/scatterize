@@ -2,7 +2,8 @@ var S2 = function($, d3) {
   var S_my = {};
   
   S_my.scatterplot = function(container, 
-      data_width, data_height, 
+      data_width, 
+      data_height, 
       data_outer_margin,
       axis_margin, 
       label_width,
@@ -13,6 +14,8 @@ var S2 = function($, d3) {
       pub = {}, 
       svg = d3.select(container).append('svg:svg');
     
+    
+    // initialization code
     my.data_width = data_width;
     my.data_height = data_height;
     my.data_outer_margin = data_outer_margin;
@@ -42,6 +45,7 @@ var S2 = function($, d3) {
       .style('fill', '#CCE');
     
     pub.set_data = function(points) {
+      // maybe the only public function?
       my.point_data = points.map(function(p) {
         return {x:p[0], y:p[1]};
       });
@@ -60,17 +64,14 @@ var S2 = function($, d3) {
       my.data_canvas.selectAll('circle')
           .data(my.point_data)
         .enter().append('svg:circle')
-          .attr('cx', function(d) { 
-            return my.x_scale(d.x); })
+          .attr('cx', function(d) { return my.x_scale(d.x); })
           .attr('cy', function(d) { return my.y_scale(d.y); })
-          .attr('r', 4.5);
+          .attr('r', 4);
     }
     console.log("hello");
     pub.my = my;
     return pub;
   }
-  
-  
   
   return S_my;
 }(jQuery, d3);
