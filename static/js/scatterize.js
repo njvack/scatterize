@@ -8,6 +8,7 @@
  * Written by Nathan Vack <njvack@wisc.edu> at the Waisman Laborotory
  * for Brain Imaging and Behavior, University of Wisconsin - Madison.
  *
+ *
  * Color schemes from the excellent ColorBrewer tool: http://colorbrewer2.org/
  *
  * Chart designs inspired by Edward Tufte's (also excellent) "The Visual 

@@ -58,64 +58,73 @@
 </table>
 
 <script type="text/javascript">
+var foo;
 (function($) {
   $(document).ready(function() {
-    var columns = {{ g.column_names|tojson|safe }};
-
-    S.ss = S.single_state(
-      '{{url_for("regress_js", filehash=g.filehash)}}',
-      '{{url_for("regress_csv", filehash=g.filehash)}}',
-      columns,
-      '#x_col',
-      '#y_col',
-      "#highlight_col",
-      '#nuisance_vars',
-      '#model_select'
-    );
-    $(window).trigger("hashchange");
+    var data;
+      
+    var data = [[1,2],[4,5],[9,10],[30,4]];
+    
+    foo = S2.scatterplot("#scatterplot", 460, 460, 5, 10, 40, 12, 22);
+    foo.set_data(data);
+    //var columns = {{ g.column_names|tojson|safe }};
+    //
+    //
+    //
+    //S.ss = S.single_state(
+    //  '{{url_for("regress_js", filehash=g.filehash)}}',
+    //  '{{url_for("regress_csv", filehash=g.filehash)}}',
+    //  columns,
+    //  '#x_col',
+    //  '#y_col',
+    //  "#highlight_col",
+    //  '#nuisance_vars',
+    //  '#model_select'
+    //);
+    ////$(window).trigger("hashchange");
   });
   
-  $("#save_button").click(function(e) {
-    var scatter_parent = $("#scatterplot");
-    scatter_parent.children("svg").attr("xmlns", "http://www.w3.org/2000/svg");
-    $("#svg_data").val(scatter_parent.html());
-    console.log($("#svg_data"));
-  }),
-  
-  $(window).bind("hashchange", function(e) {
-    console.log("Hashchange!");
-    S.ss.update_controls();
-    var regress_url = S.ss.get_url();
-    $("#download_link").attr("href", S.ss.get_csv_url());
-
-    console.log("Let's get from "+regress_url);
-    $.ajax({
-      'url' : regress_url,
-      'success' : function(data) {
-        console.log(data);
-        S.data = data;
-        $("#scatterplot").empty();
-        var scatterplot = S.scatterplot("scatterplot", 460, 460, S.ss);
-        scatterplot.draw_data(data.points);
-        if (data.regression_line) {
-          scatterplot.regression_line(
-            data.regression_line.slope, data.regression_line.const, "brown");
-        }
-        S.update_stats_diags("#stats_diags", data.stats_diagnostics);
-
-        scatterplot.add_labels(data.x_label, data.y_label);
-        scatterplot.vis.render();
-        S.scatter_instance = scatterplot;
-      },
-      'error' : function(r, str) {
-        // Happens in the case of, say, a singular matrix error
-        console.log("Fail");
-        console.log(r);
-        console.log(str);
-        $('#model_stats').empty().append("<h3>Regression error</h3>");
-      }
-    });
-  });
+  //$("#save_button").click(function(e) {
+  //  var scatter_parent = $("#scatterplot");
+  //  scatter_parent.children("svg").attr("xmlns", "http://www.w3.org/2000/svg");
+  //  $("#svg_data").val(scatter_parent.html());
+  //  console.log($("#svg_data"));
+  //}),
+  //
+  //$(window).bind("hashchange", function(e) {
+  //  console.log("Hashchange!");
+  //  S.ss.update_controls();
+  //  var regress_url = S.ss.get_url();
+  //  $("#download_link").attr("href", S.ss.get_csv_url());
+  //
+  //  console.log("Let's get from "+regress_url);
+  //  $.ajax({
+  //    'url' : regress_url,
+  //    'success' : function(data) {
+  //      console.log(data);
+  //      S.data = data;
+  //      $("#scatterplot").empty();
+  //      var scatterplot = S.scatterplot("scatterplot", 460, 460, S.ss);
+  //      scatterplot.draw_data(data.points);
+  //      if (data.regression_line) {
+  //        scatterplot.regression_line(
+  //          data.regression_line.slope, data.regression_line.const, "brown");
+  //      }
+  //      S.update_stats_diags("#stats_diags", data.stats_diagnostics);
+  //
+  //      scatterplot.add_labels(data.x_label, data.y_label);
+  //      scatterplot.vis.render();
+  //      S.scatter_instance = scatterplot;
+  //    },
+  //    'error' : function(r, str) {
+  //      // Happens in the case of, say, a singular matrix error
+  //      console.log("Fail");
+  //      console.log(r);
+  //      console.log(str);
+  //      $('#model_stats').empty().append("<h3>Regression error</h3>");
+  //    }
+  //  });
+  //});
   
 })(jQuery);
 </script>

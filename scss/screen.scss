@@ -43,10 +43,11 @@ body {
 }
 
 #save_form {
-  position: absolute;
-  right: 20px;
-  bottom: 14px;
   font-size: 80%;
+  float: right;
+  position: relative;
+  bottom: 40px;
+  right: 10px;
 }
 
 #scatter_controls {
