@@ -62,7 +62,7 @@ var Sdata = {};
 (function($) {
   $(document).ready(function() {
     Sdata.scatterplot = S2.scatterplot(
-      "#scatterplot", 460, 460, 5, 10, 40, 12, 22, S2.color_scales);
+      "#scatterplot", 420, 420, 5, 15, 40, 0, 20, 20, S2.color_scales);
     var columns = {{ g.column_names|tojson|safe }};
     
     Sdata.state_manager = S2.state_manager(
@@ -90,36 +90,6 @@ var Sdata = {};
   //
   $(window).bind("hashchange", function(e) {
     Sdata.state_manager.hashchange(e);
-    //var regress_url = Sdata.state_manager.get_url();
-    //$("#download_link").attr("href", S.ss.get_csv_url());
-  
-    //console.log("Let's get from "+regress_url);
-    //$.ajax({
-    //  'url' : regress_url,
-    //  'success' : function(data) {
-    //    console.log(data);
-    //    S.data = data;
-    //    $("#scatterplot").empty();
-    //    var scatterplot = S.scatterplot("scatterplot", 460, 460, S.ss);
-    //    scatterplot.draw_data(data.points);
-    //    if (data.regression_line) {
-    //      scatterplot.regression_line(
-    //        data.regression_line.slope, data.regression_line.const, "brown");
-    //    }
-    //    S.update_stats_diags("#stats_diags", data.stats_diagnostics);
-    //
-    //    scatterplot.add_labels(data.x_label, data.y_label);
-    //    scatterplot.vis.render();
-    //    S.scatter_instance = scatterplot;
-    //  },
-    //  'error' : function(r, str) {
-    //    // Happens in the case of, say, a singular matrix error
-    //    console.log("Fail");
-    //    console.log(r);
-    //    console.log(str);
-    //    $('#model_stats').empty().append("<h3>Regression error</h3>");
-    //  }
-    //});
   });
   
 })(jQuery);
