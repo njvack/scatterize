@@ -92,21 +92,34 @@ var S2 = function($, d3) {
     
     
     my.data_canvas = svg.append('svg:g')
-      .attr('transform', 'translate('+my.data_canvas_trans_x+','+my.data_canvas_trans_y+')');
+      .attr('transform', 'translate('+my.data_canvas_trans_x+','+my.data_canvas_trans_y+')')
+      .attr('id', 'data-canvas');
+      
     my.data_rect = my.data_canvas
       .append('svg:rect')
       .attr('width', my.data_width)
       .attr('height', my.data_height)
       .attr('fill', '#FAFAFA');
     
-    pub.update = function(points, regression) {
+    pub.update = function(points, regression, xlabel, ylabel) {
       // maybe the only public function?
+      
+      my.set_points(points);
+      my.set_regression(regression);
+      my.set_scales();
+      my.draw_dots();
+      my.draw_regression();
+    }
+    
+    my.set_points = function(points) {
       my.point_data = points.map(function(p) {
         return {
           'row_id':p[0], 'x':p[1], 'y':p[2], 'weight':p[3], 'group':p[4]};});
       my.xvals = my.point_data.map(function(p) { return p.x; });
       my.yvals = my.point_data.map(function(p) { return p.y; });
-
+    }
+    
+    my.set_scales = function() {
       my.x_scale = d3.scale.linear()
         .domain([d3.min(my.xvals), d3.max(my.xvals)])
         .range([0, my.data_width]);
@@ -114,7 +127,9 @@ var S2 = function($, d3) {
       my.y_scale = d3.scale.linear()
         .domain([d3.min(my.yvals), d3.max(my.yvals)])
         .range([my.data_height, 0]);
-      
+    }
+    
+    my.draw_dots = function() {
       dots = my.data_canvas.selectAll('circle')
         .data(my.point_data, function(d) { return d.row_id; });
       
@@ -123,7 +138,7 @@ var S2 = function($, d3) {
         .attr('cy', function(d) { return my.y_scale(d.y); })
         .attr('r', 4);
       
-      // Coloring should be instantaneous
+      // Coloring should be instantaneous -- no transition here
       dots
         .attr('stroke', function(d) { return my.colormap(d.group)(d.weight); })
         .attr('fill', function(d) { return my.colormap(d.group)(d.weight); })
@@ -131,15 +146,55 @@ var S2 = function($, d3) {
       
       
       dots.transition()
-        .duration(500)
+        .sort(function(d) { return d.x; })
+        .duration(400)
         .attr('cx', function(d) { return my.x_scale(d.x); })
         .attr('cy', function(d) { return my.y_scale(d.y); });
       
       dots.exit()
         .remove();
-        
-      
+    } // draw_dots()
+    
+    my.set_regression = function(params) {
+      if (params) {
+        my.regression_params = [params]; // makes .data() work properly
+      } else {
+        my.regression_params = [];
+      }
     }
+    
+    my.draw_regression = function() {
+      var x1, x2, line;
+      
+      x1 = my.x_scale(d3.min(my.xvals));
+      x2 = my.x_scale(d3.max(my.xvals));
+
+      line = my.data_canvas.selectAll('line')
+        .data(my.regression_params);
+        
+      line.enter().append('svg:line')
+        .attr('x1', x1)
+        .attr('y1', function(d) { return my.y_scale(d['const'] + x1*d.slope); })
+        .attr('x2', x2)
+        .attr('y2', function(d) { return my.y_scale(d['const'] + x2*d.slope); });
+
+      line
+        .attr('stroke', 'brown')
+        .attr('stroke-width', 2)
+        .attr('stroke-linecap', 'round');
+      
+      line.transition()
+        .attr('x1', x1)
+        .attr('y1', function(d) { return my.y_scale(d['const'] + x1*d.slope); })
+        .attr('x2', x2)
+        .attr('y2', function(d) { return my.y_scale(d['const'] + x2*d.slope); });
+        
+
+      line.exit()
+        .remove();
+        
+    }
+    
     console.log("hello");
     pub.my = my;
     return pub;
@@ -200,7 +255,12 @@ var S2 = function($, d3) {
         'url': pub.json_url(),
         'success': function(data) {
             console.log(data);
-            my.scatterplot.update(data.points, data.regression_line);
+            my.scatterplot.update(
+              data.points, 
+              data.regression_line,
+              data.x_label,
+              data.y_label
+              );
             update_stats(my.stats_container, data.stats_diagnostics);
           },
         'error': function() { console.log("Error?"); }
@@ -350,7 +410,6 @@ var S2 = function($, d3) {
   function update_stats(container, stats_data) {
     var c = $(container), de, dv, opts;
     c.empty();
-    console.log(c);
     for (var i=0; i < stats_data.length; i++) {
       de = stats_data[i];
       c.append("<h3>"+de.title+"</h3>");

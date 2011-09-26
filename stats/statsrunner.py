@@ -191,6 +191,7 @@ class ParametricStatsRunner(GenericStatsRunner):
         self.result = result
 
     def to_dict(self):
+        params = self.regression_params
         mr = self.result
         column_names = self.stats_data.column_names
 
@@ -219,7 +220,8 @@ class ParametricStatsRunner(GenericStatsRunner):
             regression_line=regression_line,
             group_list=group_data['group_list'],
             x_label=x_label,
-            y_label=y_label)
+            y_label=y_label,
+            model_type=params.model_type)
 
 
 class  OLSStatsRunner(ParametricStatsRunner):
@@ -373,6 +375,7 @@ class SpearmanStatsRunner(GenericStatsRunner):
         return diags
 
     def to_dict(self):
+        params = self.regression_params
         result = self.result
         good_rows = self._possible_rows()
         row_ids = self._row_id_array()[good_rows]
@@ -401,7 +404,8 @@ class SpearmanStatsRunner(GenericStatsRunner):
             all_point_cols=self._all_point_cols(),
             group_list=group_data['group_list'],
             x_label=x_label,
-            y_label=y_label)
+            y_label=y_label,
+            model_type=params.model_type)
 
 
 class PointGrouper(object):
