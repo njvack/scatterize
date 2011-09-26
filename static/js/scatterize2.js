@@ -88,8 +88,7 @@ var S2 = function($, d3) {
     
     svg.attr('height', my.height)
       .attr('width', my.width)
-      .attr("xmlns", "http://www.w3.org/2000/svg")
-      .attr('style', 'background-color: #EEF;');
+      .attr("xmlns", "http://www.w3.org/2000/svg");
     
     
     my.data_canvas = svg.append('svg:g')
@@ -98,9 +97,9 @@ var S2 = function($, d3) {
       .append('svg:rect')
       .attr('width', my.data_width)
       .attr('height', my.data_height)
-      .style('fill', '#CCE');
+      .attr('fill', '#FAFAFA');
     
-    pub.update_points = function(points) {
+    pub.update = function(points, regression) {
       // maybe the only public function?
       my.point_data = points.map(function(p) {
         return {
@@ -138,6 +137,8 @@ var S2 = function($, d3) {
       
       dots.exit()
         .remove();
+        
+      
     }
     console.log("hello");
     pub.my = my;
@@ -148,7 +149,7 @@ var S2 = function($, d3) {
   S_my.state_manager = function(
       regress_js_url, regress_csv_url, columns, scatterplot,
       x_control, y_control, highlight_control, nuisance_list, model_control,
-      download_link) {
+      download_link, stats_container) {
     var pub = {}
     var my = {};
     
@@ -162,6 +163,7 @@ var S2 = function($, d3) {
     my.nuisance_list = $(nuisance_list);
     my.model_control = $(model_control);
     my.download_link = $(download_link);
+    my.stats_container = $(stats_container);
     my.censored_points = [];
 
     my.populate_select = function(control, list, initial_index) {
@@ -198,7 +200,8 @@ var S2 = function($, d3) {
         'url': pub.json_url(),
         'success': function(data) {
             console.log(data);
-            my.scatterplot.update_points(data.points);
+            my.scatterplot.update(data.points, data.regression_line);
+            update_stats(my.stats_container, data.stats_diagnostics);
           },
         'error': function() { console.log("Error?"); }
       });
@@ -343,6 +346,39 @@ var S2 = function($, d3) {
     pub.my = my;
     return pub;
   };
+  
+  function update_stats(container, stats_data) {
+    var c = $(container), de, dv, opts;
+    c.empty();
+    console.log(c);
+    for (var i=0; i < stats_data.length; i++) {
+      de = stats_data[i];
+      c.append("<h3>"+de.title+"</h3>");
+      c.append("<table>");
+      for (var j = 0; j < de.data.length; j++) {
+        dv = de.data[j];
+        opts = dv[2] || {};
+        if (!opts.hide) {
+          c.append(
+            "<tr><th>"+format_stats_name(dv[0])+":</th><td>"+
+            short_float(dv[1])+"</td></tr>");
+        }
+      }
+      c.append("</table>");
+    }
+  };
+  S_my.update_stats = update_stats;
+  
+  S_my.STATS_DISPLAY = {
+    'Rsq': 'R&sup2;',
+    'RsqAdj': 'Adj. R&sup2;',
+    'b': '&beta;',
+    'rho': "&rho;"
+  }
+  
+  format_stats_name = function(key) {
+    return (S_my.STATS_DISPLAY[key] || key);
+  };  
   
   return S_my;
 }(jQuery, d3);
