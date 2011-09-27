@@ -89,6 +89,8 @@ var S2 = function($, d3) {
     my.data_canvas_trans_x = my.x_label_margin + my.label_width + 2*my.axis_margin;
     my.duration = 500;
     
+    my.event = d3.dispatch("point");
+    
     svg.attr('height', my.height)
       .attr('width', my.width)
       .attr('xmlns', 'http://www.w3.org/2000/svg')
@@ -137,6 +139,7 @@ var S2 = function($, d3) {
       my.set_scales();
       my.draw_regression();
       my.draw_dots();
+      my.draw_point_targets();
       my.draw_axes();
     }
     
@@ -285,24 +288,150 @@ var S2 = function($, d3) {
           return 'translate('+my.x_scale(d)+', 10)';})
         .append('svg:text');
       
-      xlabels.selectAll('text').text(function(d) {return d; })
+      xlabels.selectAll('text').text(function(d) {return d.toFixed(2); })
 
       xlabels.transition()
         .duration(my.duration)
         .attr('transform', function(d) {
           return 'translate('+my.x_scale(d)+', 10)';})
-        .select('text').text(function(d) {return d; });
+        .select('text').text(function(d) {return d.toFixed(2); });
       
       
-      //my.yaxis_canvas.selectAll("g.quantile")
-      //  .data(yquant)
-      //.enter().append("svg:g")
-      //  .attr('class', 'quantile')
-      //  .attr('transform', function(d) {
-      //    return 'translate('+my.x_scale(d)+', 10)';
-      //  })
-      //  .append('svg:text').text(function(d) {return d.toFixed(2);});
+      ylabels = my.yaxis_canvas.selectAll("g.quantile")
+        .data(yquant);
 
+      ylabels.enter().append("svg:g")
+        .attr('class', 'quantile')
+        .attr('transform', function(d) {
+          return 'translate(-20, '+my.y_scale(d)+')';})
+        .append('svg:text');
+      
+      ylabels.selectAll('text')
+        .text(function(d) {return d.toFixed(2); })
+        .style('dominant-baseline', 'middle');
+
+      ylabels.transition()
+        .duration(my.duration)
+        .attr('transform', function(d) {
+          return 'translate(-20, '+my.y_scale(d)+')';})
+        .select('text').text(function(d) {return d.toFixed(2); });
+      
+    }
+    
+    my.pointed = null;
+    my.pointed_data = null;
+    
+    my.do_point = function(p) {
+      var cur_cir, tgt_cir, x_super, y_super;
+      if (my.pointed) { cur_cir = my.pointed[0][0]; }
+      tgt_cir = p[0][0];
+      if (cur_cir === tgt_cir) { return; }
+
+      my.pointed = p;
+      p.attr('fill', 'orange').attr('stroke', 'orange')
+        .each(function(d) { 
+          my.pointed_data = d; });
+
+      // And add a super xtick
+      x_super = my.xaxis_canvas.selectAll('g.supertick')
+        .data([my.pointed_data], function(d) {return d.row_id});
+      x_super.enter().append('svg:g')
+        .attr('class', 'supertick')
+        .attr('transform', function(d) {
+          return 'translate('+my.x_scale(d.x)+', 0)'; });
+
+      x_super.append('svg:line')
+        .attr('x1', 0)
+        .attr('y1', 0)
+        .attr('x2', 0)
+        .attr('y2', -10)
+        .attr('stroke', 'black');
+
+      x_super.append('svg:g')
+        .attr('transform', 'translate(0, -14)')
+        .append('svg:text');
+        
+      x_super.select('text').text(function(d) { return d.x.toFixed(2);});
+      
+      // And y.
+      y_super = my.yaxis_canvas.selectAll('g.supertick')
+        .data([my.pointed_data], function(d) {return d.row_id});
+      
+      y_super.enter().append('svg:g')
+        .attr('class', 'supertick')
+        .attr('transform', function(d) {
+          return 'translate(0,'+my.y_scale(d.y)+')'; });
+        
+      y_super.append('svg:line')
+        .attr('x1', 0)
+        .attr('y1', 0)
+        .attr('x2', 10)
+        .attr('y2', 0)
+        .attr('stroke', 'black');
+        
+      y_super.append('svg:g')
+        .attr('transform', 'translate(30, 0)')
+        .append('svg:text');
+        
+      y_super.select('text')
+        .text(function(d) { return d.y.toFixed(2);})
+        .style('text-anchor', 'left')
+        .style('dominant-baseline', 'middle');
+      
+      y_super.exit()
+        .remove();
+    };
+    
+    my.do_unpoint = function(p) {
+      if (!my.pointed) { return; }
+      my.pointed = null;
+      my.pointed_data = null;
+      p
+        .attr('fill', function(d) { return my.colormap(d.group)(d.weight);})
+        .attr('stroke', function(d) { return my.colormap(d.group)(d.weight);});
+
+      my.xaxis_canvas.selectAll('g.supertick').remove();
+      my.yaxis_canvas.selectAll('g.supertick').remove();
+    };
+    
+    my.draw_point_targets = function() {
+      var point_xy, paths, pointed, event;
+      point_xy = my.point_data.map(function(p) { 
+        return [my.x_scale(p.x), my.y_scale(p.y)]; 
+      });
+      paths = d3.geom.voronoi(point_xy);
+      my.data_canvas.selectAll('path.target')
+          .data(paths)
+        .enter().append('svg:path')
+          .attr('d', function(d) { return 'M'+d.join("L")+"Z";})
+          .attr('stroke', 'transparent')
+          .attr('fill', 'transparent')
+          .on('mousemove', function(d, i) {
+            var mouse_coords, point, point_coords, distance, thresh=20;
+            coords = d3.svg.mouse(this);
+            point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
+            my.event.point.dispatch();
+            point_coords = [
+              parseFloat(point.attr('cx')), 
+              parseFloat(point.attr('cy'))];
+            distance = Math.pow(
+                (
+                  Math.pow((coords[0]-point_coords[0]), 2) +
+                  Math.pow((coords[1]-point_coords[1]), 2)
+                ), 
+              0.5);
+            if (distance < thresh) {
+              my.do_point(point);
+            } else {
+              my.do_unpoint(point);
+            }
+          })
+          .on('mouseout', function(d, i) {
+            point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
+            my.do_unpoint(point);
+          });
+      
+          
     }
     
     console.log("hello");

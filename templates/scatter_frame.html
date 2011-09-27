@@ -62,7 +62,7 @@ var Sdata = {};
 (function($) {
   $(document).ready(function() {
     Sdata.scatterplot = S2.scatterplot(
-      "#scatterplot", 420, 420, 5, 15, 40, 0, 20, 20, S2.color_scales);
+      "#scatterplot", 420, 420, 15, 15, 40, 0, 20, 20, S2.color_scales);
     var columns = {{ g.column_names|tojson|safe }};
     
     Sdata.state_manager = S2.state_manager(
