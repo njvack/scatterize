@@ -87,7 +87,7 @@ var S2 = function($, d3) {
       2*my.axis_margin + my.label_width + my.y_label_margin);
     my.data_canvas_trans_y = my.top_outer_margin;
     my.data_canvas_trans_x = my.x_label_margin + my.label_width + 2*my.axis_margin;
-    my.duration = 500;
+    my.duration = 333;
     
     my.event = d3.dispatch("point");
     
@@ -100,6 +100,8 @@ var S2 = function($, d3) {
     my.data_canvas = svg.append('svg:g')
       .attr('transform', 'translate('+my.data_canvas_trans_x+','+my.data_canvas_trans_y+')')
       .attr('id', 'data-canvas');
+    
+    my.click_handler = null;
     
     my.yaxis_canvas = my.data_canvas.append('svg:g')
       .attr('transform', 'translate('+ -my.axis_margin +')')
@@ -235,8 +237,6 @@ var S2 = function($, d3) {
       y_sorted = my.yvals.slice().sort(d3.ascending);
       xquant = quantiles.map(function(q) {return d3.quantile(x_sorted, q)});
       yquant = quantiles.map(function(q) {return d3.quantile(y_sorted, q)});
-      console.log(x_sorted);
-      console.log(xquant);
       
       xticks = my.xaxis_canvas.selectAll("line.tick")
         .data(my.point_data, function(d) { return d.row_id; });
@@ -394,6 +394,15 @@ var S2 = function($, d3) {
       my.yaxis_canvas.selectAll('g.supertick').remove();
     };
     
+    my.distance = function(p1, p2) {
+      return Math.pow(
+          (
+            Math.pow((p1[0]-p2[0]), 2) +
+            Math.pow((p1[1]-p2[1]), 2)
+          ), 
+        0.5);
+    }
+    
     my.draw_point_targets = function() {
       var point_xy, paths, pointed, event;
       point_xy = my.point_data.map(function(p) { 
@@ -407,20 +416,14 @@ var S2 = function($, d3) {
           .attr('stroke', 'transparent')
           .attr('fill', 'transparent')
           .on('mousemove', function(d, i) {
-            var mouse_coords, point, point_coords, distance, thresh=20;
+            var mouse_coords, point, point_coords, thresh=20;
             coords = d3.svg.mouse(this);
             point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
             my.event.point.dispatch();
             point_coords = [
               parseFloat(point.attr('cx')), 
               parseFloat(point.attr('cy'))];
-            distance = Math.pow(
-                (
-                  Math.pow((coords[0]-point_coords[0]), 2) +
-                  Math.pow((coords[1]-point_coords[1]), 2)
-                ), 
-              0.5);
-            if (distance < thresh) {
+            if (my.distance(coords, point_coords) < thresh) {
               my.do_point(point);
             } else {
               my.do_unpoint(point);
@@ -429,9 +432,16 @@ var S2 = function($, d3) {
           .on('mouseout', function(d, i) {
             point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
             my.do_unpoint(point);
+          })
+          .on('click', function(d, i) {
+            if (my.click_handler) {
+              my.click_handler(my.pointed_data);
+            }
           });
-      
-          
+    }
+    
+    pub.set_click_handler = function(fx) {
+      my.click_handler = fx;
     }
     
     console.log("hello");
@@ -467,6 +477,11 @@ var S2 = function($, d3) {
       }
       control.val(initial_index);
     };
+    
+    my.handle_scatter_click = function(data) {
+      pub.toggle_point(data.row_id);
+    }
+    my.scatterplot.set_click_handler(my.handle_scatter_click)
     
     pub.toggle_point = function(rownum) {
       if (!isFinite(parseInt(rownum, 10))) {
