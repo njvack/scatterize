@@ -435,8 +435,10 @@ var S2 = function($, d3) {
           .data(paths)
         .enter().append('svg:path')
           .attr('d', function(d) { return 'M'+d.join("L")+"Z";})
-          .style('stroke', 'none')
-          .style('fill', 'none')
+          .style('stroke', 'white')
+          .style('stroke-opacity', 0)
+          .style('fill', 'white')
+          .style('fill-opacity', 0)
           .on('mousemove', function(d, i) {
             var mouse_coords, point, point_coords, thresh=20;
             coords = d3.svg.mouse(this);
