@@ -269,7 +269,7 @@ class  OLSStatsRunner(ParametricStatsRunner):
                     ['b', json_float(mr.params[res_i])],
                     ['t', json_float(mr.tvalues[res_i])],
                     ['p', json_float(mr.pvalues[res_i])],
-                    ['se', json_float(mr.bse[res_i])]]})
+                    ['se', json_float(mr.bse[res_i]), {'hide': True}]]})
         return diags
 
 
