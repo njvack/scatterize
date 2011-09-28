@@ -186,9 +186,9 @@ var S2 = function($, d3) {
       
       // Coloring should be instantaneous -- no transition here
       dots
-        .attr('stroke', function(d) { return my.colormap(d.group)(d.weight); })
-        .attr('fill', function(d) { return my.colormap(d.group)(d.weight); })
-        .attr('fill-opacity', 0.4);
+        .style('stroke', function(d) { return my.colormap(d.group)(d.weight); })
+        .style('fill', function(d) { return my.colormap(d.group)(d.weight); })
+        .style('fill-opacity', 0.4);
       
       
       dots.transition()
@@ -348,7 +348,7 @@ var S2 = function($, d3) {
       if (cur_cir === tgt_cir) { return; }
 
       my.pointed = p;
-      p.attr('fill', 'orange').attr('stroke', 'orange')
+      p.style('fill', 'orange').style('stroke', 'orange')
         .each(function(d) { 
           my.pointed_data = d; });
 
@@ -409,8 +409,8 @@ var S2 = function($, d3) {
       my.pointed = null;
       my.pointed_data = null;
       p
-        .attr('fill', function(d) { return my.colormap(d.group)(d.weight);})
-        .attr('stroke', function(d) { return my.colormap(d.group)(d.weight);});
+        .style('fill', function(d) { return my.colormap(d.group)(d.weight);})
+        .style('stroke', function(d) { return my.colormap(d.group)(d.weight);});
 
       my.xaxis_canvas.selectAll('g.supertick').remove();
       my.yaxis_canvas.selectAll('g.supertick').remove();
@@ -435,8 +435,8 @@ var S2 = function($, d3) {
           .data(paths)
         .enter().append('svg:path')
           .attr('d', function(d) { return 'M'+d.join("L")+"Z";})
-          .attr('stroke', 'transparent')
-          .attr('fill', 'transparent')
+          .style('stroke', 'transparent')
+          .style('fill', 'transparent')
           .on('mousemove', function(d, i) {
             var mouse_coords, point, point_coords, thresh=20;
             coords = d3.svg.mouse(this);
