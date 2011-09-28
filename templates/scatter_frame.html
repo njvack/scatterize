@@ -81,13 +81,12 @@ var Sdata = {};
     $(window).trigger("hashchange");
   });
   
-  //$("#save_button").click(function(e) {
-  //  var scatter_parent = $("#scatterplot");
-  //  scatter_parent.children("svg").attr("xmlns", "http://www.w3.org/2000/svg");
-  //  $("#svg_data").val(scatter_parent.html());
-  //  console.log($("#svg_data"));
-  //}),
-  //
+  $("#save_button").click(function(e) {
+    var scatter_parent = $("#scatterplot");
+    $("#svg_data").val(scatter_parent.html());
+    console.log($("#svg_data"));
+  }),
+  
   $(window).bind("hashchange", function(e) {
     Sdata.state_manager.hashchange(e);
   });
