@@ -28,12 +28,12 @@ var S2 = function($, d3) {
   }
   S_my.intify = intify;
   
-  function short_float(val, places) {
+  function nice_num(val, places) {
     if (!places) { places = 4; }
     var vf = parseFloat(val),
       exponent = Math.abs(Math.log(Math.abs(val))/Math.log(10)),
       out_str = vf.toFixed(places);
-    
+    if (vf % 1 === 0) { out_str = val+''; }
     if (exponent >= places) { out_str = vf.toExponential(places-1); }
     
     return out_str;
@@ -703,7 +703,7 @@ var S2 = function($, d3) {
         if (!opts.hide) {
           c.append(
             "<tr><th>"+format_stats_name(dv[0])+":</th><td>"+
-            short_float(dv[1])+"</td></tr>");
+            nice_num(dv[1])+"</td></tr>");
         }
       }
       c.append("</table>");
