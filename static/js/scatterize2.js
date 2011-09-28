@@ -105,8 +105,7 @@ var S2 = function($, d3) {
     
     my.yaxis_canvas = my.data_canvas.append('svg:g')
       .attr('transform', 'translate('+ -my.axis_margin +')')
-      .attr('id', 'y-axis')
-      .attr('shape-rendering', 'crispEdges');
+      .attr('id', 'y-axis');
     
     my.yaxis_canvas.append('svg:line')
       .attr('id', 'y-axis-frame')
@@ -120,8 +119,7 @@ var S2 = function($, d3) {
     
     my.xaxis_canvas = my.data_canvas.append('svg:g')
       .attr('transform', 'translate(0, '+ (my.data_height+my.axis_margin)+')')
-      .attr('id', 'x-axis')
-      .attr('shape-rendering', 'crispEdges');
+      .attr('id', 'x-axis');
           
     my.xaxis_canvas.append('svg:line')
       .attr('id', 'x-axis-frame')
@@ -132,6 +130,18 @@ var S2 = function($, d3) {
       .attr('stroke', 'black')
       .attr('stroke-width', '1')
       .attr('shape-rendering', 'crispEdges');
+    
+    // label placement
+    my.xlabel_text = svg.append('svg:g')
+      .attr('transform', ('translate('+(my.width/2)+', '+( 14+
+        my.data_height+my.axis_margin+(2*my.x_label_margin)+my.label_width)+')'))
+      .style('font-size', '14px')
+      .append('svg:text');
+      
+    my.ylabel_text = svg.append('svg:g')
+      .attr('transform', 'translate(18,'+my.data_height/2+') rotate(-90)')
+      .style('font-size', '14px')
+      .append('svg:text');
       
     pub.update = function(points, regression, xlabel, ylabel) {
       // maybe the only public function?
@@ -143,6 +153,7 @@ var S2 = function($, d3) {
       my.draw_dots();
       my.draw_point_targets();
       my.draw_axes();
+      my.draw_axis_labels(xlabel, ylabel);
     }
     
     my.set_points = function(points) {
@@ -286,7 +297,11 @@ var S2 = function($, d3) {
         .attr('class', 'quantile')
         .attr('transform', function(d) {
           return 'translate('+my.x_scale(d)+', 10)';})
-        .append('svg:text');
+        .append('svg:text')
+        .style('font-weight', function(d,i) {
+          if (i == 2) { return 'bold'; }
+          return 'normal';
+        });
       
       xlabels.selectAll('text').text(function(d) {return d.toFixed(2); })
 
@@ -304,7 +319,11 @@ var S2 = function($, d3) {
         .attr('class', 'quantile')
         .attr('transform', function(d) {
           return 'translate(-20, '+my.y_scale(d)+')';})
-        .append('svg:text');
+        .append('svg:text')
+        .style('font-weight', function(d,i) {
+          if (i == 2) { return 'bold'; }
+          return 'normal';
+        });
       
       ylabels.selectAll('text')
         .text(function(d) {return d.toFixed(2); })
@@ -337,6 +356,7 @@ var S2 = function($, d3) {
         .data([my.pointed_data], function(d) {return d.row_id});
       x_super.enter().append('svg:g')
         .attr('class', 'supertick')
+        .attr('shape-rendering', 'crispEdges')
         .attr('transform', function(d) {
           return 'translate('+my.x_scale(d.x)+', 0)'; });
 
@@ -359,6 +379,7 @@ var S2 = function($, d3) {
       
       y_super.enter().append('svg:g')
         .attr('class', 'supertick')
+        .attr('shape-rendering', 'crispEdges')
         .attr('transform', function(d) {
           return 'translate(0,'+my.y_scale(d.y)+')'; });
         
@@ -438,6 +459,11 @@ var S2 = function($, d3) {
               my.click_handler(my.pointed_data);
             }
           });
+    }
+    
+    my.draw_axis_labels = function(xlabel, ylabel) {
+      my.xlabel_text.text(xlabel);
+      my.ylabel_text.text(ylabel);
     }
     
     pub.set_click_handler = function(fx) {
