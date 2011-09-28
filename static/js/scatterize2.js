@@ -95,7 +95,8 @@ var S2 = function($, d3) {
       .attr('width', my.width)
       .attr('xmlns', 'http://www.w3.org/2000/svg')
       .attr('text-anchor', 'middle')
-      .attr('font-size', '10px');
+      .style('font-size', '12px')
+      .style('font-family', 'Corbel, Helvetica, sans-serif');
     
     my.data_canvas = svg.append('svg:g')
       .attr('transform', 'translate('+my.data_canvas_trans_x+','+my.data_canvas_trans_y+')')
