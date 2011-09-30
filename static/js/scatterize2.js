@@ -153,11 +153,12 @@ var S2 = function($, d3) {
       .style('font-size', '14px')
       .append('svg:text');
       
-    pub.update = function(points, regression, xlabel, ylabel) {
+    pub.update = function(points, regression, xlabel, ylabel, groups) {
       // maybe the only public function?
       
       my.set_points(points);
       my.set_regression(regression);
+      my.set_groups(groups);
       my.set_scales();
       my.draw_regression();
       my.draw_dots();
@@ -182,10 +183,16 @@ var S2 = function($, d3) {
       my.y_scale = d3.scale.linear()
         .domain([d3.min(my.yvals), d3.max(my.yvals)])
         .range([my.data_height, 0]);
+    };
+    
+    my.set_groups = function(groups) {
+      my.groups = groups;
     }
     
     my.draw_dots = function() {
-      dots = my.data_canvas.selectAll('circle')
+      console.log("draw_dots");
+      console.log(my.pointed_data);
+      dots = my.datapoint_canvas.selectAll('circle')
         .data(my.point_data, function(d) { return d.row_id; });
       
       dots.enter().append('svg:circle')
@@ -415,6 +422,8 @@ var S2 = function($, d3) {
     
     my.do_unpoint = function(p) {
       if (!my.pointed) { return; }
+      console.log("Unpoint!");
+      console.log(p);
       my.pointed = null;
       my.pointed_data = null;
       p
@@ -519,6 +528,7 @@ var S2 = function($, d3) {
     };
     
     my.handle_scatter_click = function(data) {
+      console.log("Toggling" + data.row_id);
       pub.toggle_point(data.row_id);
     }
     my.scatterplot.set_click_handler(my.handle_scatter_click)
@@ -553,8 +563,8 @@ var S2 = function($, d3) {
               data.points, 
               data.regression_line,
               data.x_label,
-              data.y_label
-              );
+              data.y_label,
+              data.group_list);
             update_stats(my.stats_container, data.stats_diagnostics);
           },
         'error': function() { console.log("Error?"); }
