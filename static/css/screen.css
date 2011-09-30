@@ -177,17 +177,16 @@ h1 {
 /* line 92, ../../scss/screen.scss */
 h3 {
   font-weight: bold;
-  margin-top: 1em;
   color: #333;
 }
 
-/* line 98, ../../scss/screen.scss */
+/* line 97, ../../scss/screen.scss */
 p {
   margin-top: 1em;
   margin-bottom: 1em;
 }
 
-/* line 104, ../../scss/screen.scss */
+/* line 103, ../../scss/screen.scss */
 #stats_data {
   display: inline;
   float: left;
@@ -198,14 +197,14 @@ p {
 * html #stats_data {
   overflow-x: hidden;
 }
-/* line 107, ../../scss/screen.scss */
+/* line 106, ../../scss/screen.scss */
 #stats_data th {
   width: 70px;
   text-align: right;
   font-style: italic;
 }
 
-/* line 116, ../../scss/screen.scss */
+/* line 114, ../../scss/screen.scss */
 table#raw_data {
   display: inline;
   float: left;
@@ -217,13 +216,13 @@ table#raw_data {
 * html table#raw_data {
   overflow-x: hidden;
 }
-/* line 119, ../../scss/screen.scss */
+/* line 117, ../../scss/screen.scss */
 table#raw_data td {
   font-size: 80%;
   line-height: 1.42;
 }
 
-/* line 125, ../../scss/screen.scss */
+/* line 123, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;
