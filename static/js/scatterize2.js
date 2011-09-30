@@ -102,6 +102,15 @@ var S2 = function($, d3) {
       .attr('transform', 'translate('+my.data_canvas_trans_x+','+my.data_canvas_trans_y+')')
       .attr('id', 'data-canvas');
     
+    my.datapoint_canvas = my.data_canvas.append('svg:g')
+      .attr('id', 'datapoint-canvas');
+    
+    my.regression_canvas = my.data_canvas.append('svg:g')
+      .attr('id', 'regression-canvas');
+    
+    my.point_target_canvas = my.data_canvas.append('svg:g')
+      .attr('id', 'point-target-canvas');
+    
     my.click_handler = null;
     
     my.yaxis_canvas = my.data_canvas.append('svg:g')
@@ -163,7 +172,7 @@ var S2 = function($, d3) {
           'row_id':p[0], 'x':p[1], 'y':p[2], 'weight':p[3], 'group':p[4]};});
       my.xvals = my.point_data.map(function(p) { return p.x; });
       my.yvals = my.point_data.map(function(p) { return p.y; });
-    }
+    };
     
     my.set_scales = function() {
       my.x_scale = d3.scale.linear()
@@ -215,7 +224,7 @@ var S2 = function($, d3) {
       x1 = d3.min(my.xvals);
       x2 = d3.max(my.xvals);
 
-      line = my.data_canvas.selectAll('line#regression-line')
+      line = my.regression_canvas.selectAll('line#regression-line')
         .data(my.regression_params);
         
       line.enter().append('svg:line')
@@ -426,12 +435,14 @@ var S2 = function($, d3) {
     }
     
     my.draw_point_targets = function() {
-      var point_xy, paths, pointed, event;
+      var point_xy, paths, event, targets;
       point_xy = my.point_data.map(function(p) { 
         return [my.x_scale(p.x), my.y_scale(p.y)]; 
       });
       paths = d3.geom.voronoi(point_xy);
-      my.data_canvas.selectAll('path.target')
+
+      my.point_target_canvas.selectAll('path').remove();
+      targets = my.point_target_canvas.selectAll('path')
           .data(paths)
         .enter().append('svg:path')
           .attr('d', function(d) { return 'M'+d.join("L")+"Z";})
