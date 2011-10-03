@@ -113,6 +113,11 @@ p {
     margin-bottom: 1em;
   }
   
+  .warning {
+    @include column(4);
+    font-size: 80%;
+    line-height: 1.2;
+  }
 }
 
 table#raw_data {

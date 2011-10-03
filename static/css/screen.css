@@ -207,8 +207,21 @@ p {
 #stats_data table {
   margin-bottom: 1em;
 }
+/* line 116, ../../scss/screen.scss */
+#stats_data .warning {
+  display: inline;
+  float: left;
+  margin-right: 10px;
+  width: 150px;
+  font-size: 80%;
+  line-height: 1.2;
+}
+/* line 147, ../../../../../../opt/local/lib/ruby/gems/1.8/gems/compass-0.11.1/frameworks/blueprint/stylesheets/blueprint/_grid.scss */
+* html #stats_data .warning {
+  overflow-x: hidden;
+}
 
-/* line 118, ../../scss/screen.scss */
+/* line 123, ../../scss/screen.scss */
 table#raw_data {
   display: inline;
   float: left;
@@ -220,13 +233,13 @@ table#raw_data {
 * html table#raw_data {
   overflow-x: hidden;
 }
-/* line 121, ../../scss/screen.scss */
+/* line 126, ../../scss/screen.scss */
 table#raw_data td {
   font-size: 80%;
   line-height: 1.42;
 }
 
-/* line 127, ../../scss/screen.scss */
+/* line 132, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;
