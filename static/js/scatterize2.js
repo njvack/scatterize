@@ -483,11 +483,10 @@ var S2 = function($, d3) {
     return pub;
   }
   
-  
   S_my.state_manager = function(
       regress_js_url, regress_csv_url, columns, scatterplot,
       x_control, y_control, highlight_control, nuisance_list, model_control,
-      download_link, stats_container) {
+      download_link, stats_dashboard) {
     var pub = {}
     var my = {};
     
@@ -501,7 +500,7 @@ var S2 = function($, d3) {
     my.nuisance_list = $(nuisance_list);
     my.model_control = $(model_control);
     my.download_link = $(download_link);
-    my.stats_container = $(stats_container);
+    my.stats_dashboard = stats_dashboard;
     my.censored_points = [];
 
     my.populate_select = function(control, list, initial_index) {
@@ -547,7 +546,7 @@ var S2 = function($, d3) {
               data.x_label,
               data.y_label,
               data.group_list);
-            update_stats(my.stats_container, data.stats_diagnostics);
+            my.stats_dashboard.update(data.stats_diagnostics);
           },
         'error': function() { console.log("Error?"); }
       });
@@ -689,30 +688,38 @@ var S2 = function($, d3) {
     return pub;
   };
   
-  function update_stats(container, stats_data) {
-    var c = $(container), de, dv, opts;
-    c.empty();
-    for (var i=0; i < stats_data.length; i++) {
-      de = stats_data[i];
-      c.append("<h3>"+de.title+"</h3>");
-      c.append("<table>");
-      for (var j = 0; j < de.data.length; j++) {
-        dv = de.data[j];
-        opts = dv[2] || {};
-        if (!opts.hide) {
-          c.append(
-            "<tr><th>"+format_stats_name(dv[0])+":</th><td>"+
-            nice_num(dv[1])+"</td></tr>");
-        }
-      }
-      c.append("</table>");
-    }
-  };
-  S_my.update_stats = update_stats;
+  function stats_dashboard(container) {
+    var my = {}, pub = {};
+    
+    my.stats_container = d3.select(container);
+    
+    pub.update = function(stats_data) {
+      var table, tr, stats_item, opts;
+      my.stats_container.selectAll('div').remove();
+      stats_data.forEach(function(s) {
+        stats_item = my.stats_container.append('div')
+        stats_item.append('h3').text(s.title);
+        table = stats_item.append('table');
+        s.data.forEach(function(stat) {
+          console.log(stat);
+          opts = stat[2] || {};
+          if (!opts.hide) {
+            tr = table.append('tr');
+            tr.append('th').html(format_stats_name(stat[0])+':');
+            tr.append('td').html(nice_num(stat[1]));
+          }
+        });
+      });
+    };
+    
+    pub.my = my;
+    return pub;
+  }
+  S_my.stats_dashboard = stats_dashboard;
   
   S_my.STATS_DISPLAY = {
     'Rsq': 'R&sup2;',
-    'RsqAdj': 'Adj. R&sup2;',
+    'RsqAdj': 'Adjusted R&sup2;',
     'b': '&beta;',
     'rho': "&rho;"
   }

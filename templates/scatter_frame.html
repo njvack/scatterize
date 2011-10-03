@@ -65,6 +65,8 @@ var Sdata = {};
       "#scatterplot", 420, 420, 15, 15, 40, 0, 20, 20, S2.color_scales);
     var columns = {{ g.column_names|tojson|safe }};
     
+    Sdata.stats_dashboard = S2.stats_dashboard('#stats');
+    
     Sdata.state_manager = S2.state_manager(
       '{{url_for("regress_js", filehash=g.filehash)}}',
       '{{url_for("regress_csv", filehash=g.filehash)}}',
@@ -76,7 +78,7 @@ var Sdata = {};
       '#nuisance_vars',
       '#model_select',
       '#download_link',
-      '#stats'
+      Sdata.stats_dashboard
     );
     $(window).trigger("hashchange");
   });
