@@ -105,6 +105,8 @@ var S2 = function($, d3) {
     my.datapoint_canvas = my.data_canvas.append('svg:g')
       .attr('id', 'datapoint-canvas');
     
+    my.group_canvases = [];
+    
     my.regression_canvas = my.data_canvas.append('svg:g')
       .attr('id', 'regression-canvas');
     
@@ -194,6 +196,16 @@ var S2 = function($, d3) {
     
     my.set_groups = function(groups) {
       my.groups = groups;
+      // ensure there's always a 0th group
+      my.group_canvases[0] = my.datapoint_canvas.append('svg:g')
+        .attr('id', 'point-group-0')[0][0];
+
+      groups.forEach(function(group, i) {
+        if (!my.group_canvases[i]) {
+          my.group_canvases[i] = my.datapoint_canvas.append('svg:g')
+            .attr('id', 'point-group-'+i)[0][0];
+        }
+      });
     }
     
     my.draw_dots = function() {
@@ -209,7 +221,10 @@ var S2 = function($, d3) {
       dots
         .style('stroke', function(d) { return my.colormap(d.group)(d.weight); })
         .style('fill', function(d) { return my.colormap(d.group)(d.weight); })
-        .style('fill-opacity', 0.4);
+        .style('fill-opacity', 0.4)
+        .each(function(d) {
+          my.group_canvases[d.group].appendChild(this);
+        });
       
       my.pointed.style('fill', 'orange').style('stroke', 'orange');
       
@@ -540,6 +555,7 @@ var S2 = function($, d3) {
       $.ajax({
         'url': pub.json_url(),
         'success': function(data) {
+          console.log(data);
             my.scatterplot.update(
               data.points, 
               data.regression_line,
@@ -701,7 +717,6 @@ var S2 = function($, d3) {
         stats_item.append('h3').text(s.title);
         table = stats_item.append('table');
         s.data.forEach(function(stat) {
-          console.log(stat);
           opts = stat[2] || {};
           if (!opts.hide) {
             tr = table.append('tr');
