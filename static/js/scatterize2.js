@@ -108,11 +108,6 @@ var S2 = function($, d3) {
     my.regression_canvas = my.data_canvas.append('svg:g')
       .attr('id', 'regression-canvas');
     
-    my.point_target_canvas = my.data_canvas.append('svg:g')
-      .attr('id', 'point-target-canvas');
-    
-    my.click_handler = null;
-    
     my.yaxis_canvas = my.data_canvas.append('svg:g')
       .attr('transform', 'translate('+ -my.axis_margin +')')
       .attr('id', 'y-axis');
@@ -140,6 +135,18 @@ var S2 = function($, d3) {
       .attr('stroke', 'black')
       .attr('stroke-width', '1')
       .attr('shape-rendering', 'crispEdges');
+    
+    my.pointed = d3.select(null);
+    
+    my.data_click_wrapper = function() {
+      if (my.click_handler) {
+        my.click_handler(my.pointed);
+      }
+    };
+    my.click_handler = null;
+
+    my.point_target_canvas = my.data_canvas.append('svg:g')
+      .attr('id', 'point-target-canvas');
     
     // label placement
     my.xlabel_text = svg.append('svg:g')
@@ -190,8 +197,6 @@ var S2 = function($, d3) {
     }
     
     my.draw_dots = function() {
-      console.log("draw_dots");
-      console.log(my.pointed_data);
       dots = my.datapoint_canvas.selectAll('circle')
         .data(my.point_data, function(d) { return d.row_id; });
       
@@ -206,6 +211,7 @@ var S2 = function($, d3) {
         .style('fill', function(d) { return my.colormap(d.group)(d.weight); })
         .style('fill-opacity', 0.4);
       
+      my.pointed.style('fill', 'orange').style('stroke', 'orange');
       
       dots.transition()
         .sort(function(d) { return d.x; })
@@ -354,23 +360,17 @@ var S2 = function($, d3) {
       
     }
     
-    my.pointed = null;
-    my.pointed_data = null;
-    
     my.do_point = function(p) {
-      var cur_cir, tgt_cir, x_super, y_super;
-      if (my.pointed) { cur_cir = my.pointed[0][0]; }
-      tgt_cir = p[0][0];
-      if (cur_cir === tgt_cir) { return; }
+      var pointed_data, x_super, y_super;
 
       my.pointed = p;
       p.style('fill', 'orange').style('stroke', 'orange')
         .each(function(d) { 
-          my.pointed_data = d; });
+          pointed_data = d; });
 
       // And add a super xtick
       x_super = my.xaxis_canvas.selectAll('g.supertick')
-        .data([my.pointed_data], function(d) {return d.row_id});
+        .data([pointed_data], function(d) {return d.row_id});
       x_super.enter().append('svg:g')
         .attr('class', 'supertick')
         .attr('shape-rendering', 'crispEdges')
@@ -392,7 +392,7 @@ var S2 = function($, d3) {
       
       // And y.
       y_super = my.yaxis_canvas.selectAll('g.supertick')
-        .data([my.pointed_data], function(d) {return d.row_id});
+        .data([pointed_data], function(d) {return d.row_id});
       
       y_super.enter().append('svg:g')
         .attr('class', 'supertick')
@@ -420,28 +420,16 @@ var S2 = function($, d3) {
         .remove();
     };
     
-    my.do_unpoint = function(p) {
-      if (!my.pointed) { return; }
-      console.log("Unpoint!");
-      console.log(p);
-      my.pointed = null;
-      my.pointed_data = null;
-      p
+    my.do_unpoint = function() {
+      my.pointed
         .style('fill', function(d) { return my.colormap(d.group)(d.weight);})
         .style('stroke', function(d) { return my.colormap(d.group)(d.weight);});
+      
+      my.pointed = d3.select(null);
 
       my.xaxis_canvas.selectAll('g.supertick').remove();
       my.yaxis_canvas.selectAll('g.supertick').remove();
     };
-    
-    my.distance = function(p1, p2) {
-      return Math.pow(
-          (
-            Math.pow((p1[0]-p2[0]), 2) +
-            Math.pow((p1[1]-p2[1]), 2)
-          ), 
-        0.5);
-    }
     
     my.draw_point_targets = function() {
       var point_xy, paths, event, targets;
@@ -451,36 +439,34 @@ var S2 = function($, d3) {
       paths = d3.geom.voronoi(point_xy);
 
       my.point_target_canvas.selectAll('path').remove();
+      my.point_target_canvas.selectAll('clipPath')
+          .data(point_xy)
+        .enter().append('svg:clipPath')
+          .attr('id', function(d, i) { return 'target-clip-'+i; })
+        .append('svg:circle')
+          .attr('r', 20)
+          .attr('cx', function(d) { return d[0]; })
+          .attr('cy', function(d) { return d[1]; })
+          .style('stroke-opacity', 0)
+          .style('fill-opacity', 0);
+      
       targets = my.point_target_canvas.selectAll('path')
           .data(paths)
         .enter().append('svg:path')
           .attr('d', function(d) { return 'M'+d.join("L")+"Z";})
-          .style('stroke', 'white')
+          .attr('clip-path', function(d, i) { 
+            return 'url(#target-clip-'+i+')'; })
           .style('stroke-opacity', 0)
-          .style('fill', 'white')
           .style('fill-opacity', 0)
-          .on('mousemove', function(d, i) {
-            var mouse_coords, point, point_coords, thresh=20;
-            coords = d3.svg.mouse(this);
-            point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
-            my.event.point.dispatch();
-            point_coords = [
-              parseFloat(point.attr('cx')), 
-              parseFloat(point.attr('cy'))];
-            if (my.distance(coords, point_coords) < thresh) {
-              my.do_point(point);
-            } else {
-              my.do_unpoint(point);
-            }
+          .on('mouseover', function(d, i) {
+            var point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
+            my.do_point(point);
           })
           .on('mouseout', function(d, i) {
-            point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
-            my.do_unpoint(point);
+            my.do_unpoint();
           })
           .on('click', function(d, i) {
-            if (my.click_handler) {
-              my.click_handler(my.pointed_data);
-            }
+            my.data_click_wrapper();
           });
     }
     
@@ -493,7 +479,6 @@ var S2 = function($, d3) {
       my.click_handler = fx;
     }
     
-    console.log("hello");
     pub.my = my;
     return pub;
   }
@@ -527,9 +512,10 @@ var S2 = function($, d3) {
       control.val(initial_index);
     };
     
-    my.handle_scatter_click = function(data) {
-      console.log("Toggling" + data.row_id);
-      pub.toggle_point(data.row_id);
+    my.handle_scatter_click = function(point_sel) {
+      point_sel.each(function(d) {
+        pub.toggle_point(d.row_id);
+      });
     }
     my.scatterplot.set_click_handler(my.handle_scatter_click)
     
@@ -545,20 +531,16 @@ var S2 = function($, d3) {
         my.censored_points.push(rownum);
       }
       my.censored_points = my.censored_points.sort();
-      console.log(my.censored_points);
       pub.update_state();
     }
     
     pub.hashchange = function(evt) {
       // The main method that'll get called.
-      console.log("Hashchange!");
-      console.log(evt);
       pub.update_controls();
       my.download_link.attr('href', pub.csv_url());
       $.ajax({
         'url': pub.json_url(),
         'success': function(data) {
-            console.log(data);
             my.scatterplot.update(
               data.points, 
               data.regression_line,
@@ -572,7 +554,6 @@ var S2 = function($, d3) {
     };
     
     pub.update_state = function() {
-      console.log("Updating state!");
       var opts = {
         'x' : my.x_control.val(),
         'y' : my.y_control.val(),
@@ -590,7 +571,6 @@ var S2 = function($, d3) {
       if (nuisance_list !== '') { opts.n = nuisance_list; }
       var censor_list = my.censored_points.join(",");
       if (censor_list !== '') { opts.c = censor_list; }
-      console.log($.param.fragment("", opts));
       $.bbq.pushState(opts, 2);
     };
     
@@ -678,9 +658,7 @@ var S2 = function($, d3) {
     pub.update_controls = function() {
       // Update the controls on the page and our internal tracking of
       // censored points from the URL hash
-      console.log("Update controls");
       var cur_state = $.bbq.getState();
-      console.log(cur_state);
       my.x_control.val(cur_state.x);
       my.y_control.val(cur_state.y);
       my.highlight_control.val(cur_state.h || "");
