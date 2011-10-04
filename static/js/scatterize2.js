@@ -219,6 +219,7 @@ var S2 = function($, d3) {
       
       // Coloring should be instantaneous -- no transition here
       dots
+        .attr('id', function(d) { return 'datapoint-'+d.row_id; })
         .style('stroke', function(d) { return my.colormap(d.group)(d.weight); })
         .style('fill', function(d) { return my.colormap(d.group)(d.weight); })
         .style('fill-opacity', 0.4)
@@ -474,8 +475,9 @@ var S2 = function($, d3) {
           .style('stroke-opacity', 0)
           .style('fill-opacity', 0)
           .on('mouseover', function(d, i) {
-            var point = d3.select(my.data_canvas.selectAll('circle')[0][i]);
-            my.do_point(point);
+            var pdata = my.point_data[i];
+            my.do_point(
+              my.datapoint_canvas.select('#datapoint-'+pdata.row_id));
           })
           .on('mouseout', function(d, i) {
             my.do_unpoint();
