@@ -449,8 +449,12 @@ var S2 = function($, d3) {
     
     my.draw_point_targets = function() {
       var point_xy, paths, event, targets;
-      point_xy = my.point_data.map(function(p) { 
-        return [my.x_scale(p.x), my.y_scale(p.y)]; 
+      point_xy = my.point_data.map(function(p) {
+        // Add some jitter to the points to keep the voronoi algorithm
+        // from failing in the case of collinearity
+        return [
+          (my.x_scale(p.x)+Math.random()-0.5), 
+          (my.y_scale(p.y)+Math.random()-0.5)]; 
       });
       paths = d3.geom.voronoi(point_xy);
 
