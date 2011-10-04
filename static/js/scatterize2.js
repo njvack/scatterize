@@ -459,8 +459,8 @@ var S2 = function($, d3) {
           (my.y_scale(p.y)+Math.random()-0.5)]; 
       });
       paths = d3.geom.voronoi(point_xy);
-
       my.point_target_canvas.selectAll('path').remove();
+      my.point_target_canvas.selectAll('clipPath').remove();
       my.point_target_canvas.selectAll('clipPath')
           .data(point_xy)
         .enter().append('svg:clipPath')
