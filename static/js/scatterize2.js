@@ -379,6 +379,7 @@ var S2 = function($, d3) {
     my.do_point = function(p) {
       var pointed_data, x_super, y_super;
 
+      my.do_unpoint(); // Can only point one at a time!
       my.pointed = p;
       p.style('fill', 'orange').style('stroke', 'orange')
         .each(function(d) { 
