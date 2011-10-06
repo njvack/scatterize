@@ -118,6 +118,9 @@ var S2 = function ($, d3) {
       .attr('transform', 'translate('+ -my.axis_margin +')')
       .attr('id', 'y-axis');
     
+    my.ytick_canvas = my.yaxis_canvas.append('svg:g')
+      .attr('id', 'ytick-layer');
+
     my.yaxis_canvas.append('svg:line')
       .attr('id', 'y-axis-frame')
       .attr('x1', 0)
@@ -131,7 +134,10 @@ var S2 = function ($, d3) {
     my.xaxis_canvas = my.data_canvas.append('svg:g')
       .attr('transform', 'translate(0, '+ (my.data_height+my.axis_margin)+')')
       .attr('id', 'x-axis');
-          
+    
+    my.xtick_canvas = my.xaxis_canvas.append('svg:g')
+      .attr('id', 'xtick-layer');
+    
     my.xaxis_canvas.append('svg:line')
       .attr('id', 'x-axis-frame')
       .attr('x1', 0)
@@ -291,7 +297,7 @@ var S2 = function ($, d3) {
       xquant = quantiles.map(function(q) {return d3.quantile(x_sorted, q);});
       yquant = quantiles.map(function(q) {return d3.quantile(y_sorted, q);});
       
-      xticks = my.xaxis_canvas.selectAll("line.tick")
+      xticks = my.xtick_canvas.selectAll("line.tick")
         .data(my.point_data, function(d) { return d.row_id; });
       
       xticks.enter().append('svg:line')
@@ -311,7 +317,7 @@ var S2 = function ($, d3) {
       xticks.exit()
         .remove();
       
-      yticks = my.yaxis_canvas.selectAll("line.tick")
+      yticks = my.ytick_canvas.selectAll("line.tick")
         .data(my.point_data, function(d) { return d.row_id; });
       
       yticks.enter().append('svg:line')
@@ -389,7 +395,7 @@ var S2 = function ($, d3) {
           pointed_data = d; });
 
       // And add a super xtick
-      x_super = my.xaxis_canvas.selectAll('g.supertick')
+      x_super = my.xtick_canvas.selectAll('g.supertick')
         .data([pointed_data], function(d) {return d.row_id; });
       x_super.enter().append('svg:g')
         .attr('class', 'supertick')
@@ -411,7 +417,7 @@ var S2 = function ($, d3) {
       x_super.select('text').text(function(d) { return d.x.toFixed(2);});
       
       // And y.
-      y_super = my.yaxis_canvas.selectAll('g.supertick')
+      y_super = my.ytick_canvas.selectAll('g.supertick')
         .data([pointed_data], function(d) {return d.row_id; });
       
       y_super.enter().append('svg:g')
@@ -447,8 +453,8 @@ var S2 = function ($, d3) {
       
       my.pointed = d3.select(null);
 
-      my.xaxis_canvas.selectAll('g.supertick').remove();
-      my.yaxis_canvas.selectAll('g.supertick').remove();
+      my.xtick_canvas.selectAll('g.supertick').remove();
+      my.ytick_canvas.selectAll('g.supertick').remove();
     };
     
     my.draw_point_targets = function() {
