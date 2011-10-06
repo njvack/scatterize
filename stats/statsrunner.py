@@ -8,8 +8,7 @@
 # Written by Nathan Vack <njvack@wisc.edu> at the Waisman Laborotory
 # for Brain Imaging and Behavior, University of Wisconsin - Madison.
 
-import os
-import csv
+from collections import defaultdict
 import numpy as np
 from scipy import stats as ss
 import scikits.statsmodels.api as sm
@@ -81,7 +80,7 @@ class GenericStatsRunner(object):
         self.regression_params = regression_params
         super(GenericStatsRunner, self).__init__()
 
-    def _group_data(self):
+    def _group_data(self, good_rows):
         ar = np.zeros(len(self.stats_data.data_list))
         output = {
             'group_list': [],
@@ -90,7 +89,7 @@ class GenericStatsRunner(object):
         idx = self.regression_params.highlight_idx
         if (idx):
             highlight_data = [row[idx] for row in self.stats_data.data_list]
-            grouper = PointGrouper(highlight_data)
+            grouper = PointGrouper(highlight_data, good_rows)
             output['group_list'] = grouper.group_list()
             output['group_array'] = grouper.group_array()
 
@@ -200,7 +199,7 @@ class ParametricStatsRunner(GenericStatsRunner):
 
         good_rows = self._design_matrix_allowable_rows()
         rowids = self._row_id_array()[good_rows]
-        group_data = self._group_data()
+        group_data = self._group_data(good_rows)
 
         groups = group_data['group_array'][good_rows]
         points = np.column_stack(
@@ -381,7 +380,7 @@ class SpearmanStatsRunner(GenericStatsRunner):
         result = self.result
         good_rows = self._possible_rows()
         row_ids = self._row_id_array()[good_rows]
-        group_data = self._group_data()
+        group_data = self._group_data(good_rows)
 
         groups = group_data['group_array'][good_rows]
         iv = result['iv']
@@ -412,8 +411,9 @@ class SpearmanStatsRunner(GenericStatsRunner):
 
 class PointGrouper(object):
 
-    def __init__(self, groupable_list):
+    def __init__(self, groupable_list, good_rows):
         self.groupable_list = groupable_list
+        self.good_rows = good_rows
         self.stripped_keys = self._strip_keys(groupable_list)
 
     def _strip_keys(self, l):
@@ -429,11 +429,17 @@ class PointGrouper(object):
             And
             """
             return ((len(key) == 0), key)
-
-        return sorted(set(self.stripped_keys), key=sort_fx)
+        
+        group_counts = defaultdict(int) # Defaults to zero
+        for i, k in enumerate(self.stripped_keys):
+            if self.good_rows[i]:
+                group_counts[k] += 1
+        
+        group_names = sorted(set(self.stripped_keys), key=sort_fx)
+        return [[g, group_counts[g]] for g in group_names]
 
     def group_dict(self):
-        return dict([[key, idx] for idx, key in enumerate(self.group_list())])
+        return dict([[g[0], idx] for idx, g in enumerate(self.group_list())])
 
     def group_array(self):
         d = self.group_dict()
