@@ -539,7 +539,7 @@ var S2 = function ($, d3) {
   S_my.state_manager = function(
       regress_js_url, regress_csv_url, columns, scatterplot,
       x_control, y_control, highlight_control, nuisance_list, model_control,
-      download_link, stats_dashboard) {
+      download_link, stats_dashboard, key_handler) {
     var pub = {}, my = {};
     
     my.base_url = regress_js_url;
@@ -554,6 +554,7 @@ var S2 = function ($, d3) {
     my.download_link = $(download_link);
     my.stats_dashboard = stats_dashboard;
     my.censored_points = [];
+    my.key = key_handler;
 
     my.populate_select = function(control, list, initial_index) {
       var i;
@@ -745,6 +746,37 @@ var S2 = function ($, d3) {
     my.y_control.change(function() { pub.update_state(); });
     my.highlight_control.change(function() { pub.update_state(); });
     my.model_control.change(function() { pub.update_state(); });
+    
+    my.advance_select = function(control, go_forward) {
+      var cur_idx, max_idx, next_idx, c;
+      
+      c = control[0];
+      cur_idx = c.selectedIndex;
+      max_idx = control.children('option').length - 1;
+      next_idx = cur_idx;
+      
+      if (go_forward) { 
+        next_idx += 1;
+      } else {
+        next_idx -= 1;
+      }
+      if (next_idx < 0) { next_idx = 0;}
+      if (next_idx > max_idx) { next_idx = max_idx; }
+      if (next_idx !== cur_idx) {
+        c.selectedIndex = next_idx;
+        pub.update_state();
+      }
+    };
+    
+    my.set_keyboard_shortcuts = function() {
+      my.key('j', function() { my.advance_select(my.y_control, false); });
+      my.key('k', function() { my.advance_select(my.y_control, true); });
+      my.key('u', function() { my.advance_select(my.x_control, false); });
+      my.key('i', function() { my.advance_select(my.x_control, true); });
+      my.key('o', function() { my.advance_select(my.model_control, false); });
+      my.key('p', function() { my.advance_select(my.model_control, true); });
+    }
+    my.set_keyboard_shortcuts();
     
     pub.my = my;
     return pub;
