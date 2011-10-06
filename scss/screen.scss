@@ -99,6 +99,19 @@ p {
   margin-bottom: 1em;
 }
 
+#highlight_labels div {
+  float: left;
+  font-size: 80%;
+  padding: .1em .25em;
+  margin: 0.25em;
+  border: 1px solid;
+  border-radius: 4px;
+  white-space: pre;
+}
+
+#model_type {
+  clear: both;
+}
 
 #stats_data {
   @include column(5, true);

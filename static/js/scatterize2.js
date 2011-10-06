@@ -1,3 +1,4 @@
+/*jslint devel: true, browser: true, white: true, maxerr: 50, indent: 4 */
 var S2 = function ($, d3) {
   "use strict";
   var S_my = {};
@@ -184,6 +185,7 @@ var S2 = function ($, d3) {
       my.draw_point_targets();
       my.draw_axes();
       my.draw_axis_labels(xlabel, ylabel);
+      my.draw_group_labels();
     };
     
     my.set_points = function(points) {
@@ -383,6 +385,26 @@ var S2 = function ($, d3) {
           return 'translate(-20, '+my.y_scale(d)+')';})
         .select('text').text(function(d) {return d.toFixed(2); });
       
+    };
+    
+    my.draw_group_labels = function() {
+      var label_elt;
+      label_elt = d3.select('#highlight_labels');
+      label_elt.selectAll('div').remove();
+      my.groups.forEach(function(g, i) {
+        var label = g[0],
+          c = my.colormap(i)(1);
+        
+        if (label.length === 0) { label = ' '; }
+        if (g[1] <= 0) {
+          return;
+        }
+        label_elt.append('div')
+          .style('border-color', c)
+          .style('background-color', 
+              c.replace('rgb', 'rgba').replace(')', ', 0.2)'))
+          .text(label);
+      });
     };
     
     my.do_point = function(p) {
@@ -752,7 +774,7 @@ var S2 = function ($, d3) {
       my.stats_container.append('div')
         .attr('class', 'warning')
         .text('Stats code not (yet) thoroughly validated. Double-check values '+
-          'using a standalone stats package before publishing!');
+          'before publishing!');
     };
     
     pub.my = my;

@@ -186,7 +186,23 @@ p {
   margin-bottom: 1em;
 }
 
-/* line 103, ../../scss/screen.scss */
+/* line 102, ../../scss/screen.scss */
+#highlight_labels div {
+  float: left;
+  font-size: 80%;
+  padding: .1em .25em;
+  margin: 0.25em;
+  border: 1px solid;
+  border-radius: 4px;
+  white-space: pre;
+}
+
+/* line 112, ../../scss/screen.scss */
+#model_type {
+  clear: both;
+}
+
+/* line 116, ../../scss/screen.scss */
 #stats_data {
   display: inline;
   float: left;
@@ -197,17 +213,17 @@ p {
 * html #stats_data {
   overflow-x: hidden;
 }
-/* line 106, ../../scss/screen.scss */
+/* line 119, ../../scss/screen.scss */
 #stats_data th {
   width: 90px;
   text-align: right;
   font-style: italic;
 }
-/* line 112, ../../scss/screen.scss */
+/* line 125, ../../scss/screen.scss */
 #stats_data table {
   margin-bottom: 1em;
 }
-/* line 116, ../../scss/screen.scss */
+/* line 129, ../../scss/screen.scss */
 #stats_data .warning {
   display: inline;
   float: left;
@@ -221,7 +237,7 @@ p {
   overflow-x: hidden;
 }
 
-/* line 123, ../../scss/screen.scss */
+/* line 136, ../../scss/screen.scss */
 table#raw_data {
   display: inline;
   float: left;
@@ -233,13 +249,13 @@ table#raw_data {
 * html table#raw_data {
   overflow-x: hidden;
 }
-/* line 126, ../../scss/screen.scss */
+/* line 139, ../../scss/screen.scss */
 table#raw_data td {
   font-size: 80%;
   line-height: 1.42;
 }
 
-/* line 132, ../../scss/screen.scss */
+/* line 145, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;
