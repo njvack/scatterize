@@ -173,12 +173,14 @@ var S2 = function ($, d3) {
       .style('font-size', '14px')
       .append('svg:text');
       
-    pub.update = function(points, regression, xlabel, ylabel, groups) {
+    pub.update = function(points, regression, xlabel, ylabel, groups, 
+        model_type) {
       // maybe the only public function?
       
       my.set_points(points);
       my.set_regression(regression);
       my.set_groups(groups);
+      my.set_model_type(model_type);
       my.set_scales();
       my.draw_regression();
       my.draw_dots();
@@ -215,6 +217,10 @@ var S2 = function ($, d3) {
             .attr('id', 'point-group-'+i).node();
         }
       });
+    };
+    
+    my.set_model_type = function(mtype) {
+      my.model_type = mtype;
     };
     
     my.draw_dots = function() {
@@ -259,7 +265,15 @@ var S2 = function ($, d3) {
     };
     
     my.draw_regression = function() {
-      var x1, x2, line;
+      var x1, x2, line, model_line_attrs, line_attrs;
+      
+      model_line_attrs = {
+        'default': [['stroke-dasharray', 'none']],
+        'SR': [['stroke-dasharray', '10']]
+      };
+      
+      line_attrs = model_line_attrs[my.model_type] || 
+        model_line_attrs['default'];
       
       x1 = d3.min(my.xvals);
       x2 = d3.max(my.xvals);
@@ -278,6 +292,10 @@ var S2 = function ($, d3) {
         .attr('stroke', 'brown')
         .attr('stroke-width', 2)
         .attr('stroke-linecap', 'round');
+      
+      line_attrs.forEach(function(akv) {
+        line.attr(akv[0], akv[1]);
+      });
       
       line.transition()
         .duration(my.duration)
@@ -603,7 +621,8 @@ var S2 = function ($, d3) {
               data.regression_line,
               data.x_label,
               data.y_label,
-              data.group_list);
+              data.group_list,
+              data.model_type);
             my.stats_dashboard.update(data.stats_diagnostics);
           },
         'error': function() { console.log("Error?"); }
