@@ -554,6 +554,7 @@ var S2 = function ($, d3) {
     my.download_link = $(download_link);
     my.stats_dashboard = stats_dashboard;
     my.censored_points = [];
+    my.saved_censors = [];
     my.key = key_handler;
 
     my.populate_select = function(control, list, initial_index) {
@@ -583,7 +584,9 @@ var S2 = function ($, d3) {
       } else {
         my.censored_points.push(rownum);
       }
-      my.censored_points = my.censored_points.sort();
+      my.censored_points.sort(d3.ascending);
+      
+      my.saved_censors = []; // Clicking a point clears this list.
       pub.update_state();
     };
     
@@ -768,6 +771,18 @@ var S2 = function ($, d3) {
       }
     };
     
+    my.toggle_all_censors = function() {
+      console.log("Toggle all censors!");
+      if (my.saved_censors.length === 0) {
+        my.saved_censors = my.censored_points;
+        my.censored_points = [];
+      } else {
+        my.censored_points = my.saved_censors;
+        my.saved_censors = [];
+      }
+      pub.update_state();
+    };
+    
     my.set_keyboard_shortcuts = function() {
       my.key('j', function() { my.advance_select(my.y_control, false); });
       my.key('k', function() { my.advance_select(my.y_control, true); });
@@ -775,7 +790,8 @@ var S2 = function ($, d3) {
       my.key('i', function() { my.advance_select(my.x_control, true); });
       my.key('o', function() { my.advance_select(my.model_control, false); });
       my.key('p', function() { my.advance_select(my.model_control, true); });
-    }
+      my.key('c', function() { my.toggle_all_censors(); })
+    };
     my.set_keyboard_shortcuts();
     
     pub.my = my;
