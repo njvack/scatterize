@@ -351,6 +351,12 @@ class SpearmanStatsRunner(GenericStatsRunner):
         ry_name = "%s rank" % dv_name
         return [rx_name, ry_name]
 
+    def _estimate_regression_line(self, xvals, yvals):
+        const = np.ones_like(xvals)
+        mat = np.column_stack((const, xvals))
+        result = sm.OLS(yvals, mat).fit();
+        return {'const': result.params[0], 'slope': result.params[1]}
+
     def run(self):
         xy_points = self._modeled_data()
         good_rows = self._possible_rows()
@@ -390,6 +396,7 @@ class SpearmanStatsRunner(GenericStatsRunner):
         logger.debug(repr(weights.shape))
         xvals = ss.rankdata(iv)
         yvals = ss.rankdata(dv)
+        regression_line = self._estimate_regression_line(xvals, yvals)
         logger.debug(xvals)
         logger.debug(yvals)
         points = np.column_stack((row_ids, xvals, yvals, weights, groups))
@@ -403,6 +410,7 @@ class SpearmanStatsRunner(GenericStatsRunner):
             stats_diagnostics=self.diagnostics_list(),
             all_point_data=all_point_data.tolist(),
             all_point_cols=self._all_point_cols(),
+            regression_line=regression_line,
             group_list=group_data['group_list'],
             x_label=x_label,
             y_label=y_label,
