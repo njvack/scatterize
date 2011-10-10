@@ -7,6 +7,8 @@
 // Import all the default blueprint modules so that we can access their mixins.
 @import "blueprint";
 
+$help_highlight_color: #DD0;
+
 body {
   font-family: Corbel, Helvetica, sans-serif;
   padding-bottom: .5em;
@@ -107,6 +109,47 @@ p {
   border: 1px solid;
   border-radius: 4px;
   white-space: pre;
+}
+
+#help {
+  position: fixed;
+  background-color: black;
+  opacity: 0.85;
+  left: 30%;
+  width: 40%;
+  border-radius: 10px;
+  color: white;
+  display: none;
+  
+  #help_content {
+    padding: 1em;
+  }
+  
+  h2 {
+    float: left;
+  }
+  
+  h2.closer {
+    float: right;
+  }
+  
+  a {
+    color: $help_highlight_color;
+  }
+  
+  table {
+    clear: both;
+    margin-top: 2em;
+    margin-left: auto;
+    margin-right: auto;
+    code {
+      color: $help_highlight_color;
+      font-family: Consolas, monospace;
+    }
+    th {
+      text-align: right;
+    }
+  }
 }
 
 #model_type {

@@ -57,14 +57,14 @@ a img {
   border: none;
 }
 
-/* line 10, ../../scss/screen.scss */
+/* line 12, ../../scss/screen.scss */
 body {
   font-family: Corbel, Helvetica, sans-serif;
   padding-bottom: .5em;
   background-color: #BCF;
 }
 
-/* line 16, ../../scss/screen.scss */
+/* line 18, ../../scss/screen.scss */
 #header {
   text-align: center;
   background-color: #FFF;
@@ -73,7 +73,7 @@ body {
   border-bottom: 1px solid #999;
 }
 
-/* line 24, ../../scss/screen.scss */
+/* line 26, ../../scss/screen.scss */
 #wrapper {
   width: 950px;
   margin: 0 auto;
@@ -87,7 +87,7 @@ body {
   background-color: #FFF;
 }
 
-/* line 35, ../../scss/screen.scss */
+/* line 37, ../../scss/screen.scss */
 .single_col {
   display: inline;
   float: left;
@@ -100,7 +100,7 @@ body {
   overflow-x: hidden;
 }
 
-/* line 40, ../../scss/screen.scss */
+/* line 42, ../../scss/screen.scss */
 #scatter_frame {
   display: inline;
   float: left;
@@ -113,7 +113,7 @@ body {
   overflow-x: hidden;
 }
 
-/* line 45, ../../scss/screen.scss */
+/* line 47, ../../scss/screen.scss */
 #save_form {
   font-size: 80%;
   float: right;
@@ -122,7 +122,7 @@ body {
   right: 10px;
 }
 
-/* line 53, ../../scss/screen.scss */
+/* line 55, ../../scss/screen.scss */
 #scatter_controls {
   display: inline;
   float: left;
@@ -133,17 +133,17 @@ body {
 * html #scatter_controls {
   overflow-x: hidden;
 }
-/* line 56, ../../scss/screen.scss */
+/* line 58, ../../scss/screen.scss */
 #scatter_controls ul, #scatter_controls ol {
   list-style: none;
 }
-/* line 60, ../../scss/screen.scss */
+/* line 62, ../../scss/screen.scss */
 #scatter_controls li {
   padding-top: 0.25em;
   padding-bottom: 0.25em;
   clear: both;
 }
-/* line 64, ../../scss/screen.scss */
+/* line 66, ../../scss/screen.scss */
 #scatter_controls li .l {
   display: inline;
   float: left;
@@ -151,42 +151,42 @@ body {
   width: 18px;
   text-align: right;
 }
-/* line 71, ../../scss/screen.scss */
+/* line 73, ../../scss/screen.scss */
 #scatter_controls li label {
   display: inline;
   float: left;
   margin-right: 0;
   width: 169px;
 }
-/* line 79, ../../scss/screen.scss */
+/* line 81, ../../scss/screen.scss */
 #scatter_controls select {
   max-width: 100%;
 }
-/* line 83, ../../scss/screen.scss */
+/* line 85, ../../scss/screen.scss */
 #scatter_controls .disallowed {
   color: GrayText;
 }
 
-/* line 86, ../../scss/screen.scss */
+/* line 88, ../../scss/screen.scss */
 h1 {
   font-size: 183%;
   margin-top: .3em;
   margin-bottom: .3em;
 }
 
-/* line 92, ../../scss/screen.scss */
+/* line 94, ../../scss/screen.scss */
 h3 {
   font-weight: bold;
   color: #333;
 }
 
-/* line 97, ../../scss/screen.scss */
+/* line 99, ../../scss/screen.scss */
 p {
   margin-top: 1em;
   margin-bottom: 1em;
 }
 
-/* line 102, ../../scss/screen.scss */
+/* line 104, ../../scss/screen.scss */
 #highlight_labels div {
   float: left;
   font-size: 80%;
@@ -197,12 +197,56 @@ p {
   white-space: pre;
 }
 
-/* line 112, ../../scss/screen.scss */
+/* line 114, ../../scss/screen.scss */
+#help {
+  position: fixed;
+  background-color: black;
+  opacity: 0.85;
+  left: 30%;
+  width: 40%;
+  border-radius: 10px;
+  color: white;
+  display: none;
+}
+/* line 124, ../../scss/screen.scss */
+#help #help_content {
+  padding: 1em;
+}
+/* line 128, ../../scss/screen.scss */
+#help h2 {
+  float: left;
+}
+/* line 132, ../../scss/screen.scss */
+#help h2.closer {
+  float: right;
+}
+/* line 136, ../../scss/screen.scss */
+#help a {
+  color: #dddd00;
+}
+/* line 140, ../../scss/screen.scss */
+#help table {
+  clear: both;
+  margin-top: 2em;
+  margin-left: auto;
+  margin-right: auto;
+}
+/* line 145, ../../scss/screen.scss */
+#help table code {
+  color: #dddd00;
+  font-family: Consolas, monospace;
+}
+/* line 149, ../../scss/screen.scss */
+#help table th {
+  text-align: right;
+}
+
+/* line 155, ../../scss/screen.scss */
 #model_type {
   clear: both;
 }
 
-/* line 116, ../../scss/screen.scss */
+/* line 159, ../../scss/screen.scss */
 #stats_data {
   display: inline;
   float: left;
@@ -213,17 +257,17 @@ p {
 * html #stats_data {
   overflow-x: hidden;
 }
-/* line 119, ../../scss/screen.scss */
+/* line 162, ../../scss/screen.scss */
 #stats_data th {
   width: 90px;
   text-align: right;
   font-style: italic;
 }
-/* line 125, ../../scss/screen.scss */
+/* line 168, ../../scss/screen.scss */
 #stats_data table {
   margin-bottom: 1em;
 }
-/* line 129, ../../scss/screen.scss */
+/* line 172, ../../scss/screen.scss */
 #stats_data .warning {
   display: inline;
   float: left;
@@ -237,7 +281,7 @@ p {
   overflow-x: hidden;
 }
 
-/* line 136, ../../scss/screen.scss */
+/* line 179, ../../scss/screen.scss */
 table#raw_data {
   display: inline;
   float: left;
@@ -249,13 +293,13 @@ table#raw_data {
 * html table#raw_data {
   overflow-x: hidden;
 }
-/* line 139, ../../scss/screen.scss */
+/* line 182, ../../scss/screen.scss */
 table#raw_data td {
   font-size: 80%;
   line-height: 1.42;
 }
 
-/* line 145, ../../scss/screen.scss */
+/* line 188, ../../scss/screen.scss */
 td {
   padding-left: 0.5em;
   padding-right: 0.5em;

@@ -16,6 +16,33 @@
   {%- include "_header.html" %}
   <div id="wrapper">
   {% block content %}{% endblock %}
+    <div id="help">
+      <div id="help_content">
+        <h2>Keyboard shortcuts</h2>
+        <h2 class="closer"><a href="" class="close">Close</a></h2>
+        <table>
+          <tr>
+            <th><code>j</code> / <code>k</code></th>
+            <td>: Change Y axis variable</td>
+          </tr>
+          <tr>
+            <th><code>u</code> / <code>i</code></th>
+            <td>: Change X axis variable</td>
+          </tr>
+          <tr>
+            <th><code>o</code> / <code>p</code></th>
+            <td>: Change model</td>
+          </tr>
+          <tr>
+            <th><code>c</code></th>
+            <td>: Toggle data censoring</td>
+          </tr>
+        </table>
+      </div>
+    </div>
   </div>
+  <script type="text/javascript">
+  S2.help_control('#help', '#show_help', key);
+  </script>
 </body>
 </html>
