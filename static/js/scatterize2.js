@@ -872,7 +872,7 @@ var S2 = function ($, d3) {
     
     function show_help_container() {
       my.container.css('display', 'block');
-    };
+    }
     
     function toggle_help_container() {
       if (my.container.css('display') === 'block') {
@@ -890,12 +890,13 @@ var S2 = function ($, d3) {
       my.header_link.bind('click', function(ev) {
         toggle_help_container();
         ev.preventDefault();
-      })
+      });
       my.key('shift+/, ?', function() { show_help_container(); });
       my.key('esc', function() { hide_help_container(); });
     }
+    
     setup_container();
-  }
+  };
   
   return S_my;
 }(jQuery, d3);
