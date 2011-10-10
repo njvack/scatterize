@@ -514,7 +514,7 @@ var S2 = function ($, d3) {
         .enter().append('svg:clipPath')
           .attr('id', function(d, i) { return 'target-clip-'+i; })
         .append('svg:circle')
-          .attr('r', 20)
+          .attr('r', 32)
           .attr('cx', function(d) { return d[0]; })
           .attr('cy', function(d) { return d[1]; })
           .style('stroke-opacity', 0)
