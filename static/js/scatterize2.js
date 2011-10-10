@@ -874,13 +874,21 @@ var S2 = function ($, d3) {
       my.container.css('display', 'block');
     };
     
+    function toggle_help_container() {
+      if (my.container.css('display') === 'block') {
+        my.container.css('display', '');
+      } else {
+        my.container.css('display', 'block');
+      }
+    }
+    
     function setup_container() {
       my.container.find('a.close').bind('click', function(ev) {
         hide_help_container();
         ev.preventDefault();
       });
       my.header_link.bind('click', function(ev) {
-        show_help_container();
+        toggle_help_container();
         ev.preventDefault();
       })
       my.key('shift+/, ?', function() { show_help_container(); });
