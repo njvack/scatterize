@@ -555,13 +555,14 @@ var S2 = function ($, d3) {
   };
   
   S_my.state_manager = function(
-      regress_js_url, regress_csv_url, columns, scatterplot,
+      regress_js_url, regress_csv_url, asset_tag, columns, scatterplot,
       x_control, y_control, highlight_control, nuisance_list, model_control,
       download_link, stats_dashboard, key_handler) {
     var pub = {}, my = {};
     
     my.base_url = regress_js_url;
     my.regress_csv_url = regress_csv_url;
+    my.asset_tag = asset_tag;
     my.columns = columns;
     my.scatterplot = scatterplot;
     my.x_control = $(x_control);
@@ -757,7 +758,9 @@ var S2 = function ($, d3) {
     };
     
     pub.json_url = function() {
-      return $.param.querystring(my.base_url, $.bbq.getState(), 2);
+      var s = $.bbq.getState();
+      s.at = my.asset_tag;
+      return $.param.querystring(my.base_url, s, 2);
     };
     
     pub.csv_url = function() {

@@ -33,6 +33,9 @@ add_url_helpers(app)
 statsrunner.logger = app.logger
 statsfile.logger = app.logger
 
+@app.before_request
+def before_request():
+    g.asset_tag = settings.ASSET_TIME
 
 @app.route("/")
 def index():
@@ -98,7 +101,10 @@ def regress_js(filehash):
     # Trim a couple things from the result -- won't need 'em
     del result['all_point_data']
     del result['all_point_cols']
-    return flask.jsonify(result)
+    http_result = flask.jsonify(result)
+    http_result.headers['Cache-Control'] = 'max-age=300000000,public'
+    http_result.headers['Expires'] = '31 December 2037 23:59:59 GMT'
+    return http_result
 
 
 @app.route("/d/<filehash>/regress.csv")

@@ -72,6 +72,7 @@ var Sdata = {};
     Sdata.state_manager = S2.state_manager(
       '{{url_for("regress_js", filehash=g.filehash)}}',
       '{{url_for("regress_csv", filehash=g.filehash)}}',
+      '{{ g.asset_tag }}',
       columns,
       Sdata.scatterplot,
       '#x_col',
