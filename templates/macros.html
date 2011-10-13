@@ -5,7 +5,3 @@
 {% macro js_include(filename, media="all") -%}
 <script type="text/javascript" src="{{ url_for('static', filename='js/%s' % filename)}}"> </script>
 {%- endmacro %}
-
-{% macro wackytimes() -%}
-{{ bazola() }}
-{%- endmacro %}
