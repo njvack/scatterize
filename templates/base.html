@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 {%- import "macros.html" as macros with context %}
-<html>
+<html lang="en">
 <head>
+  <meta http-equiv="X-UA-Compatible" content="chrome=IE8">
   <title>Scatterize!</title>
+  <script type="text/javascript" 
+     src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
   {{ macros.css_link("screen.css") }}
   {{ macros.js_include("jquery-1.6.1.min.js") }}
   {{ macros.js_include("jquery.ba-bbq.js") }}
@@ -42,6 +45,7 @@
     </div>
   </div>
   <script type="text/javascript">
+  CFInstall.check();
   S2.help_control('#help', '#show_help', key);
   </script>
 </body>
