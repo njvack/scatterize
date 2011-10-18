@@ -479,12 +479,12 @@ var S2 = function ($, d3) {
         .attr('stroke', 'black');
         
       y_super.append('svg:g')
-        .attr('transform', 'translate(30, 0)')
+        .attr('transform', 'translate(15, 0)')
         .append('svg:text');
         
       y_super.select('text')
         .text(function(d) { return d.y.toFixed(2);})
-        .style('text-anchor', 'left')
+        .style('text-anchor', 'start')
         .style('dominant-baseline', 'middle');
       
       y_super.exit()
