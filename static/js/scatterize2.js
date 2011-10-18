@@ -1,4 +1,9 @@
 /*jslint devel: true, browser: true, white: true, maxerr: 50, indent: 4 */
+if (!('console' in window && 'log' in window.console)) {
+  window.console = {};
+  window.console.log = function() {};
+}
+
 var S2 = function ($, d3) {
   "use strict";
   var S_my = {};
