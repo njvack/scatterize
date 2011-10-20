@@ -77,9 +77,13 @@ def scatter_frame(filehash):
     file_handler = CSVFileHandler(settings.STORAGE_DIR)
     try:
         stats_data = file_handler.load_file(filehash)
-    except Exception as e:
-        print repr(e)
+    except IOError as ioe:
+        app.logger.info(repr(ioe))
         flask.abort(404)
+    except Exception as e:
+        app.logger.warn(repr(e))
+        return flask.make_response(
+            flask.render_template('error_500.html'), 500)
     g.column_names = stats_data.column_names
     g.rows = stats_data.data_list
 

@@ -53,7 +53,7 @@ class CSVFileHandler(object):
             column_names = dl[self.header_idx]
             data_list = dl[skip_header:]
             floated = [[float_or_nan(v) for v in row] for row in data_list]
-            data_array = np.array(floated)
+            data_array = np.array(floated, dtype=float)
 
             return StatsData(
                 file_hash=file_hash,
