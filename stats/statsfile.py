@@ -21,6 +21,13 @@ import logging
 logger = logging.getLogger("statsrunner")
 
 
+def float_or_nan(num_str):
+    try:
+        return float(num_str)
+    except:
+        return np.nan
+
+
 class CSVFileHandler(object):
     """
     Handles reading and writing (and hash generation) CSV files.
@@ -45,9 +52,8 @@ class CSVFileHandler(object):
             dl = list(reader)
             column_names = dl[self.header_idx]
             data_list = dl[skip_header:]
-            f.seek(0)
-            data_array = np.genfromtxt(
-                f, delimiter=self.np_delimiter, skip_header=skip_header)
+            floated = [[float_or_nan(v) for v in row] for row in data_list]
+            data_array = np.array(floated)
 
             return StatsData(
                 file_hash=file_hash,
@@ -60,8 +66,9 @@ class CSVFileHandler(object):
         Save a file to storage_dir, naming it with a hash determined from the
         file's contents.
         """
-        lines = infile.read().splitlines()
-        dialect = csv.Sniffer().sniff("\n".join(lines[0:sniff_lines]))
+        infile_data = infile.read()
+        lines = infile_data.splitlines()
+        dialect = csv.Sniffer().sniff("\n".join(lines))
         reader = csv.reader(lines, dialect=dialect)
         data_list = list(reader)
         full_hash = self._hash_for_list(data_list)
