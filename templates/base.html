@@ -45,7 +45,7 @@
     </div>
   </div>
   <script type="text/javascript">
-  if (!!document.createElementNS && !!document.createElementNS('http://www.w3.org/2000/svg', "svg").createSVGRect) {
+  if (!(!!document.createElementNS && !!document.createElementNS('http://www.w3.org/2000/svg', "svg").createSVGRect)) {
     // Check for Chrome Frame if we don't support SVG.
     CFInstall.check();
   }
