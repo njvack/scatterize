@@ -144,10 +144,10 @@ class ParametricStatsRunner(GenericStatsRunner):
     def _all_point_cols(self, nonzero_column_mask):
         params = self.regression_params
         column_names = self.stats_data.column_names
+        dv_name = 'dv_%s' % column_names[params.dv_idx]
+        plot_cols = ['rowid', 'x', 'y', 'weight', 'group', dv_name]
 
-        plot_cols = ['rowid', 'x', 'y', 'weight', 'group']
-
-        dm_cols = ['const', 'iv_%s' % column_names[params.iv_idx]]
+        dm_cols = ['const', ('iv_%s' % column_names[params.iv_idx])]
         for i, n_idx in enumerate(params.nuis_idxs):
             dm_cols.append(
                 "nuis_%s_%s" % (i, column_names[n_idx]))
