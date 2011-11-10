@@ -87,7 +87,7 @@ class GenericStatsRunner(object):
             'group_array': ar}
 
         idx = self.regression_params.highlight_idx
-        if (idx):
+        if (idx is not None):
             highlight_data = [row[idx] for row in self.stats_data.data_list]
             grouper = PointGrouper(highlight_data, good_rows)
             output['group_list'] = grouper.group_list()
