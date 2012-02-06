@@ -283,7 +283,7 @@ class RLMStatsRunner(ParametricStatsRunner):
         return self.result.weights
 
     def _make_model(self, endog, exog):
-        return sm.RLM(endog, exog, M=sm.robust.norms.HuberT())
+        return sm.RLM(endog, exog, M=sm.robust.norms.TukeyBiweight())
 
     def diagnostics_list(self):
         mr = self.result
