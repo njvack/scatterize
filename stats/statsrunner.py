@@ -242,10 +242,10 @@ class  OLSStatsRunner(ParametricStatsRunner):
         diags = []
         diags.append({'title': 'Model fit',
             'data': [
-                ['Rsq', json_float(mr.rsquared)],
-                ['RsqAdj', json_float(mr.rsquared_adj)],
-                ['F', json_float(mr.fvalue)],
-                ['p', json_float(mr.f_pvalue)],
+                #['Rsq', json_float(mr.rsquared)],
+                #['RsqAdj', json_float(mr.rsquared_adj)],
+                #['F', json_float(mr.fvalue)],
+                #['p', json_float(mr.f_pvalue)],
                 ['n', int(mr.nobs)],
                 ['df', json_float(mr.df_resid)]]})
 
