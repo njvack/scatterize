@@ -11,7 +11,7 @@
 from collections import defaultdict
 import numpy as np
 from scipy import stats as ss
-import scikits.statsmodels.api as sm
+import statsmodels.api as sm
 
 import settings
 from utils import json_float
