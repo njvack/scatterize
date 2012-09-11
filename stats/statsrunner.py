@@ -223,7 +223,7 @@ class ParametricStatsRunner(GenericStatsRunner):
             model_type=params.model_type)
 
 
-class  OLSStatsRunner(ParametricStatsRunner):
+class OLSStatsRunner(ParametricStatsRunner):
 
     def __init__(self, stats_data, regression_params):
         super(OLSStatsRunner, self).__init__(stats_data, regression_params)
