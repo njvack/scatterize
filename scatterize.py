@@ -81,7 +81,7 @@ def scatter_frame(filehash):
         app.logger.info(repr(ioe))
         flask.abort(404)
     except Exception as e:
-        app.logger.warn(repr(e))
+        app.logger.exception(e)
         return flask.make_response(
             flask.render_template('error_500.html'), 500)
     g.column_names = stats_data.column_names
