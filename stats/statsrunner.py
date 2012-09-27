@@ -12,6 +12,7 @@ from collections import defaultdict
 import numpy as np
 from scipy import stats as ss
 import statsmodels.api as sm
+import pandas
 
 import settings
 from utils import json_float
@@ -61,6 +62,10 @@ class RegressionParams(object):
     def modeled_idxs(self):
         return [self.dv_idx, self.iv_idx] + self.nuis_idxs
 
+    @property
+    def design_matrix_idxs(self):
+        return [self.idx] + self.nuis_idxs
+
 
 def get_stats_runner(stats_data, regression_params):
     model_runners = {
@@ -77,6 +82,7 @@ class GenericStatsRunner(object):
 
     def __init__(self, stats_data, regression_params):
         self.stats_data = stats_data
+        self.dataframe = stats_data.dataframe
         self.regression_params = regression_params
         super(GenericStatsRunner, self).__init__()
 
@@ -96,38 +102,44 @@ class GenericStatsRunner(object):
         return output
 
     def _row_id_array(self):
-        return np.arange(self.stats_data.data_array.shape[0])
+        return self.dataframe.index
 
-    def _non_censored_mask(self):
-        data = self.stats_data.data_array
-        params = self.regression_params
-        mask = np.ones((data.shape[0]), dtype=bool)
-        mask[params.censor_idxs] = False
-        return mask
+    #def _non_censored_mask(self):
+    #    data = self.stats_data.data_array
+    #    params = self.regression_params
+    #    mask = np.ones((data.shape[0]), dtype=bool)
+    #    mask[params.censor_idxs] = False
+    #    return mask
+
+    def data_by_column_index(self, indexes):
+        cols = self.stats_data.dataframe.columns[indexes]
+        return self.stats_data.dataframe[cols]
 
 
 class ParametricStatsRunner(GenericStatsRunner):
 
     def _build_design_matrix(self):
-        data = self.stats_data.data_array
-        logger.debug(data.shape)
         params = self.regression_params
-        iv = data[:, params.iv_idx]
-        const = np.ones_like(iv)
-        nuisances = data[:, params.nuis_idxs]
-        censors = self._build_censor_array()
-        logger.debug("Const shape: %s" % const.shape)
-        logger.debug("IV shape: %s" % iv.shape)
-        logger.debug("nuis shape: %s" % str(nuisances.shape))
-        logger.debug("censor shape: %s" % str(censors.shape))
-        return np.column_stack((const, iv, nuisances, censors))
+        exog_frame = self.data_by_column_index([params.iv_idx] + params.nuis_idxs)
+        exog_frame['const'] = 1
+        logger.debug(exog_frame)
+        return exog_frame
+        #iv = data[:, params.iv_idx]
+        #const = np.ones_like(iv)
+        #nuisances = data[:, params.nuis_idxs]
+        #censors = self._build_censor_array()
+        #logger.debug("Const shape: %s" % const.shape)
+        #logger.debug("IV shape: %s" % iv.shape)
+        #logger.debug("nuis shape: %s" % str(nuisances.shape))
+        #logger.debug("censor shape: %s" % str(censors.shape))
+        #return np.column_stack((const, iv, nuisances, censors))
 
-    def _design_matrix_allowable_rows(self):
-        data = self.stats_data.data_array
-        params = self.regression_params
-        modeled_data = data[:, params.modeled_idxs]
-        possible_rows = np.all(np.isfinite(modeled_data), axis=1)
-        return possible_rows
+    #def _design_matrix_allowable_rows(self):
+    #    data = self.stats_data.data_array
+    #    params = self.regression_params
+    #    modeled_data = data[:, params.modeled_idxs]
+    #    possible_rows = np.all(np.isfinite(modeled_data), axis=1)
+    #    return possible_rows
 
     def _build_censor_array(self):
         data = self.stats_data.data_array
@@ -170,23 +182,36 @@ class ParametricStatsRunner(GenericStatsRunner):
         return [xl, yl]
 
     def run(self):
-        data = self.stats_data.data_array
+        dataframe = self.dataframe
         params = self.regression_params
-        dv = data[:, params.dv_idx]
-        iv = data[:, params.iv_idx]
-        dm = self._build_design_matrix()
-        include_rows = self._design_matrix_allowable_rows()
-        logger.debug(include_rows)
-        dm_filtered = dm[include_rows]
-        dv_filtered = dv[include_rows]
-        iv_filtered = iv[include_rows]
-        include_cols = self._nonzero_column_mask(dm_filtered)
-        dm_to_run = dm_filtered[:, include_cols]
-        logger.debug("DM shape: %s, row filter: %s, col filter: %s" %(
-            dm.shape, dm_filtered.shape, dm_to_run.shape))
-
-        result = self._make_model(dv_filtered, dm_to_run).fit()
-        self.include_cols = include_cols
+        endog = self.data_by_column_index([params.dv_idx])
+        #iv = self.data_by_column_index(params.iv_idx)
+        #iv = dataframe[self.columns_by_index(params.iv_idx)]
+        #dv = dataframe.values[:, params.dv_idx]
+        #iv = dataframe.values[:, params.iv_idx]
+        exog = self._build_design_matrix()
+        combined = endog.combine_first(exog)
+        valids = pandas.notnull(combined).min(axis=1)
+        endog_to_use = endog[valids]
+        exog_to_use = exog[valids]
+        self.used_indexes = endog_to_use.index
+        logger.debug(endog_to_use)
+        logger.debug(exog_to_use)
+        #include_rows = self._design_matrix_allowable_rows()
+        #logger.debug(include_rows)
+        #dm_filtered = dm[include_rows]
+        #dv_filtered = dv[include_rows]
+        #iv_filtered = iv[include_rows]
+        #include_cols = self._nonzero_column_mask(dm_filtered)
+        #dm_to_run = dm_filtered[:, include_cols]
+        #logger.debug("DM shape: %s, row filter: %s, col filter: %s" %(
+        #    dm.shape, dm_filtered.shape, dm_to_run.shape))
+        #
+        self.endog = endog
+        self.exog = exog
+        result = self._make_model(endog_to_use, exog_to_use).fit()
+        self.valids = valids
+        #self.include_cols = valids
         self.result = result
 
     def to_dict(self):
@@ -197,13 +222,13 @@ class ParametricStatsRunner(GenericStatsRunner):
         xvals = mr.model.exog[:, 1]
         yvals = mr.params[0] + xvals*mr.params[1] + mr.resid
 
-        good_rows = self._design_matrix_allowable_rows()
-        rowids = self._row_id_array()[good_rows]
-        group_data = self._group_data(good_rows)
-
-        groups = group_data['group_array'][good_rows]
+        #good_rows = self._design_matrix_allowable_rows()
+        #rowids = self._row_id_array()[good_rows]
+        group_data = self._group_data(self.valids)
+        weights = np.ones_like(xvals)
+        groups = group_data['group_array'][self.valids]
         points = np.column_stack(
-            (rowids, xvals, yvals, self.weights(), groups))
+            (self.endog[self.valids].index, xvals, yvals, weights, groups))
 
         all_point_data = np.column_stack((
             points, mr.model.endog, mr.model.exog))
@@ -215,7 +240,7 @@ class ParametricStatsRunner(GenericStatsRunner):
             points=points.tolist(),
             stats_diagnostics=self.diagnostics_list(),
             all_point_data=all_point_data.tolist(),
-            all_point_cols=self._all_point_cols(self.include_cols),
+            #all_point_cols=[],
             regression_line=regression_line,
             group_list=group_data['group_list'],
             x_label=x_label,
@@ -232,6 +257,7 @@ class OLSStatsRunner(ParametricStatsRunner):
         return sm.OLS(endog, exog)
 
     def weights(self):
+        return np.ones_like(self.used_indexes)
         all_weights = self._non_censored_mask()
         weights = all_weights[self._design_matrix_allowable_rows()]
         return weights
@@ -385,7 +411,7 @@ class SpearmanStatsRunner(GenericStatsRunner):
         params = self.regression_params
         result = self.result
         good_rows = self._possible_rows()
-        row_ids = self._row_id_array()[good_rows]
+        row_ids = self.valids.index
         group_data = self._group_data(good_rows)
 
         groups = group_data['group_array'][good_rows]
@@ -401,7 +427,6 @@ class SpearmanStatsRunner(GenericStatsRunner):
         logger.debug(yvals)
         points = np.column_stack((row_ids, xvals, yvals, weights, groups))
         all_point_data = np.column_stack((points, iv, dv))
-        logger.debug(self._all_point_cols)
         col_names = self._all_point_cols()
         x_label, y_label = self._x_y_labels()
 

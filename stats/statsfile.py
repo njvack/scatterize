@@ -2,7 +2,7 @@
 # Part of scatterize -- a statistical exploration tool
 #
 # Copyright (c) 2011 Board of Regents of the University of Wisconsin System
-# 
+#
 # scatterize is licensed under the GPLv3 -- see LICENSE for details.
 #
 # Written by Nathan Vack <njvack@wisc.edu> at the Waisman Laborotory
@@ -16,6 +16,7 @@ import csv
 import hashlib
 import base64
 import numpy as np
+import pandas
 
 import logging
 logger = logging.getLogger("statsrunner")
@@ -32,13 +33,13 @@ class CSVFileHandler(object):
     """
     Handles reading and writing (and hash generation) CSV files.
     """
-    
+
     def __init__(self, storage_dir):
         self.storage_dir = storage_dir
         self.header_idx = 0
         self.write_dialect = 'excel' # We could change this, but it's... tricky
         self.np_delimiter = ','
-    
+
     def load_file(self, file_hash):
         """
         Given a hash, read a file and generate a numpy array and everything.
@@ -48,19 +49,12 @@ class CSVFileHandler(object):
         logger.debug("CSVFileHandler: Loading %s" % filename)
         skip_header = self.header_idx+1
         with open(filename, 'rt') as f:
-            reader = csv.reader(f, dialect=self.write_dialect)
-            dl = list(reader)
-            column_names = dl[self.header_idx]
-            data_list = dl[skip_header:]
-            floated = [[float_or_nan(v) for v in row] for row in data_list]
-            data_array = np.array(floated, dtype=float)
+            dataframe = pandas.read_csv(f)
 
             return StatsData(
                 file_hash=file_hash,
-                column_names=column_names,
-                data_list=data_list,
-                data_array=data_array)
-            
+                dataframe=dataframe)
+
     def save_upload(self, infile, hash_len, sniff_lines):
         """
         Save a file to storage_dir, naming it with a hash determined from the
@@ -85,7 +79,7 @@ class CSVFileHandler(object):
 
     def file_path(self, file_hash):
         return os.path.join(self.storage_dir, file_hash)+".csv"
-    
+
     def _hash_for_list(self, data_list):
         h = hashlib.sha1()
         h.update(str(data_list))
@@ -93,7 +87,7 @@ class CSVFileHandler(object):
 
     def _file_exists(self, file_hash):
         return os.path.isfile(self.file_path(file_hash))
-    
+
     def _get_short_hash(self, long_hash, starting_length):
         short_hash = ''
         for hash_len in range(starting_length, len(long_hash)):
@@ -117,10 +111,9 @@ class CSVFileHandler(object):
 
 
 class StatsData(object):
-    def __init__(self, file_hash, column_names=None, data_list=None, 
-        data_array=None):
-        
+    def __init__(self, file_hash, dataframe):
+
         self.file_hash = file_hash
-        self.column_names = column_names
-        self.data_list = data_list
-        self.data_array = data_array
+        self.dataframe = dataframe
+        self.column_names = list(dataframe.columns)
+        self.data_list = dataframe.values

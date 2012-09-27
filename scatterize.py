@@ -105,7 +105,7 @@ def regress_js(filehash):
 
     # Trim a couple things from the result -- won't need 'em
     del result['all_point_data']
-    del result['all_point_cols']
+    #del result['all_point_cols']
     http_result = flask.jsonify(result)
     http_result.headers['Cache-Control'] = 'max-age=300000000,public'
     http_result.headers['Expires'] = '31 December 2037 23:59:59 GMT'
