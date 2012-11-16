@@ -437,12 +437,12 @@ class PointGrouper(object):
             And
             """
             return ((len(key) == 0), key)
-        
+
         group_counts = defaultdict(int) # Defaults to zero
         for i, k in enumerate(self.stripped_keys):
             if self.good_rows[i]:
                 group_counts[k] += 1
-        
+
         group_names = sorted(set(self.stripped_keys), key=sort_fx)
         return [[g, group_counts[g]] for g in group_names]
 
