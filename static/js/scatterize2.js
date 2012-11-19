@@ -561,8 +561,8 @@ var S2 = function ($, d3) {
   
   S_my.state_manager = function(
       regress_js_url, regress_csv_url, asset_tag, columns, scatterplot,
-      x_control, y_control, highlight_control, nuisance_list, model_control,
-      download_link, stats_dashboard, key_handler) {
+      x_control, y_control, filter_control, highlight_control, nuisance_list,
+	  model_control, download_link, stats_dashboard, key_handler) {
     var pub = {}, my = {};
     
     my.base_url = regress_js_url;
@@ -572,6 +572,7 @@ var S2 = function ($, d3) {
     my.scatterplot = scatterplot;
     my.x_control = $(x_control);
     my.y_control = $(y_control);
+	my.filter_control = $(filter_control);
     my.highlight_control = $(highlight_control);
     my.nuisance_list = $(nuisance_list);
     my.model_control = $(model_control);
@@ -636,7 +637,7 @@ var S2 = function ($, d3) {
     };
     
     pub.update_state = function() {
-      var opts, xy_ints, nuisance_ids, highlight_idx, nuisance_list,
+      var opts, xy_ints, nuisance_ids, highlight_idx, filter_idx, nuisance_list,
         censor_list;
       opts = {
         'x' : my.x_control.val(),
@@ -650,13 +651,19 @@ var S2 = function ($, d3) {
       if (highlight_idx !== "") {
         opts.h = highlight_idx;
       }
+
+	  filter_idx = my.filter_control.val();
+	  if (filter_idx !== "") {
+		  opts.f = filter_idx;
+	  }
+
       nuisance_list = nuisance_ids.join(",");
       if (nuisance_list !== '') { opts.n = nuisance_list; }
       censor_list = my.censored_points.join(",");
       if (censor_list !== '') { opts.c = censor_list; }
       $.bbq.pushState(opts, 2);
     };
-    
+
     pub.x_var_name = function() {
       var xidx = parseInt(my.x_control.val(), 10);
       return columns[xidx];
@@ -751,6 +758,7 @@ var S2 = function ($, d3) {
       cur_state = $.bbq.getState();
       my.x_control.val(cur_state.x);
       my.y_control.val(cur_state.y);
+	  my.filter_control.val(cur_state.f || "");
       my.highlight_control.val(cur_state.h || "");
       my.model_control.val(cur_state.m);
       my.populate_nuisance_lists();
@@ -774,6 +782,7 @@ var S2 = function ($, d3) {
     
     my.x_control.change(function() { pub.update_state(); });
     my.y_control.change(function() { pub.update_state(); });
+	my.filter_control.change(function() { pub.update_state(); });
     my.highlight_control.change(function() { pub.update_state(); });
     my.model_control.change(function() { pub.update_state(); });
     
