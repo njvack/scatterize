@@ -27,7 +27,7 @@ class RegressionParams(object):
     """
 
     def __init__(self, model_type, dv_idx, iv_idx, nuis_idxs, highlight_idx,
-        censor_idxs):
+        censor_idxs, filter_idx):
 
         self.model_type = model_type
         self.dv_idx = dv_idx
@@ -35,6 +35,7 @@ class RegressionParams(object):
         self.nuis_idxs = nuis_idxs
         self.highlight_idx = highlight_idx
         self.censor_idxs = censor_idxs
+        self.filter_idx = filter_idx
 
     @classmethod
     def build_from_flask_args(cls, args):
@@ -52,10 +53,14 @@ class RegressionParams(object):
 
         mtype = args.get("m", "OLS")
         highlight_idx = args.get("h", None)
+        filter_idx = args.get("f", None)
+        if filter_idx:
+            filter_idx = int(filter_idx)
         if highlight_idx is not None:
             highlight_idx = int(highlight_idx)
 
-        return cls(mtype, y_idx, x_idx, nuis_idxs, highlight_idx, censor_idxs)
+        return cls(mtype, y_idx, x_idx, nuis_idxs, highlight_idx, censor_idxs, 
+            filter_idx)
 
     @property
     def modeled_idxs(self):
@@ -94,6 +99,20 @@ class GenericStatsRunner(object):
             output['group_array'] = grouper.group_array()
 
         return output
+    
+    def _filter_mask(self):
+        """
+        Returns a boolean mask of rows where the specified column is not blank,
+        0, or "."
+        """
+        exclude = set(("", "0", "."))
+        mask = np.ones(len(self.stats_data.data_list), dtype=np.bool)
+        idx = self.regression_params.filter_idx
+        if idx is not None:
+            vals = [str(row[idx]).strip() for row in self.stats_data.data_list]
+            mask = np.array([val not in exclude for val in vals])
+        logger.debug(mask)
+        return mask
 
     def _row_id_array(self):
         return np.arange(self.stats_data.data_array.shape[0])
@@ -126,8 +145,9 @@ class ParametricStatsRunner(GenericStatsRunner):
         data = self.stats_data.data_array
         params = self.regression_params
         modeled_data = data[:, params.modeled_idxs]
+        filter_mask = self._filter_mask()
         possible_rows = np.all(np.isfinite(modeled_data), axis=1)
-        return possible_rows
+        return np.logical_and(possible_rows, filter_mask)
 
     def _build_censor_array(self):
         data = self.stats_data.data_array
@@ -330,8 +350,9 @@ class SpearmanStatsRunner(GenericStatsRunner):
         return np.column_stack((xvals, yvals))
 
     def _possible_rows(self):
+        filter_mask = self._filter_mask()
         possible_rows = np.all(np.isfinite(self._modeled_data()), axis=1)
-        return possible_rows
+        return np.logical_and(possible_rows, filter_mask)
 
     def _all_point_cols(self):
         column_names = self.stats_data.column_names
@@ -437,12 +458,12 @@ class PointGrouper(object):
             And
             """
             return ((len(key) == 0), key)
-
+        
         group_counts = defaultdict(int) # Defaults to zero
         for i, k in enumerate(self.stripped_keys):
             if self.good_rows[i]:
                 group_counts[k] += 1
-
+        
         group_names = sorted(set(self.stripped_keys), key=sort_fx)
         return [[g, group_counts[g]] for g in group_names]
 
