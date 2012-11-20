@@ -13,7 +13,13 @@
 <div id="scatter_controls">
   <div id="y_data">Plot on y: <select id="y_col"> </select>
   </div>
+  <div>y ticks:<br/>
+	  <input type="text" id="y_ticks"/>
+  </div>
   <div id="x_data">Plot on x: <select id="x_col"> </select>
+  </div>
+  <div>x ticks:<br/>
+	  <input type="text" id="x_ticks"/>
   </div>
   <div id="f_data">Filter column: <select id="f_col">
 	  <option value=""></option>
@@ -84,6 +90,8 @@ var Sdata = {};
       Sdata.scatterplot,
       '#x_col',
       '#y_col',
+	  '#x_ticks',
+	  '#y_ticks',
 	  '#f_col',
       "#highlight_col",
       '#nuisance_vars',
