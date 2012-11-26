@@ -183,10 +183,10 @@ var S2 = function ($, d3) {
       // maybe the only public function?
       
       my.set_points(points);
+      my.set_scales(points, x_labels, y_labels);
       my.set_regression(regression);
       my.set_groups(groups);
       my.set_model_type(model_type);
-      my.set_scales(points, x_labels, y_labels);
       my.draw_regression();
       my.draw_dots();
       my.draw_point_targets();
@@ -306,9 +306,9 @@ var S2 = function ($, d3) {
       
       line_attrs = model_line_attrs[my.model_type] || 
         model_line_attrs['default'];
-      
-      x1 = d3.first(my.x_sorted);
-      x2 = d3.last(my.x_sorted);
+
+      x1 = d3.first(my.x_label_values);
+      x2 = d3.last(my.x_label_values);
 
       line = my.regression_canvas.selectAll('line#regression-line')
         .data(my.regression_params);
