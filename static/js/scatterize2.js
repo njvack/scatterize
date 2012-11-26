@@ -179,14 +179,14 @@ var S2 = function ($, d3) {
       .append('svg:text');
       
     pub.update = function(points, regression, xlabel, ylabel, groups, 
-        model_type, x_ticks, y_ticks) {
+        model_type, x_labels, y_labels) {
       // maybe the only public function?
       
       my.set_points(points);
       my.set_regression(regression);
       my.set_groups(groups);
       my.set_model_type(model_type);
-      my.set_scales(points, x_ticks, y_ticks);
+      my.set_scales(points, x_labels, y_labels);
       my.draw_regression();
       my.draw_dots();
       my.draw_point_targets();
@@ -206,37 +206,37 @@ var S2 = function ($, d3) {
       
     };
     
-    my.valid_ticks = function(ticks) {
-      var ok = ticks && ticks.length > 1 && ticks.every;
-      return ok && ticks.every(function(v) { return !isNaN(+v) });
+    my.valid_labels = function(labels) {
+      var ok = labels && labels.length > 1 && labels.every;
+      return ok && labels.every(function(v) { return !isNaN(+v) });
     }
 
     
-    my.set_scales = function(points, x_ticks, y_ticks) {
-      my.xtick_label_values = x_ticks;
-      my.ytick_label_values = y_ticks;
+    my.set_scales = function(points, x_labels, y_labels) {
+      my.x_label_values = x_labels;
+      my.y_label_values = y_labels;
       var quantiles = [0, 0.25, 0.5, 0.75, 1];
-      if (!my.valid_ticks(x_ticks)) {
+      if (!my.valid_labels(x_labels)) {
         // use quartiles
-        my.xtick_label_values = quantiles.map(function(q) {
+        my.x_label_values = quantiles.map(function(q) {
           return d3.quantile(my.x_sorted, q);});
       }
-      if (!my.valid_ticks(y_ticks)) {
+      if (!my.valid_labels(y_labels)) {
         // use quartiles
-        my.ytick_label_values = quantiles.map(function(q) {
+        my.y_label_values = quantiles.map(function(q) {
           return d3.quantile(my.y_sorted, q);});
       }
-      my.xtick_label_values = my.xtick_label_values.sort(d3.ascending);
-      my.ytick_label_values = my.ytick_label_values.sort(d3.ascending);
+      my.x_label_values = my.x_label_values.sort(d3.ascending);
+      my.y_label_values = my.y_label_values.sort(d3.ascending);
 
       my.x_scale = d3.scale.linear()
         .domain(
-          [d3.first(my.xtick_label_values), d3.last(my.xtick_label_values)])
+          [d3.first(my.x_label_values), d3.last(my.x_label_values)])
         .range([0, my.data_width]);
       
       my.y_scale = d3.scale.linear()
         .domain(
-          [d3.first(my.ytick_label_values), d3.last(my.ytick_label_values)])
+          [d3.first(my.y_label_values), d3.last(my.y_label_values)])
         .range([my.data_height, 0]);
     };
     
@@ -385,11 +385,12 @@ var S2 = function ($, d3) {
         .remove();
       
       // Now we add quantile labels
-      xlabels = my.xaxis_canvas.selectAll("g.quantile")
-        .data(my.xtick_label_values);
+      my.xaxis_canvas.selectAll("g.label").remove();
+      xlabels = my.xaxis_canvas.selectAll("g.label")
+        .data(my.x_label_values);
 
       xlabels.enter().append("svg:g")
-        .attr('class', 'quantile')
+        .attr('class', 'label')
         .attr('transform', function(d) {
           return 'translate('+my.x_scale(d)+', 10)';})
         .append('svg:text');
@@ -401,13 +402,13 @@ var S2 = function ($, d3) {
         .attr('transform', function(d) {
           return 'translate('+my.x_scale(d)+', 10)';})
         .select('text').text(function(d) {return d.toFixed(2); });
-      
-      
-      ylabels = my.yaxis_canvas.selectAll("g.quantile")
-        .data(my.ytick_label_values);
+
+      my.yaxis_canvas.selectAll("g.label").remove();
+      ylabels = my.yaxis_canvas.selectAll("g.label")
+        .data(my.y_label_values);
 
       ylabels.enter().append("svg:g")
-        .attr('class', 'quantile')
+        .attr('class', 'label')
         .attr('transform', function(d) {
           return 'translate(-20, '+my.y_scale(d)+')';})
         .append('svg:text');
@@ -575,7 +576,7 @@ var S2 = function ($, d3) {
   
   S_my.state_manager = function(
       regress_js_url, regress_csv_url, asset_tag, columns, scatterplot,
-      x_control, y_control, x_ticks_control, y_ticks_control, filter_control, 
+      x_control, y_control, x_labels_control, y_labels_control, filter_control, 
       highlight_control, nuisance_list, model_control, download_link, 
       stats_dashboard, key_handler) {
     var pub = {}, my = {};
@@ -587,6 +588,8 @@ var S2 = function ($, d3) {
     my.scatterplot = scatterplot;
     my.x_control = $(x_control);
     my.y_control = $(y_control);
+    my.x_labels_control = $(x_labels_control);
+    my.y_labels_control = $(y_labels_control);
     my.filter_control = $(filter_control);
     my.highlight_control = $(highlight_control);
     my.nuisance_list = $(nuisance_list);
@@ -632,7 +635,10 @@ var S2 = function ($, d3) {
     
     pub.hashchange = function(evt) {
       // The main method that'll get called.
+      var x_labels, y_labels;
       pub.update_controls();
+      x_labels = my.x_labels_control.val().split(",").map(function(v) { return +v; });
+      y_labels = my.y_labels_control.val().split(",").map(function(v) { return +v; });
       my.download_link.attr('href', pub.csv_url());
       $.ajax({
         'url': pub.json_url(),
@@ -643,7 +649,9 @@ var S2 = function ($, d3) {
               data.x_label,
               data.y_label,
               data.group_list,
-              data.model_type);
+              data.model_type,
+              x_labels,
+              y_labels);
             my.stats_dashboard.update(data.stats_diagnostics);
           },
         'error': function() { console.log("Error?"); }
@@ -669,6 +677,16 @@ var S2 = function ($, d3) {
     filter_idx = my.filter_control.val();
     if (filter_idx !== "") {
       opts.f = filter_idx;
+    }
+    
+    my.x_labels = my.x_labels_control.val().trim();
+    my.y_labels = my.y_labels_control.val().trim();
+    
+    if (my.x_labels !== "") {
+      opts.xl = my.x_labels;
+    }
+    if (my.y_labels !== "") {
+      opts.yl = my.y_labels;
     }
 
       nuisance_list = nuisance_ids.join(",");
@@ -772,7 +790,9 @@ var S2 = function ($, d3) {
       cur_state = $.bbq.getState();
       my.x_control.val(cur_state.x);
       my.y_control.val(cur_state.y);
-    my.filter_control.val(cur_state.f || "");
+      my.x_labels_control.val(cur_state.xl || "");
+      my.y_labels_control.val(cur_state.yl || "");
+      my.filter_control.val(cur_state.f || "");
       my.highlight_control.val(cur_state.h || "");
       my.model_control.val(cur_state.m);
       my.populate_nuisance_lists();
@@ -796,6 +816,8 @@ var S2 = function ($, d3) {
     
     my.x_control.change(function() { pub.update_state(); });
     my.y_control.change(function() { pub.update_state(); });
+    my.x_labels_control.change(function(e) { pub.update_state(); });
+    my.y_labels_control.change(function(e) { pub.update_state(); });
     my.filter_control.change(function() { pub.update_state(); });
     my.highlight_control.change(function() { pub.update_state(); });
     my.model_control.change(function() { pub.update_state(); });
@@ -843,7 +865,7 @@ var S2 = function ($, d3) {
       my.key('c', function() { my.toggle_all_censors(); });
     };
     my.set_keyboard_shortcuts();
-        
+    
     pub.my = my;
     return pub;
   };
