@@ -97,14 +97,15 @@ class CSVFileHandler(object):
         """
 
         fh = urllib2.urlopen(uri)
-        return save_upload(fh, hash_len, sniff_lines)
+        return self.save_upload(fh, hash_len, sniff_lines, skip_utf_check=True)
 
-    def save_upload(self, infile, hash_len, sniff_lines):
+    def save_upload(self, infile, hash_len, sniff_lines, skip_utf_check=False):
         """
         Save a file to storage_dir, naming it with a hash determined from the
         file's contents.
         """
-        skip_utf8_bom(infile)
+        if not skip_utf_check:
+            skip_utf8_bom(infile)
         infile_data = infile.read()
         lines = infile_data.splitlines()
         dialect = csv.Sniffer().sniff("\n".join(lines))
