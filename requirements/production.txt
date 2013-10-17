@@ -1,0 +1,6 @@
+numpy
+scipy
+flask
+pandas
+patsy
+statsmodels
