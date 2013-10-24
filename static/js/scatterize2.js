@@ -7,7 +7,7 @@ if (!('console' in window && 'log' in window.console)) {
 var S2 = function ($, d3) {
   "use strict";
   var S_my = {};
-  
+
   // From colorbrewer2.org, "paired"
   S_my.colors = [
     d3.rgb(31, 120, 180), // blue
@@ -19,22 +19,22 @@ var S2 = function ($, d3) {
     d3.rgb(251, 154, 153), // lightred
     d3.rgb(253, 191, 111) // lightorange
   ];
-  
+
   S_my.color_scales = d3.scale.ordinal()
     .domain([0,1,2,3,4,5,6,7])
-    .range(S_my.colors.map( function (c) { 
+    .range(S_my.colors.map( function (c) {
       return d3.scale.linear()
         .domain([0,1])
         .range(['lightgrey', c]);
       }));
-  
+
   function intify(string_ar) {
     return $.map(string_ar, function (e) {
       return parseInt(e, 10);
     });
   }
   S_my.intify = intify;
-  
+
   function nice_num(val, places) {
     if (!places) { places = 4; }
     var vf = parseFloat(val),
@@ -42,10 +42,10 @@ var S2 = function ($, d3) {
       out_str = vf.toFixed(places);
     if (vf % 1 === 0) { out_str = String(val); }
     if (exponent >= places) { out_str = vf.toExponential(places-1); }
-    
+
     return out_str;
   }
-  
+
   function csv_split(str) {
     var splitted = [];
     if (str && str !== "") {
@@ -54,7 +54,7 @@ var S2 = function ($, d3) {
     return intify(splitted);
   }
   S_my.csv_split = csv_split;
-  
+
   function add_breaks(s) {
     var underscore_regex = new RegExp("_", "g"),
       break_regex = new RegExp("([a-z])([^a-z 0-9])", "g"),
@@ -63,21 +63,21 @@ var S2 = function ($, d3) {
   }
   S_my.add_breaks = add_breaks;
 
-  S_my.scatterplot = function(container, 
-      data_width, 
-      data_height, 
+  S_my.scatterplot = function(container,
+      data_width,
+      data_height,
       top_outer_margin,
       right_outer_margin,
-      axis_margin, 
+      axis_margin,
       label_width,
       x_label_margin,
       y_label_margin,
       colormap) {
-    
+
     var my = {},
-      pub = {}, 
+      pub = {},
       svg = d3.select(container).append('svg:svg');
-    
+
     // initialization code
     my.data_width = data_width;
     my.data_height = data_height;
@@ -88,42 +88,42 @@ var S2 = function ($, d3) {
     my.x_label_margin = x_label_margin;
     my.y_label_margin = y_label_margin;
     my.colormap = colormap;
-    my.height = (top_outer_margin + my.data_height + 
+    my.height = (top_outer_margin + my.data_height +
       2*my.axis_margin + my.label_width + my.x_label_margin);
-    my.width = (right_outer_margin + my.data_width + 
+    my.width = (right_outer_margin + my.data_width +
       2*my.axis_margin + my.label_width + my.y_label_margin);
     my.data_canvas_trans_y = my.top_outer_margin;
     my.data_canvas_trans_x = my.x_label_margin + my.label_width + 2*my.axis_margin;
     my.duration = 333;
-    
+
     my.event = d3.dispatch("point");
-    
+
     svg.attr('height', my.height)
       .attr('width', my.width)
       .attr('xmlns', 'http://www.w3.org/2000/svg')
       .attr('text-anchor', 'middle')
       .style('font-size', '12px')
       .style('font-family', 'Corbel, Helvetica, sans-serif');
-    
+
     my.data_canvas = svg.append('svg:g')
       .attr('transform', 'translate('+my.data_canvas_trans_x+','+my.data_canvas_trans_y+')')
       .attr('id', 'data-canvas');
-    
+
     my.datapoint_canvas = my.data_canvas.append('svg:g')
       .attr('id', 'datapoint-canvas');
-    
+
     // ensure there's always a 0th group
     my.group_canvases = [
       my.datapoint_canvas.append('svg:g')
         .attr('id', 'point-group-0').node()];
-    
+
     my.regression_canvas = my.data_canvas.append('svg:g')
       .attr('id', 'regression-canvas');
-    
+
     my.yaxis_canvas = my.data_canvas.append('svg:g')
       .attr('transform', 'translate('+ -my.axis_margin +')')
       .attr('id', 'y-axis');
-    
+
     my.ytick_canvas = my.yaxis_canvas.append('svg:g')
       .attr('id', 'ytick-layer');
 
@@ -136,14 +136,14 @@ var S2 = function ($, d3) {
       .attr('stroke', 'black')
       .attr('stroke-width', '1')
       .attr('shape-rendering', 'crispEdges');
-    
+
     my.xaxis_canvas = my.data_canvas.append('svg:g')
       .attr('transform', 'translate(0, '+ (my.data_height+my.axis_margin)+')')
       .attr('id', 'x-axis');
-    
+
     my.xtick_canvas = my.xaxis_canvas.append('svg:g')
       .attr('id', 'xtick-layer');
-    
+
     my.xaxis_canvas.append('svg:line')
       .attr('id', 'x-axis-frame')
       .attr('x1', 0)
@@ -153,9 +153,9 @@ var S2 = function ($, d3) {
       .attr('stroke', 'black')
       .attr('stroke-width', '1')
       .attr('shape-rendering', 'crispEdges');
-    
+
     my.pointed = d3.select(null);
-    
+
     my.data_click_wrapper = function() {
       if (my.click_handler) {
         my.click_handler(my.pointed);
@@ -165,23 +165,23 @@ var S2 = function ($, d3) {
 
     my.point_target_canvas = my.data_canvas.append('svg:g')
       .attr('id', 'point-target-canvas');
-    
+
     // label placement
     my.xlabel_text = svg.append('svg:g')
       .attr('transform', ('translate('+(my.width/2)+', '+( 14+
         my.data_height+my.axis_margin+(2*my.x_label_margin)+my.label_width)+')'))
       .style('font-size', '14px')
       .append('svg:text');
-      
+
     my.ylabel_text = svg.append('svg:g')
       .attr('transform', 'translate(18,'+my.data_height/2+') rotate(-90)')
       .style('font-size', '14px')
       .append('svg:text');
-      
-    pub.update = function(points, regression, xlabel, ylabel, groups, 
+
+    pub.update = function(points, regression, xlabel, ylabel, groups,
         model_type, x_labels, y_labels) {
       // maybe the only public function?
-      
+
       my.set_points(points);
       my.set_scales(points, x_labels, y_labels);
       my.set_regression(regression);
@@ -194,7 +194,7 @@ var S2 = function ($, d3) {
       my.draw_axis_labels(xlabel, ylabel);
       my.draw_group_labels();
     };
-    
+
     my.set_points = function(points) {
       my.point_data = points.map(function(p) {
         return {
@@ -203,15 +203,13 @@ var S2 = function ($, d3) {
       my.yvals = my.point_data.map(function(p) { return p.y; });
       my.x_sorted = my.xvals.slice().sort(d3.ascending);
       my.y_sorted = my.yvals.slice().sort(d3.ascending);
-      
     };
-    
+
     my.valid_labels = function(labels) {
       var ok = labels && labels.length > 1 && labels.every;
       return ok && labels.every(function(v) { return !isNaN(+v) });
     }
 
-    
     my.set_scales = function(points, x_labels, y_labels) {
       my.x_label_values = x_labels;
       my.y_label_values = y_labels;
@@ -233,13 +231,13 @@ var S2 = function ($, d3) {
         .domain(
           [d3.first(my.x_label_values), d3.last(my.x_label_values)])
         .range([0, my.data_width]);
-      
+
       my.y_scale = d3.scale.linear()
         .domain(
           [d3.first(my.y_label_values), d3.last(my.y_label_values)])
         .range([my.data_height, 0]);
     };
-    
+
     my.set_groups = function(groups) {
       my.groups = groups;
 
@@ -250,21 +248,21 @@ var S2 = function ($, d3) {
         }
       });
     };
-    
+
     my.set_model_type = function(mtype) {
       my.model_type = mtype;
     };
-    
+
     my.draw_dots = function() {
       var dots;
       dots = my.datapoint_canvas.selectAll('circle')
         .data(my.point_data, function(d) { return d.row_id; });
-      
+
       dots.enter().append('svg:circle')
         .attr('cx', function(d) { return my.x_scale(d.x); })
         .attr('cy', function(d) { return my.y_scale(d.y); })
         .attr('r', 4);
-      
+
       // Coloring should be instantaneous -- no transition here
       dots
         .attr('id', function(d) { return 'datapoint-'+d.row_id; })
@@ -273,21 +271,21 @@ var S2 = function ($, d3) {
         .style('fill-opacity', 0.4)
         .each(function(d) {
           // Move this scg:
-          my.group_canvases[d.group].appendChild(this); 
+          my.group_canvases[d.group].appendChild(this);
         });
-      
+
       my.pointed.style('fill', 'orange').style('stroke', 'orange');
-      
+
       dots.transition()
         .sort(function(d) { return d.x; })
         .duration(my.duration)
         .attr('cx', function(d) { return my.x_scale(d.x); })
         .attr('cy', function(d) { return my.y_scale(d.y); });
-      
+
       dots.exit()
         .remove();
     }; // draw_dots()
-    
+
     my.set_regression = function(params) {
       if (params) {
         my.regression_params = [params]; // makes .data() work properly
@@ -295,16 +293,16 @@ var S2 = function ($, d3) {
         my.regression_params = [];
       }
     };
-    
+
     my.draw_regression = function() {
       var x1, x2, line, model_line_attrs, line_attrs;
-      
+
       model_line_attrs = {
         'default': [['stroke-dasharray', 'none']],
         'SR': [['stroke-dasharray', '10']]
       };
-      
-      line_attrs = model_line_attrs[my.model_type] || 
+
+      line_attrs = model_line_attrs[my.model_type] ||
         model_line_attrs['default'];
 
       x1 = d3.first(my.x_label_values);
@@ -312,7 +310,7 @@ var S2 = function ($, d3) {
 
       line = my.regression_canvas.selectAll('line#regression-line')
         .data(my.regression_params);
-        
+
       line.enter().append('svg:line')
         .attr('id', 'regression-line')
         .attr('x1', my.x_scale(x1))
@@ -324,29 +322,29 @@ var S2 = function ($, d3) {
         .attr('stroke', 'brown')
         .attr('stroke-width', 2)
         .attr('stroke-linecap', 'round');
-      
+
       line_attrs.forEach(function(akv) {
         line.attr(akv[0], akv[1]);
       });
-      
+
       line.transition()
         .duration(my.duration)
         .attr('x1', my.x_scale(x1))
         .attr('y1', function(d) { return my.y_scale(d['const'] + x1*d.slope); })
         .attr('x2', my.x_scale(x2))
         .attr('y2', function(d) { return my.y_scale(d['const'] + x2*d.slope); });
-        
+
       line.exit()
         .remove();
     };
-    
+
     my.draw_axes = function() {
       var xticks, yticks, x_sorted, y_sorted, quantiles, xquant, yquant,
         xlabels, ylabels;
-      
+
       xticks = my.xtick_canvas.selectAll("line.tick")
         .data(my.point_data, function(d) { return d.row_id; });
-      
+
       xticks.enter().append('svg:line')
         .attr('class', 'tick')
         .attr('x1', function(d) { return my.x_scale(d.x); })
@@ -360,13 +358,13 @@ var S2 = function ($, d3) {
         .duration(my.duration)
         .attr('x1', function(d) { return my.x_scale(d.x); })
         .attr('x2', function(d) { return my.x_scale(d.x); });
-      
+
       xticks.exit()
         .remove();
-      
+
       yticks = my.ytick_canvas.selectAll("line.tick")
         .data(my.point_data, function(d) { return d.row_id; });
-      
+
       yticks.enter().append('svg:line')
         .attr('class', 'tick')
         .attr('y1', function(d) { return my.y_scale(d.y); })
@@ -380,10 +378,10 @@ var S2 = function ($, d3) {
         .duration(my.duration)
         .attr('y1', function(d) { return my.y_scale(d.y); })
         .attr('y2', function(d) { return my.y_scale(d.y); });
-      
+
       yticks.exit()
         .remove();
-      
+
       // Now we add quantile labels
       my.xaxis_canvas.selectAll("g.label").remove();
       xlabels = my.xaxis_canvas.selectAll("g.label")
@@ -394,7 +392,7 @@ var S2 = function ($, d3) {
         .attr('transform', function(d) {
           return 'translate('+my.x_scale(d)+', 10)';})
         .append('svg:text');
-      
+
       xlabels.selectAll('text').text(function(d) {return d.toFixed(2); });
 
       xlabels.transition()
@@ -412,7 +410,7 @@ var S2 = function ($, d3) {
         .attr('transform', function(d) {
           return 'translate(-20, '+my.y_scale(d)+')';})
         .append('svg:text');
-              
+
       ylabels.selectAll('text')
         .text(function(d) {return d.toFixed(2); })
         .style('dominant-baseline', 'middle');
@@ -422,9 +420,9 @@ var S2 = function ($, d3) {
         .attr('transform', function(d) {
           return 'translate(-20, '+my.y_scale(d)+')';})
         .select('text').text(function(d) {return d.toFixed(2); });
-      
+
     };
-    
+
     my.draw_group_labels = function() {
       var label_elt;
       label_elt = d3.select('#highlight_labels');
@@ -432,26 +430,26 @@ var S2 = function ($, d3) {
       my.groups.forEach(function(g, i) {
         var label = g[0],
           c = my.colormap(i)(1);
-        
+
         if (label.length === 0) { label = ' '; }
         if (g[1] <= 0) {
           return;
         }
         label_elt.append('div')
           .style('border-color', c)
-          .style('background-color', 
+          .style('background-color',
               c.replace('rgb', 'rgba').replace(')', ', 0.2)'))
           .text(label);
       });
     };
-    
+
     my.do_point = function(p) {
       var pointed_data, x_super, y_super;
 
       my.do_unpoint(); // Can only point one at a time!
       my.pointed = p;
       p.style('fill', 'orange').style('stroke', 'orange')
-        .each(function(d) { 
+        .each(function(d) {
           pointed_data = d; });
 
       // And add a super xtick
@@ -473,58 +471,58 @@ var S2 = function ($, d3) {
       x_super.append('svg:g')
         .attr('transform', 'translate(0, -14)')
         .append('svg:text');
-        
+
       x_super.select('text').text(function(d) { return d.x.toFixed(2);});
-      
+
       // And y.
       y_super = my.ytick_canvas.selectAll('g.supertick')
         .data([pointed_data], function(d) {return d.row_id; });
-      
+
       y_super.enter().append('svg:g')
         .attr('class', 'supertick')
         .attr('shape-rendering', 'crispEdges')
         .attr('transform', function(d) {
           return 'translate(0,'+my.y_scale(d.y)+')'; });
-        
+
       y_super.append('svg:line')
         .attr('x1', 0)
         .attr('y1', 0)
         .attr('x2', 10)
         .attr('y2', 0)
         .attr('stroke', 'black');
-        
+
       y_super.append('svg:g')
         .attr('transform', 'translate(15, 0)')
         .append('svg:text');
-        
+
       y_super.select('text')
         .text(function(d) { return d.y.toFixed(2);})
         .style('text-anchor', 'start')
         .style('dominant-baseline', 'middle');
-      
+
       y_super.exit()
         .remove();
     };
-    
+
     my.do_unpoint = function() {
       my.pointed
         .style('fill', function(d) { return my.colormap(d.group)(d.weight);})
         .style('stroke', function(d) { return my.colormap(d.group)(d.weight);});
-      
+
       my.pointed = d3.select(null);
 
       my.xtick_canvas.selectAll('g.supertick').remove();
       my.ytick_canvas.selectAll('g.supertick').remove();
     };
-    
+
     my.draw_point_targets = function() {
       var point_xy, paths, event, targets;
       point_xy = my.point_data.map(function(p) {
         // Add some jitter to the points to keep the voronoi algorithm
         // from failing in the case of collinearity
         return [
-          (my.x_scale(p.x)+Math.random()-0.5), 
-          (my.y_scale(p.y)+Math.random()-0.5)]; 
+          (my.x_scale(p.x)+Math.random()-0.5),
+          (my.y_scale(p.y)+Math.random()-0.5)];
       });
       paths = d3.geom.voronoi(point_xy);
       my.point_target_canvas.selectAll('path').remove();
@@ -539,12 +537,12 @@ var S2 = function ($, d3) {
           .attr('cy', function(d) { return d[1]; })
           .style('stroke-opacity', 0)
           .style('fill-opacity', 0);
-      
+
       targets = my.point_target_canvas.selectAll('path')
           .data(paths)
         .enter().append('svg:path')
           .attr('d', function(d) { return 'M'+d.join("L")+"Z";})
-          .attr('clip-path', function(d, i) { 
+          .attr('clip-path', function(d, i) {
             return 'url(#target-clip-'+i+')'; })
           .style('stroke-opacity', 0)
           .style('fill-opacity', 0)
@@ -560,27 +558,27 @@ var S2 = function ($, d3) {
             my.data_click_wrapper();
           });
     };
-    
+
     my.draw_axis_labels = function(xlabel, ylabel) {
       my.xlabel_text.text(xlabel);
       my.ylabel_text.text(ylabel);
     };
-    
+
     pub.set_click_handler = function(fx) {
       my.click_handler = fx;
     };
-    
+
     pub.my = my;
     return pub;
   };
-  
+
   S_my.state_manager = function(
       regress_js_url, regress_csv_url, asset_tag, columns, scatterplot,
-      x_control, y_control, x_labels_control, y_labels_control, filter_control, 
-      highlight_control, nuisance_list, model_control, download_link, 
+      x_control, y_control, x_labels_control, y_labels_control, filter_control,
+      highlight_control, nuisance_list, model_control, download_link,
       stats_dashboard, key_handler) {
     var pub = {}, my = {};
-    
+
     my.base_url = regress_js_url;
     my.regress_csv_url = regress_csv_url;
     my.asset_tag = asset_tag;
@@ -608,18 +606,18 @@ var S2 = function ($, d3) {
       }
       control.val(initial_index);
     };
-    
+
     my.handle_scatter_click = function(point_sel) {
       point_sel.each(function(d) {
         pub.toggle_point(d.row_id);
       });
     };
     my.scatterplot.set_click_handler(my.handle_scatter_click);
-    
+
     pub.toggle_point = function(rownum) {
       if (!isFinite(parseInt(rownum, 10))) {
         console.log("Ooh, not numeric: " + rownum);
-        return; 
+        return;
       }
       var cpi = my.censored_points.indexOf(rownum);
       if (cpi > -1) {
@@ -628,11 +626,11 @@ var S2 = function ($, d3) {
         my.censored_points.push(rownum);
       }
       my.censored_points.sort(d3.ascending);
-      
+
       my.saved_censors = []; // Clicking a point clears this list.
       pub.update_state();
     };
-    
+
     pub.hashchange = function(evt) {
       // The main method that'll get called.
       var x_labels, y_labels;
@@ -644,7 +642,7 @@ var S2 = function ($, d3) {
         'url': pub.json_url(),
         'success': function(data) {
             my.scatterplot.update(
-              data.points, 
+              data.points,
               data.regression_line,
               data.x_label,
               data.y_label,
@@ -657,7 +655,7 @@ var S2 = function ($, d3) {
         'error': function() { console.log("Error?"); }
       });
     };
-    
+
     pub.update_state = function() {
       var opts, xy_ints, nuisance_ids, highlight_idx, filter_idx, nuisance_list,
         censor_list;
@@ -668,7 +666,7 @@ var S2 = function ($, d3) {
       xy_ints = intify([my.x_control.val(), my.y_control.val()]);
       nuisance_ids = $.grep(my.checked_nuisance_vals(), function(v) {
           return (xy_ints.indexOf(v) <= 0); });
-          
+
       highlight_idx = my.highlight_control.val();
       if (highlight_idx !== "") {
         opts.h = highlight_idx;
@@ -678,10 +676,10 @@ var S2 = function ($, d3) {
     if (filter_idx !== "") {
       opts.f = filter_idx;
     }
-    
+
     my.x_labels = my.x_labels_control.val().trim();
     my.y_labels = my.y_labels_control.val().trim();
-    
+
     if (my.x_labels !== "") {
       opts.xl = my.x_labels;
     }
@@ -700,12 +698,12 @@ var S2 = function ($, d3) {
       var xidx = parseInt(my.x_control.val(), 10);
       return columns[xidx];
     };
-    
+
     pub.y_var_name = function() {
       var yidx = parseInt(my.y_control.val(), 10);
       return columns[yidx];
     };
-    
+
     pub.nuisance_var_names = function() {
       var names = [],
         nuisances = my.checked_nuisance_vals(),
@@ -715,7 +713,7 @@ var S2 = function ($, d3) {
       }
       return names;
     };
-        
+
     my.generate_nuisance_list = function() {
       var st, nuis_idxs, xy_idxs, col_list_decorated;
       st = $.bbq.getState();
@@ -725,7 +723,7 @@ var S2 = function ($, d3) {
         my.columns, xy_idxs, nuis_idxs);
       return col_list_decorated;
     };
-    
+
     my.populate_nuisance_lists = function() {
       var list, item, li, i;
       list = my.generate_nuisance_list();
@@ -740,7 +738,7 @@ var S2 = function ($, d3) {
         pub.update_state();
       });
     };
-    
+
     my.checked_nuisance_vals = function() {
       var l, checked;
       l = [];
@@ -748,13 +746,13 @@ var S2 = function ($, d3) {
       $.each(checked, function(i, elt) { l.push(elt.value); });
       return intify(l).sort();
     };
-    
+
     my.decorate_column_list_selectable = function(
         columns, disallowed_idxs, selected_idxs) {
       var disalloweds, selecteds, out, i, allowed, selected, name;
       disalloweds = intify(disallowed_idxs);
       selecteds = intify(selected_idxs);
-      
+
       out = [];
       for (i = 0; i < columns.length; i += 1) {
         name = columns[i];
@@ -764,9 +762,9 @@ var S2 = function ($, d3) {
       }
       return out;
     };
-    
+
     my.make_nuisance_selector = function(n) {
-      // Makes something like 
+      // Makes something like
       // <input type="checkbox" id="n_X" name="n_X" value="X" />
       // <label for="n_X">Column name</label>
       var dis_str, checked_str, n_str, out_str;
@@ -779,10 +777,10 @@ var S2 = function ($, d3) {
       out_str += '<label for='+n_str+'>'+add_breaks(n.name)+'</label>';
       return out_str;
     };
-    
+
     my.populate_select(my.x_control, my.columns, 0);
     my.populate_select(my.y_control, my.columns, 0);
-    
+
     pub.update_controls = function() {
       // Update the controls on the page and our internal tracking of
       // censored points from the URL hash
@@ -803,17 +801,17 @@ var S2 = function ($, d3) {
       }
       my.censored_points = clist;
     };
-    
+
     pub.json_url = function() {
       var s = $.bbq.getState();
       s.at = my.asset_tag;
       return $.param.querystring(my.base_url, s, 2);
     };
-    
+
     pub.csv_url = function() {
       return $.param.querystring(my.regress_csv_url, $.bbq.getState(), 2);
     };
-    
+
     my.x_control.change(function() { pub.update_state(); });
     my.y_control.change(function() { pub.update_state(); });
     my.x_labels_control.change(function(e) { pub.update_state(); });
@@ -821,16 +819,16 @@ var S2 = function ($, d3) {
     my.filter_control.change(function() { pub.update_state(); });
     my.highlight_control.change(function() { pub.update_state(); });
     my.model_control.change(function() { pub.update_state(); });
-    
+
     my.advance_select = function(control, go_forward) {
       var cur_idx, max_idx, next_idx, c;
-      
+
       c = control[0];
       cur_idx = c.selectedIndex;
       max_idx = control.children('option').length - 1;
       next_idx = cur_idx;
-      
-      if (go_forward) { 
+
+      if (go_forward) {
         next_idx += 1;
       } else {
         next_idx -= 1;
@@ -842,7 +840,7 @@ var S2 = function ($, d3) {
         pub.update_state();
       }
     };
-    
+
     my.toggle_all_censors = function() {
       console.log("Toggle all censors!");
       if (my.saved_censors.length === 0) {
@@ -854,7 +852,7 @@ var S2 = function ($, d3) {
       }
       pub.update_state();
     };
-        
+
     my.set_keyboard_shortcuts = function() {
       my.key('j', function() { my.advance_select(my.y_control, false); });
       my.key('k', function() { my.advance_select(my.y_control, true); });
@@ -865,16 +863,16 @@ var S2 = function ($, d3) {
       my.key('c', function() { my.toggle_all_censors(); });
     };
     my.set_keyboard_shortcuts();
-    
+
     pub.my = my;
     return pub;
   };
-  
+
   function stats_dashboard(container) {
     var my = {}, pub = {};
-    
+
     my.stats_container = d3.select(container);
-    
+
     pub.update = function(stats_data) {
       var table, tr, stats_item, opts;
       my.stats_container.selectAll('div').remove();
@@ -896,23 +894,23 @@ var S2 = function ($, d3) {
         .text('Stats code not (yet) thoroughly validated. Double-check values '+
           'before publishing!');
     };
-    
+
     pub.my = my;
     return pub;
   }
   S_my.stats_dashboard = stats_dashboard;
-  
+
   S_my.STATS_DISPLAY = {
     'Rsq': 'R&sup2;',
     'RsqAdj': 'Adjusted R&sup2;',
     'b': '&beta;',
     'rho': "&rho;"
   };
-  
+
   S_my.format_stats_name = function(key) {
     return (S_my.STATS_DISPLAY[key] || key);
   };
-  
+
   S_my.help_control = function(container_selector, header_link, key_handler) {
     var my = {};
     my.container = $(container_selector);
@@ -922,11 +920,11 @@ var S2 = function ($, d3) {
     function hide_help_container(){
       my.container.css('display', '');
     }
-    
+
     function show_help_container() {
       my.container.css('display', 'block');
     }
-    
+
     function toggle_help_container() {
       if (my.container.css('display') === 'block') {
         my.container.css('display', '');
@@ -934,7 +932,7 @@ var S2 = function ($, d3) {
         my.container.css('display', 'block');
       }
     }
-    
+
     function setup_container() {
       my.container.find('a.close').bind('click', function(ev) {
         hide_help_container();
@@ -947,9 +945,9 @@ var S2 = function ($, d3) {
       my.key('shift+/, ?', function() { show_help_container(); });
       my.key('esc', function() { hide_help_container(); });
     }
-    
+
     setup_container();
   };
-  
+
   return S_my;
 }(jQuery, d3);
