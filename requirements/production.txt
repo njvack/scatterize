@@ -3,4 +3,4 @@ scipy
 flask
 pandas
 patsy
-statsmodels
+# statsmodels
