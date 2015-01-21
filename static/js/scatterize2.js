@@ -525,8 +525,7 @@ var S2 = function ($, d3) {
           (my.y_scale(p.y)+Math.random()-0.5)];
       });
       paths = d3.geom.voronoi(point_xy);
-      my.point_target_canvas.selectAll('path').remove();
-      my.point_target_canvas.selectAll('clipPath').remove();
+      my.point_target_canvas.selectAll('*').remove();
       my.point_target_canvas.selectAll('clipPath')
           .data(point_xy)
         .enter().append('svg:clipPath')
@@ -545,7 +544,7 @@ var S2 = function ($, d3) {
           .attr('clip-path', function(d, i) {
             return 'url(#target-clip-'+i+')'; })
           .style('stroke-opacity', 0)
-          .style('fill-opacity', 0)
+          .style('fill-opacity', .3)
           .on('mouseover', function(d, i) {
             var pdata = my.point_data[i];
             my.do_point(
