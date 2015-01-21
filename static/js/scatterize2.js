@@ -544,7 +544,7 @@ var S2 = function ($, d3) {
           .attr('clip-path', function(d, i) {
             return 'url(#target-clip-'+i+')'; })
           .style('stroke-opacity', 0)
-          .style('fill-opacity', .3)
+          .style('fill-opacity', 0)
           .on('mouseover', function(d, i) {
             var pdata = my.point_data[i];
             my.do_point(
