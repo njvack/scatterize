@@ -313,15 +313,15 @@ class RLMStatsRunner(ParametricStatsRunner):
         diags.append({'title': 'Constant',
             'data': [
                 ['b', json_float(mr.params[0])],
-                ['t', json_float(mr.tvalues[0])],
-                ['p', json_float(mr.pvalues[0])],
+                ['t', json_float(mr.tvalues[0]), {'hide': True}],
+                ['p', json_float(mr.pvalues[0]), {'hide': True}],
                 ['se', json_float(mr.bse[0]), {'hide': True}]]})
 
         diags.append({'title': column_names[self.regression_params.iv_idx],
             'data': [
                 ['b', json_float(mr.params[1])],
-                ['t', json_float(mr.tvalues[1])],
-                ['p', json_float(mr.pvalues[1])],
+                ['t', json_float(mr.tvalues[1]), {'hide': True}],
+                ['p', json_float(mr.pvalues[1]), {'hide': True}],
                 ['se', json_float(mr.bse[1]), {'hide': True}]]})
 
         for i, col_idx in enumerate(self.regression_params.nuis_idxs):
@@ -329,9 +329,9 @@ class RLMStatsRunner(ParametricStatsRunner):
             diags.append({'title': column_names[col_idx],
                 'data': [
                     ['b', json_float(mr.params[res_i])],
-                    ['t', json_float(mr.tvalues[res_i])],
-                    ['p', json_float(mr.pvalues[res_i])],
-                    ['se', json_float(mr.bse[res_i])]]})
+                    ['t', json_float(mr.tvalues[res_i]), {'hide': True}],
+                    ['p', json_float(mr.pvalues[res_i]), {'hide': True}],
+                    ['se', json_float(mr.bse[res_i]), {'hide': True}]]})
         return diags
 
 
