@@ -322,7 +322,7 @@ class RLMStatsRunner(ParametricStatsRunner):
                 ['b', json_float(mr.params[1])],
                 ['t', json_float(mr.tvalues[1])],
                 ['p', json_float(mr.pvalues[1])],
-                ['se', json_float(mr.bse[1])]]})
+                ['se', json_float(mr.bse[1]), {'hide': True}]]})
 
         for i, col_idx in enumerate(self.regression_params.nuis_idxs):
             res_i = i+2
@@ -331,7 +331,7 @@ class RLMStatsRunner(ParametricStatsRunner):
                     ['b', json_float(mr.params[res_i])],
                     ['t', json_float(mr.tvalues[res_i])],
                     ['p', json_float(mr.pvalues[res_i])],
-                    ['se', json_float(mr.bse[res_i])]]})
+                    ['se', json_float(mr.bse[res_i]), {'hide': True}]]})
         return diags
 
 
