@@ -70,6 +70,16 @@ def upload():
 
     return flask.redirect(flask.url_for('scatter_frame', filehash=short_hash))
 
+@app.route("/u", methods=["GET"])
+def load_uri():
+    csv_url = request.args.get('url', '')
+    file_handler = CSVFileHandler(settings.STORAGE_DIR)
+    short_hash = file_handler.save_uri(
+        csv_url,
+        hash_len=settings.HASH_PREFIX_CHARS,
+        sniff_lines=settings.SNIFF_LINES)
+    return flask.redirect(flask.url_for('scatter_frame', filehash=short_hash))
+
 
 @app.route("/d/<filehash>")
 def scatter_frame(filehash):

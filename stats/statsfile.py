@@ -16,6 +16,7 @@ import csv
 import hashlib
 import base64
 import numpy as np
+import urllib2
 
 import logging
 logger = logging.getLogger("statsrunner")
@@ -89,12 +90,22 @@ class CSVFileHandler(object):
                 data_list=data_list,
                 data_array=data_array)
 
-    def save_upload(self, infile, hash_len, sniff_lines):
+    def save_uri(self, uri, hash_len, sniff_lines):
+        """
+        Save a url returning a csv file to storage_dir, naming it with a hash
+        determined from the data.
+        """
+
+        fh = urllib2.urlopen(uri)
+        return self.save_upload(fh, hash_len, sniff_lines, skip_utf_check=True)
+
+    def save_upload(self, infile, hash_len, sniff_lines, skip_utf_check=False):
         """
         Save a file to storage_dir, naming it with a hash determined from the
         file's contents.
         """
-        skip_utf8_bom(infile)
+        if not skip_utf_check:
+            skip_utf8_bom(infile)
         infile_data = infile.read()
         lines = infile_data.splitlines()
         dialect = csv.Sniffer().sniff("\n".join(lines))
