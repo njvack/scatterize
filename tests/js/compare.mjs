@@ -13,13 +13,13 @@ const fixturesDir = join(__dirname, '..', 'fixtures');
 // ---------------------------------------------------------------------------
 // JS implementations — uncomment as each is built
 // ---------------------------------------------------------------------------
-// import { ols }      from '../../src/stats/ols.js';
+import { ols }          from '../../src/stats/ols.js';
+import { residualize }  from '../../src/stats/common.js';
 // import { robust }   from '../../src/stats/robust.js';
 // import { spearman } from '../../src/stats/spearman.js';
 // import { theilSen } from '../../src/stats/theilsen.js';
 
 const NOT_IMPLEMENTED = () => { throw new Error('not yet implemented'); };
-const ols      = NOT_IMPLEMENTED;
 const robust   = NOT_IMPLEMENTED;
 const spearman = NOT_IMPLEMENTED;
 const theilSen = NOT_IMPLEMENTED;
@@ -138,10 +138,9 @@ try {
     console.log(`\n  ${caseLabel(c)}`);
     try {
       const data = loadData(c.dataset);
-      let x = col(data, c.x);
-      let y = col(data, c.y);
-      // Residualize if needed — our residualize() function will live in src/stats/common.js
-      // For now, the ols() call will accept pre-residualized y
+      const x = col(data, c.x);
+      const nuisance = (c.nuisance ?? []).map(n => col(data, n));
+      const y = nuisance.length ? residualize(col(data, c.y), nuisance) : col(data, c.y);
       const r = ols(x, y);
       const e = c.results;
       check('slope',        r.slope,       e.slope);
