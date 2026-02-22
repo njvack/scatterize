@@ -107,15 +107,16 @@ CORS note: if fetch fails with a CORS error, show a clear message: "This URL doe
 4. **Regression line in warm brown/rust** color — stands out from the blue data points
 5. **Group colors** from ColorBrewer "Paired" palette
 6. **Hover supertick** — when hovering a point, a bigger tick + value appears on each axis
+7. **Downloadint plot** - plots can be downloaded as .svg and opened in a vector program for publications; point groups remain grouped, plot retains as much style as possible
 
 ### Layout
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Scatterize    [data URL input field]    [load btn]  │
+│  Scatterize    [data URL input field]   [load btn]  │
 ├──────────┬──────────────────────────┬───────────────┤
-│ Controls │                          │   Stats panel  │
-│          │      Scatter plot        │                │
+│ Controls │                          │  Stats panel  │
+│          │      Scatter plot        │               │
 │ X var ▾  │                          │  OLS results  │
 │ Y var ▾  │                          │  b =  0.42    │
 │ Model ▾  │                          │  t =  3.21    │
@@ -123,10 +124,10 @@ CORS note: if fetch fails with a CORS error, show a clear message: "This URL doe
 │ Nuisance │                          │               │
 │ □ col1   │                          │               │
 │ □ col2   │                          │               │
-│          │                          │               │
+│          │                          ├───────────────┤
 │ Group ▾  │                          │               │
-│ Filter ▾ │                          │               │
-│          │                          │               │
+│ Filter ▾ │                          │  Diagnostic   │
+│          │                          │  plots        │
 │[Export]  │                          │               │
 └──────────┴──────────────────────────┴───────────────┘
 ```
@@ -195,6 +196,7 @@ Both are **2:1 aspect ratio** (wider than tall) so they stack compactly without 
 - Both plots update live on point censoring (residuals recomputed from new fit)
 - Hover on main plot → highlight on both diagnostic plots
 - Do not share axes between histogram and Q-Q plot
+- Points move smoothly with easing when axes / models change
 
 ---
 
