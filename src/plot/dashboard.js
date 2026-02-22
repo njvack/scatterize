@@ -171,7 +171,8 @@ export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensore
     return;
   }
 
-  const rows = buildStatRows(modelResult, modelKey, xLabel, yLabel);
+  const hasNuisance = nuisanceNames.length > 0 && (modelKey === 'ols' || modelKey === 'robust');
+  const rows = buildStatRows(modelResult, modelKey, xLabel, yLabel, hasNuisance);
   const title = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' }[modelKey] ?? modelKey;
 
   const hasNuisanceStats = nuisanceNames.length > 0 && nuisancePartialR2.length > 0
@@ -209,7 +210,7 @@ export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensore
   }
 }
 
-function buildStatRows(r, key, xLabel, yLabel) {
+function buildStatRows(r, key, xLabel, yLabel, hasNuisance = false) {
   switch (key) {
     case 'ols':
       return [
@@ -217,8 +218,14 @@ function buildStatRows(r, key, xLabel, yLabel) {
         ['SE', FMT.coef(r.seSlope)],
         ['t', FMT.stat(r.tSlope)],
         ['p', FMT.pval(r.pSlope)],
-        ['R²', FMT.r2(r.rSquared)],
-        ['adj. R²', FMT.r2(r.adjRSquared)],
+        ...(hasNuisance ? [
+          ['R² (full model)', FMT.r2(r.fullModelRSquared)],
+          ['adj. R² (full model)', FMT.r2(r.fullModelAdjRSquared)],
+          ['R² (partial, X)', FMT.r2(r.rSquared)],
+        ] : [
+          ['R²', FMT.r2(r.rSquared)],
+          ['adj. R²', FMT.r2(r.adjRSquared)],
+        ]),
         ['intercept', FMT.coef(r.intercept)],
       ];
     case 'robust':

@@ -134,11 +134,13 @@ function render() {
   // Active x/y values
   const xActive = activeIndices.map(i => xAll[i]);
   let   yActive = activeIndices.map(i => yAll[i]);
+  const yActiveOrig = yActive.slice();  // original Y before any residualization
 
   // Residualize Y against nuisance covariates (OLS/Robust only)
   let isResidualized = false;
   let nuisanceNames  = [];
   let nuisancePartialR2 = [];
+  let nNuisance = 0;
   if (state.n.length && !RANK_MODELS.has(state.m)) {
     nuisanceNames = state.n.map(i => columns[i]).filter(Boolean);
     if (nuisanceNames.length) {
@@ -148,6 +150,7 @@ function render() {
         yActive = result.residuals;
         nuisancePartialR2 = result.partialR2;
         isResidualized = true;
+        nNuisance = nuisanceNames.length;
       } catch (e) {
         showError(`Residualization failed: ${e.message}`);
         return;
@@ -171,6 +174,24 @@ function render() {
   } catch (err) {
     showError(`Model error: ${err.message}`);
     return;
+  }
+
+  // Full-model R² when nuisance is present: ols() received pre-residualized Y,
+  // so we compute it here where we have both original Y and model residuals.
+  // By FWL, residuals from residualized regression equal residuals from joint model.
+  if (isResidualized && state.m === 'ols' && modelResult.residuals) {
+    const n = yActiveOrig.length;
+    const yMeanOrig = yActiveOrig.reduce((s, v) => s + v, 0) / n;
+    const sstOrig   = yActiveOrig.reduce((s, yi) => s + (yi - yMeanOrig) ** 2, 0);
+    const ssr       = modelResult.residuals.reduce((s, r) => s + r * r, 0);
+    const fmR2      = 1 - ssr / sstOrig;
+    // Adjusted full-model R²: df accounts for X + all nuisance predictors
+    const dfFull    = n - 2 - nNuisance;
+    modelResult = {
+      ...modelResult,
+      fullModelRSquared:    fmR2,
+      fullModelAdjRSquared: 1 - (1 - fmR2) * (n - 1) / dfFull,
+    };
   }
 
   // Build display Y map: active index → display Y value

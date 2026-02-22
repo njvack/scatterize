@@ -4,9 +4,12 @@ import { tPValue, residualize } from './common.js';
 // Ordinary least squares regression.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
 // nuisance: array of covariate arrays (each length n) — residualized out of y via FWL
-// Returns: { slope, intercept, rSquared, adjRSquared,
+// Returns: { slope, intercept, rSquared, adjRSquared, fullModelRSquared,
 //            seSlope, seIntercept, tSlope, tIntercept,
 //            pSlope, pIntercept, residuals, n, dfResidual }
+// rSquared: partial R² for X (variance in residualized Y explained by X).
+//   When no nuisance, equals fullModelRSquared.
+// fullModelRSquared: variance in original Y explained by X + all nuisance.
 export function ols(x, y, nuisance = []) {
   const yFit = nuisance.length ? residualize(y, nuisance) : y;
   const n = x.length;
@@ -26,8 +29,17 @@ export function ols(x, y, nuisance = []) {
   const ssr     = resids.reduce((s, r) => s + r * r, 0);
   const sst     = yFit.reduce((s, yi) => s + (yi - yMean) ** 2, 0);
 
+  // Partial R² for X: variance in residualized Y explained by X.
+  // When no nuisance, yFit === y so this equals the full-model R².
   const rSquared    = 1 - ssr / sst;
   const adjRSquared = 1 - (1 - rSquared) * (n - 1) / (n - 2);
+
+  // Full-model R²: variance in original Y explained by X + all nuisance.
+  // By FWL, ssr from the residualized regression equals ssr from the joint model.
+  const yMeanOrig       = y.reduce((s, v) => s + v, 0) / n;
+  const sstOrig         = y.reduce((s, yi) => s + (yi - yMeanOrig) ** 2, 0);
+  const fullModelRSquared = 1 - ssr / sstOrig;
+
   const s2          = ssr / (n - 2);
   const sigma       = Math.sqrt(s2);
   const dfResidual  = n - 2;
@@ -46,7 +58,7 @@ export function ols(x, y, nuisance = []) {
 
   return {
     slope, intercept,
-    rSquared, adjRSquared,
+    rSquared, adjRSquared, fullModelRSquared,
     seSlope, seIntercept,
     tSlope, tIntercept,
     pSlope:     tPValue(Math.abs(tSlope),     dfResidual),
