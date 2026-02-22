@@ -5,7 +5,7 @@ import { getState, setState, onStateChange } from './state.js';
 import { fetchData }                          from './data.js';
 import { createScatterplot }                  from './plot/scatterplot.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
-import { populateControls, bindControls, updateStats } from './plot/dashboard.js';
+import { populateControls, bindControls, syncControls, updateStats } from './plot/dashboard.js';
 import { ols }      from './stats/ols.js';
 import { robust }   from './stats/robust.js';
 import { spearman } from './stats/spearman.js';
@@ -17,7 +17,8 @@ import { residualize } from './stats/common.js';
 // ---------------------------------------------------------------------------
 
 let data    = null;  // parsed CSV rows (array of objects)
-let columns = [];    // column names in order
+let columns = [];    // numeric-eligible column names (usable in models)
+let colMeta = [];    // all column metadata: [{ name, isNumeric, colorType }]
 
 const MODELS = { ols, robust, spearman, theilsen: theilSen };
 const RANK_MODELS = new Set(['spearman', 'theilsen']);
@@ -25,6 +26,28 @@ const RANK_MODELS = new Set(['spearman', 'theilsen']);
 let scatter     = null;
 let diagnostics = null;
 let hoveredIndex = null;  // currently hovered original row index
+
+// ---------------------------------------------------------------------------
+// Column classification
+// ---------------------------------------------------------------------------
+
+// Classify each column for model eligibility and color scale selection.
+// isNumeric: has ≥3 numeric values → can be used in X/Y/nuisance
+// colorType: 'categorical' (few distinct values) | 'continuous' (numeric, many values)
+//            | 'string' (high-cardinality non-numeric)
+function classifyColumns(data) {
+  if (!data.length) return [];
+  const n = data.length;
+  return Object.keys(data[0]).map(col => {
+    const values = data.map(row => row[col]);
+    const numericCount = values.filter(v => typeof v === 'number' && !isNaN(v)).length;
+    const distinctCount = new Set(values.filter(v => v != null && v !== '').map(String)).size;
+    const isNumeric = numericCount >= 3;
+    const isCategorical = distinctCount <= Math.max(10, n * 0.05);
+    const colorType = isCategorical ? 'categorical' : isNumeric ? 'continuous' : 'string';
+    return { name: col, isNumeric, colorType };
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -35,14 +58,9 @@ async function loadData(url) {
   setLoading(true);
   try {
     data    = await fetchData(url);
-    columns = data.length ? Object.keys(data[0]).filter(k => {
-      // Keep only columns that have at least some numeric values
-      return data.some(row => typeof row[k] === 'number' && !isNaN(row[k]));
-    }) : [];
-
-    // Also preserve non-numeric columns for group/filter (store all column names separately)
-    const allColumns = data.length ? Object.keys(data[0]) : [];
-    window._allColumns = allColumns; // used by group/filter selectors
+    colMeta = classifyColumns(data);
+    columns = colMeta.filter(c => c.isNumeric).map(c => c.name);
+    window._allColumns = colMeta.map(c => c.name);
 
     return true;
   } catch (err) {
@@ -93,6 +111,9 @@ function render() {
   const xColName = columns[state.x] ?? columns[0];
   const yColName = columns[state.y] ?? columns[1] ?? columns[0];
   const hColName = state.h != null ? allCols[state.h] : null;
+  const groupColorType = hColName
+    ? (colMeta.find(c => c.name === hColName)?.colorType ?? 'categorical')
+    : 'categorical';
 
   const censored = new Set(state.c);
   const activeIndices = data
@@ -181,6 +202,7 @@ function render() {
     xLabel: xColName,
     yLabel: isResidualized ? `Residualized ${yColName}` : yColName,
     modelKey: state.m,
+    groupColorType,
     customXTicks: state.xl,
     customYTicks: state.yl,
     onPointClick: (index) => toggleCensor(index),
@@ -207,6 +229,9 @@ function render() {
   const diagEl = document.getElementById('diag-plots');
   const hasDiag = (state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length;
   if (diagEl) diagEl.classList.toggle('hidden', !hasDiag);
+
+  // Keep form controls in sync (keyboard nav changes state without touching the DOM)
+  syncControls(state);
 }
 
 function updateDiagnostics(modelResult, activeIndices) {
@@ -263,10 +288,19 @@ function setLoading(on) {
 // Keyboard shortcuts
 // ---------------------------------------------------------------------------
 
+function toggleHelp() {
+  const modal = document.getElementById('help-modal');
+  if (!modal) return;
+  if (modal.open) modal.close();
+  else modal.showModal();
+}
+
 function setupKeyboard() {
   document.addEventListener('keydown', e => {
     // Ignore when typing in an input
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+    if (e.key === '?') { toggleHelp(); return; }
 
     const state = getState();
     const nCols = columns.length;
@@ -348,7 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const ok = await loadData(state.src);
       if (ok) {
         window._loadedSrc = state.src;
-        populateControls(columns, window._allColumns ?? columns, state);
+        populateControls(colMeta, state);
       }
     } else if (!state.src && data) {
       data    = null;
@@ -367,7 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ok = await loadData(state.src);
     if (ok) {
       window._loadedSrc = state.src;
-      populateControls(columns, window._allColumns ?? columns, state);
+      populateControls(colMeta, state);
     }
   }
 
@@ -378,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const url = document.getElementById('data-url')?.value?.trim();
     if (!url) return;
     // Reset variable/model state when loading a new URL
-    setState({ src: url, x: 0, y: 1, m: 'ols', n: [], c: [], h: null, f: null });
+    setState({ src: url, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
   });
 
   // Allow Enter key in URL input
@@ -388,4 +422,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Error dismiss
   document.getElementById('error-close')?.addEventListener('click', () => showError(null));
+
+  // Help modal
+  document.getElementById('help-btn')?.addEventListener('click', toggleHelp);
+  document.getElementById('help-modal')?.addEventListener('click', e => {
+    // Clicks on the ::backdrop hit the dialog element itself; close if outside content
+    if (e.target === e.currentTarget) e.currentTarget.close();
+  });
 });

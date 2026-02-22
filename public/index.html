@@ -56,14 +56,9 @@
         <option value="">None</option>
       </select>
     </div>
-    <div class="control-group">
-      <label for="filter-select">Filter</label>
-      <select id="filter-select" class="form-select">
-        <option value="">None</option>
-      </select>
-    </div>
     <div class="control-group control-group--bottom">
       <button id="export-btn" class="btn btn-secondary">Export SVG</button>
+      <button id="help-btn" class="btn-link">Keyboard shortcuts</button>
     </div>
   </aside>
 
@@ -89,6 +84,18 @@
   </aside>
 
 </main>
+
+<dialog id="help-modal">
+  <p class="help-modal-title">Keyboard shortcuts</p>
+  <table class="help-table">
+    <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous Y variable</td></tr>
+    <tr><td><kbd>u</kbd> / <kbd>i</kbd></td><td>Previous / next X variable</td></tr>
+    <tr><td><kbd>o</kbd> / <kbd>p</kbd></td><td>Previous / next model</td></tr>
+    <tr><td><kbd>c</kbd></td><td>Clear censored points</td></tr>
+    <tr><td><kbd>?</kbd></td><td>Show / hide this help</td></tr>
+  </table>
+  <p class="help-modal-dismiss">Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>
+</dialog>
 
 <div class="error-banner" id="error-banner" hidden>
   <span id="error-message"></span>

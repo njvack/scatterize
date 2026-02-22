@@ -4,15 +4,8 @@
 
 import * as d3 from 'd3';
 
-// ColorBrewer Paired palette for group coloring.
-const PAIRED = [
-  '#1f78b4', '#a6cee3',
-  '#33a02c', '#b2df8a',
-  '#e31a1c', '#fb9a99',
-  '#ff7f00', '#fdbf6f',
-  '#6a3d9a', '#cab2d6',
-  '#b15928', '#ffff99',
-];
+// ColorBrewer Paired palette for group coloring (via D3).
+const PAIRED = d3.schemePaired;
 
 const MARGIN = { top: 24, right: 24, bottom: 68, left: 88 };
 const TICK_LEN = 5;         // px: per-point tick marks on axis
@@ -100,6 +93,7 @@ export function createScatterplot(svgEl) {
     xLabel = 'x',
     yLabel = 'y',
     modelKey = 'ols',
+    groupColorType = 'categorical',
     customXTicks = null,
     customYTicks = null,
     onPointClick = () => {},
@@ -165,12 +159,21 @@ export function createScatterplot(svgEl) {
 
     // ── Group color scale ─────────────────────────────────────────────────
 
-    const groups = [...new Set(active.map(p => p.group).filter(g => g != null))].sort();
-    const colorOf = p => {
-      if (p.group == null || groups.length === 0) return 'var(--color-point)';
-      const idx = groups.indexOf(p.group);
-      return PAIRED[idx % PAIRED.length];
-    };
+    const groupValues = active.map(p => p.group).filter(g => g != null);
+    let colorOf;
+    if (groupColorType === 'continuous' && groupValues.length) {
+      const [lo, hi] = d3.extent(groupValues);
+      const colorScale = d3.scaleSequential(d3.interpolateViridis)
+        .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]);
+      colorOf = p => p.group == null ? 'var(--color-point)' : colorScale(p.group);
+    } else {
+      // categorical or string: discrete Paired palette
+      const groups = [...new Set(groupValues.map(String))].sort();
+      colorOf = p => {
+        if (p.group == null || groups.length === 0) return 'var(--color-point)';
+        return PAIRED[groups.indexOf(String(p.group)) % PAIRED.length];
+      };
+    }
 
     // ── Points ────────────────────────────────────────────────────────────
 

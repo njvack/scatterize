@@ -45,7 +45,6 @@ Spearman/Theil-Sen don't support nuisance covariates (rank methods don't compose
 | `n` | Nuisance column indices (comma-sep) |
 | `c` | Censored row indices (comma-sep) |
 | `h` | Group/highlight column index |
-| `f` | Filter column index |
 | `xl` | Custom X axis tick values (comma-sep) |
 | `yl` | Custom Y axis tick values (comma-sep) |
 

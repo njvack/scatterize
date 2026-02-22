@@ -9,16 +9,18 @@ const RANK_MODELS = new Set(['spearman', 'theilsen']);
 // Controls
 // ---------------------------------------------------------------------------
 
-// Populate all column selectors with the given column names.
-// numericCols: numeric-only columns (for x, y, nuisance)
-// allCols: all columns including non-numeric (for group, filter)
+// Populate all column selectors.
+// colMeta: [{ name, isNumeric, colorType }] — full column metadata from classifyColumns()
 // Reads current state to set selected values.
-export function populateControls(numericCols, allCols, state) {
-  populateColumnSelect('x-select', numericCols, state.x);
-  populateColumnSelect('y-select', numericCols, state.y);
-  populateColumnSelect('group-select', allCols, state.h, true);
-  populateColumnSelect('filter-select', allCols, state.f, true);
-  populateNuisanceList(numericCols, state);
+export function populateControls(colMeta, state) {
+  const numericCols    = colMeta.filter(c => c.isNumeric).map(c => c.name);
+  const nonNumericCols = colMeta.filter(c => !c.isNumeric).map(c => c.name);
+  const allCols        = colMeta.map(c => c.name);
+
+  populateColumnSelect('x-select', numericCols, nonNumericCols, state.x);
+  populateColumnSelect('y-select', numericCols, nonNumericCols, state.y);
+  populateColumnSelect('group-select', allCols, [], state.h, true);
+  populateNuisanceList(numericCols, nonNumericCols, state);
 
   const modelSelect = document.getElementById('model-select');
   modelSelect.value = state.m;
@@ -26,7 +28,9 @@ export function populateControls(numericCols, allCols, state) {
   updateNuisanceAvailability(state.m);
 }
 
-function populateColumnSelect(id, columns, selectedIndex, allowNone = false) {
+// activeCols: selectable columns (value = index in activeCols)
+// disabledCols: shown but disabled at the bottom (no meaningful value)
+function populateColumnSelect(id, activeCols, disabledCols, selectedIndex, allowNone = false) {
   const el = document.getElementById(id);
   if (!el) return;
   el.innerHTML = '';
@@ -36,31 +40,57 @@ function populateColumnSelect(id, columns, selectedIndex, allowNone = false) {
     opt.textContent = 'None';
     el.appendChild(opt);
   }
-  columns.forEach((col, i) => {
+  activeCols.forEach((col, i) => {
     const opt = document.createElement('option');
     opt.value = String(i);
     opt.textContent = col;
     if (i === selectedIndex) opt.selected = true;
     el.appendChild(opt);
   });
+  if (disabledCols.length) {
+    const sep = document.createElement('option');
+    sep.disabled = true;
+    sep.textContent = '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500';
+    el.appendChild(sep);
+    disabledCols.forEach(col => {
+      const opt = document.createElement('option');
+      opt.disabled = true;
+      opt.textContent = col;
+      el.appendChild(opt);
+    });
+  }
   if (allowNone && selectedIndex == null) el.value = '';
 }
 
-function populateNuisanceList(columns, state) {
+function populateNuisanceList(numericCols, nonNumericCols, state) {
   const list = document.getElementById('nuisance-list');
   if (!list) return;
   list.innerHTML = '';
   const selected = new Set(state.n);
-  columns.forEach((col, i) => {
+
+  numericCols.forEach((col, i) => {
     const label = document.createElement('label');
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.value = String(i);
     cb.checked = selected.has(i);
     cb.addEventListener('change', () => {
-      const checked = [...list.querySelectorAll('input:checked')].map(c => parseInt(c.value, 10));
+      const checked = [...list.querySelectorAll('input:not([disabled]):checked')]
+        .map(c => parseInt(c.value, 10));
       setState({ n: checked });
     });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + col));
+    list.appendChild(label);
+  });
+
+  nonNumericCols.forEach(col => {
+    const label = document.createElement('label');
+    label.style.opacity = '0.4';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.disabled = true;
+    cb.dataset.nonnumeric = 'true';
     label.appendChild(cb);
     label.appendChild(document.createTextNode(' ' + col));
     list.appendChild(label);
@@ -72,10 +102,24 @@ function updateNuisanceAvailability(modelKey) {
   const note = document.getElementById('nuisance-note');
   const isRank = RANK_MODELS.has(modelKey);
   if (list) {
-    list.querySelectorAll('input').forEach(cb => { cb.disabled = isRank; });
+    // Only toggle the numeric checkboxes; non-numeric ones stay permanently disabled
+    list.querySelectorAll('input:not([data-nonnumeric])').forEach(cb => { cb.disabled = isRank; });
     list.style.opacity = isRank ? '0.4' : '1';
   }
   if (note) note.hidden = !isRank;
+}
+
+// Sync select values to state without rebuilding the option lists.
+// Call this after any state change that doesn't reload data (e.g. keyboard nav).
+export function syncControls(state) {
+  const xSel = document.getElementById('x-select');
+  const ySel = document.getElementById('y-select');
+  const mSel = document.getElementById('model-select');
+  const gSel = document.getElementById('group-select');
+  if (xSel) xSel.value = String(state.x);
+  if (ySel) ySel.value = String(state.y);
+  if (mSel) mSel.value = state.m;
+  if (gSel) gSel.value = state.h != null ? String(state.h) : '';
 }
 
 // Bind all control change events. Called once after initial render.
@@ -84,7 +128,6 @@ export function bindControls(state) {
   const ySel = document.getElementById('y-select');
   const mSel = document.getElementById('model-select');
   const gSel = document.getElementById('group-select');
-  const fSel = document.getElementById('filter-select');
 
   xSel?.addEventListener('change', () => setState({ x: parseInt(xSel.value, 10) }));
   ySel?.addEventListener('change', () => setState({ y: parseInt(ySel.value, 10) }));
@@ -97,9 +140,6 @@ export function bindControls(state) {
   });
   gSel?.addEventListener('change', () => {
     setState({ h: gSel.value !== '' ? parseInt(gSel.value, 10) : null });
-  });
-  fSel?.addEventListener('change', () => {
-    setState({ f: fSel.value !== '' ? parseInt(fSel.value, 10) : null });
   });
 }
 

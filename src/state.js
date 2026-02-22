@@ -10,7 +10,6 @@ export const DEFAULTS = {
   n: [],
   c: [],
   h: null,
-  f: null,
   xl: null,
   yl: null,
 };
@@ -43,7 +42,6 @@ export function parseState(hashStr) {
     n:   raw.has('n') ? parseIntList(raw.get('n')) : [...DEFAULTS.n],
     c:   raw.has('c') ? parseIntList(raw.get('c')) : [...DEFAULTS.c],
     h:   parseIntOrNull(raw.get('h')),
-    f:   parseIntOrNull(raw.get('f')),
     xl:  raw.has('xl') ? parseFloatList(raw.get('xl')) : DEFAULTS.xl,
     yl:  raw.has('yl') ? parseFloatList(raw.get('yl')) : DEFAULTS.yl,
   };
@@ -62,7 +60,6 @@ export function serializeState(state) {
   if (state.n?.length)  params.set('n', state.n.join(','));
   if (state.c?.length)  params.set('c', state.c.join(','));
   if (state.h != null)  params.set('h', String(state.h));
-  if (state.f != null)  params.set('f', String(state.f));
   if (state.xl?.length) params.set('xl', state.xl.join(','));
   if (state.yl?.length) params.set('yl', state.yl.join(','));
   return params.toString();
