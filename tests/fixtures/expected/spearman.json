@@ -1,0 +1,42 @@
+[
+  {
+    "dataset": "cars",
+    "x": "speed",
+    "y": "dist",
+    "results": {
+      "rho": 0.83035683883,
+      "p_value": 8.8245584376e-14,
+      "n": 50
+    }
+  },
+  {
+    "dataset": "faithful",
+    "x": "eruptions",
+    "y": "waiting",
+    "results": {
+      "rho": 0.77797205765,
+      "p_value": 1.9895419907e-56,
+      "n": 272
+    }
+  },
+  {
+    "dataset": "synthetic_linear",
+    "x": "x",
+    "y": "y",
+    "results": {
+      "rho": 0.9862665066,
+      "p_value": 0,
+      "n": 50
+    }
+  },
+  {
+    "dataset": "synthetic_monotone",
+    "x": "x",
+    "y": "y",
+    "results": {
+      "rho": 0.99404561825,
+      "p_value": 0,
+      "n": 50
+    }
+  }
+]

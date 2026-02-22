@@ -1,0 +1,184 @@
+[
+  {
+    "dataset": "cars",
+    "x": "speed",
+    "y": "dist",
+    "nuisance": [],
+    "results": {
+      "slope": 3.9324087591,
+      "intercept": -17.5790948905,
+      "se_slope": 0.41551277666,
+      "t_slope": 9.4639899903,
+      "p_slope": 1.4898364963e-12,
+      "se_intercept": 6.7584401694,
+      "t_intercept": -2.601058003,
+      "p_intercept": 0.012318816154,
+      "r_squared": 0.65107938076,
+      "adj_r_squared": 0.64381020119,
+      "n": 50,
+      "df_residual": 48
+    }
+  },
+  {
+    "dataset": "mtcars",
+    "x": "wt",
+    "y": "mpg",
+    "nuisance": [],
+    "results": {
+      "slope": -5.3444715727,
+      "intercept": 37.2851261673,
+      "se_slope": 0.5591010451,
+      "t_slope": -9.559044147,
+      "p_slope": 1.2939587014e-10,
+      "se_intercept": 1.8776273373,
+      "t_intercept": 19.857575264,
+      "p_intercept": 8.2417988453e-19,
+      "r_squared": 0.75283279366,
+      "adj_r_squared": 0.74459388678,
+      "n": 32,
+      "df_residual": 30
+    }
+  },
+  {
+    "dataset": "mtcars",
+    "x": "wt",
+    "y": "mpg",
+    "nuisance": [
+      "cyl"
+    ],
+    "results": {
+      "slope": -1.2371409566,
+      "intercept": 3.9801917425,
+      "se_slope": 0.54340102689,
+      "t_slope": -2.2766628978,
+      "p_slope": 0.030106849586,
+      "se_intercept": 1.8249020139,
+      "t_intercept": 2.1810440846,
+      "p_intercept": 0.0371526212,
+      "r_squared": 0.14732016535,
+      "adj_r_squared": 0.1188975042,
+      "n": 32,
+      "df_residual": 30
+    }
+  },
+  {
+    "dataset": "anscombe",
+    "x": "x1",
+    "y": "y1",
+    "nuisance": [],
+    "results": {
+      "slope": 0.50009090909,
+      "intercept": 3.0000909091,
+      "se_slope": 0.1179055006,
+      "t_slope": 4.2414552889,
+      "p_slope": 0.0021696288731,
+      "se_intercept": 1.1247467908,
+      "t_intercept": 2.6673478276,
+      "p_intercept": 0.025734051399,
+      "r_squared": 0.66654245951,
+      "adj_r_squared": 0.62949162168,
+      "n": 11,
+      "df_residual": 9
+    }
+  },
+  {
+    "dataset": "anscombe",
+    "x": "x2",
+    "y": "y2",
+    "nuisance": [],
+    "results": {
+      "slope": 0.5,
+      "intercept": 3.0009090909,
+      "se_slope": 0.11796374597,
+      "t_slope": 4.2385903898,
+      "p_slope": 0.0021788162369,
+      "se_intercept": 1.1253024162,
+      "t_intercept": 2.6667578844,
+      "p_intercept": 0.025758941031,
+      "r_squared": 0.66624203373,
+      "adj_r_squared": 0.62915781525,
+      "n": 11,
+      "df_residual": 9
+    }
+  },
+  {
+    "dataset": "anscombe",
+    "x": "x3",
+    "y": "y3",
+    "nuisance": [],
+    "results": {
+      "slope": 0.49972727273,
+      "intercept": 3.0024545455,
+      "se_slope": 0.11787766222,
+      "t_slope": 4.2393721025,
+      "p_slope": 0.0021763052792,
+      "se_intercept": 1.1244812296,
+      "t_intercept": 2.6700797366,
+      "p_intercept": 0.02561910884,
+      "r_squared": 0.66632404107,
+      "adj_r_squared": 0.62924893452,
+      "n": 11,
+      "df_residual": 9
+    }
+  },
+  {
+    "dataset": "anscombe",
+    "x": "x4",
+    "y": "y4",
+    "nuisance": [],
+    "results": {
+      "slope": 0.49990909091,
+      "intercept": 3.0017272727,
+      "se_slope": 0.11781894173,
+      "t_slope": 4.2430281886,
+      "p_slope": 0.0021646023472,
+      "se_intercept": 1.1239210719,
+      "t_intercept": 2.6707634085,
+      "p_intercept": 0.025590425201,
+      "r_squared": 0.6667072569,
+      "adj_r_squared": 0.62967472989,
+      "n": 11,
+      "df_residual": 9
+    }
+  },
+  {
+    "dataset": "synthetic_linear",
+    "x": "x",
+    "y": "y",
+    "nuisance": [],
+    "results": {
+      "slope": 2.4039917271,
+      "intercept": 1.0469259204,
+      "se_slope": 0.056292724716,
+      "t_slope": 42.7051939521,
+      "p_slope": 7.5928273346e-40,
+      "se_intercept": 0.064199683159,
+      "t_intercept": 16.3073378068,
+      "p_intercept": 3.3064529752e-21,
+      "r_squared": 0.97435532479,
+      "adj_r_squared": 0.97382106073,
+      "n": 50,
+      "df_residual": 48
+    }
+  },
+  {
+    "dataset": "synthetic_outliers",
+    "x": "x",
+    "y": "y",
+    "nuisance": [],
+    "results": {
+      "slope": 2.3320105644,
+      "intercept": 1.4401837416,
+      "se_slope": 0.4647279546,
+      "t_slope": 5.0180122398,
+      "p_slope": 7.5817323114e-06,
+      "se_intercept": 0.53000432278,
+      "t_intercept": 2.7173056515,
+      "p_intercept": 0.0091271448148,
+      "r_squared": 0.34408708783,
+      "adj_r_squared": 0.33042223549,
+      "n": 50,
+      "df_residual": 48
+    }
+  }
+]
