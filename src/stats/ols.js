@@ -19,6 +19,8 @@ export function ols(x, y, nuisance = []) {
   const intercept = b[0];
   const slope     = b[1];
 
+  const xMean   = x.reduce((s, v) => s + v, 0) / n;
+  const sxx     = x.reduce((s, v) => s + (v - xMean) ** 2, 0);
   const yMean   = yFit.reduce((s, v) => s + v, 0) / n;
   const resids  = yFit.map((yi, i) => yi - (intercept + slope * x[i]));
   const ssr     = resids.reduce((s, r) => s + r * r, 0);
@@ -27,6 +29,7 @@ export function ols(x, y, nuisance = []) {
   const rSquared    = 1 - ssr / sst;
   const adjRSquared = 1 - (1 - rSquared) * (n - 1) / (n - 2);
   const s2          = ssr / (n - 2);
+  const sigma       = Math.sqrt(s2);
   const dfResidual  = n - 2;
 
   // SE via diagonal of (X'X)⁻¹ — same approach as robust.js
@@ -50,5 +53,6 @@ export function ols(x, y, nuisance = []) {
     pIntercept: tPValue(Math.abs(tIntercept), dfResidual),
     residuals: resids,
     n, dfResidual,
+    xMean, sxx, sigma,
   };
 }

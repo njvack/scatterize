@@ -160,7 +160,8 @@ const FMT = {
 };
 
 // Render the model results section of the stats panel.
-export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensored }) {
+export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensored,
+                               nuisanceNames = [], nuisancePartialR2 = [] }) {
   const el = document.getElementById('stats-model');
   if (!el) return;
   el.innerHTML = '';
@@ -173,10 +174,24 @@ export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensore
   const rows = buildStatRows(modelResult, modelKey, xLabel, yLabel);
   const title = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' }[modelKey] ?? modelKey;
 
+  const hasNuisanceStats = nuisanceNames.length > 0 && nuisancePartialR2.length > 0
+    && (modelKey === 'ols' || modelKey === 'robust');
+
+  const nuisanceRows = hasNuisanceStats
+    ? nuisanceNames.map((name, i) =>
+        `<tr><td>${name}</td><td>${FMT.r2(nuisancePartialR2[i])}</td></tr>`
+      ).join('')
+    : '';
+
   const html = `
     <p class="stats-model-name">${title}</p>
     <table class="stats-table">
       ${rows.map(([label, val]) => `<tr><td>${label}</td><td>${val}</td></tr>`).join('')}
+      ${hasNuisanceStats ? `
+        <tr><td colspan="2"><hr class="stats-divider"></td></tr>
+        <tr><td colspan="2" class="stats-nuisance-header">nuisance partial R²</td></tr>
+        ${nuisanceRows}
+      ` : ''}
     </table>
   `;
   el.innerHTML = html;
@@ -218,6 +233,8 @@ function buildStatRows(r, key, xLabel, yLabel) {
       return [
         ['ρ', FMT.stat(r.rho)],
         ['p', FMT.pval(r.pValue)],
+        ['slope', FMT.coef(r.slope)],
+        ['intercept', FMT.coef(r.intercept)],
       ];
     case 'theilsen':
       return [

@@ -105,9 +105,27 @@ export function theilSen(x, y) {
     for (let j = i + 1; j < n; j++)
       if (x[j] !== x[i]) slopes.push((y[j] - y[i]) / (x[j] - x[i]));
 
-  const slope     = arrayMedian(slopes);
+  // Sort once: reused for both median and Sen CI.
+  const sortedSlopes = slopes.slice().sort((a, b) => a - b);
+  const N = sortedSlopes.length;
+  const slope = N % 2 === 0
+    ? (sortedSlopes[N / 2 - 1] + sortedSlopes[N / 2]) / 2
+    : sortedSlopes[(N - 1) / 2];
   const intercept = arrayMedian(y.map((yi, i) => yi - slope * x[i]));
 
+  // Sen (1968) distribution-free 95% CI for slope.
+  // Uses no-ties variance formula n(n-1)(2n+5)/18 — conservative (wider) when ties present.
+  // K = z_{0.025} * sqrt(Var); C = floor((N - K) / 2)
+  const K = 1.9599639845400536 * Math.sqrt(n * (n - 1) * (2 * n + 5) / 18);
+  const C = Math.floor((N - K) / 2);
+  let slopeCILow = null, slopeCIHigh = null, interceptCILow = null, interceptCIHigh = null;
+  if (C >= 0 && N - C - 1 < N) {
+    slopeCILow      = sortedSlopes[C];
+    slopeCIHigh     = sortedSlopes[N - C - 1];
+    interceptCILow  = arrayMedian(y.map((yi, i) => yi - slopeCILow  * x[i]));
+    interceptCIHigh = arrayMedian(y.map((yi, i) => yi - slopeCIHigh * x[i]));
+  }
+
   const { tau, pValue } = kendall(x, y);
-  return { slope, intercept, tau, pValue, n };
+  return { slope, intercept, tau, pValue, n, slopeCILow, slopeCIHigh, interceptCILow, interceptCIHigh };
 }

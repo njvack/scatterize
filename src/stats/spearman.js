@@ -42,5 +42,14 @@ export function spearman(x, y) {
   const t      = rho * Math.sqrt((n - 2) / (1 - rho * rho));
   const pValue = tPValue(Math.abs(t), n - 2);
 
-  return { rho, pValue, n };
+  // Best-fit line: Spearman analog of OLS — passes through (mean(x), mean(y))
+  // with slope = rho * sd(y) / sd(x).
+  const xMean = x.reduce((s, v) => s + v, 0) / n;
+  const yMean = y.reduce((s, v) => s + v, 0) / n;
+  const sdX = Math.sqrt(x.reduce((s, v) => s + (v - xMean) ** 2, 0) / (n - 1));
+  const sdY = Math.sqrt(y.reduce((s, v) => s + (v - yMean) ** 2, 0) / (n - 1));
+  const slope     = sdX > 0 ? rho * sdY / sdX : 0;
+  const intercept = yMean - slope * xMean;
+
+  return { rho, pValue, n, slope, intercept };
 }

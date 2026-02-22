@@ -10,7 +10,7 @@ import { ols }      from './stats/ols.js';
 import { robust }   from './stats/robust.js';
 import { spearman } from './stats/spearman.js';
 import { theilSen } from './stats/theilsen.js';
-import { residualize } from './stats/common.js';
+import { residualize, residualizeWithStats } from './stats/common.js';
 
 // ---------------------------------------------------------------------------
 // App state (in-memory, not in URL)
@@ -137,12 +137,16 @@ function render() {
 
   // Residualize Y against nuisance covariates (OLS/Robust only)
   let isResidualized = false;
+  let nuisanceNames  = [];
+  let nuisancePartialR2 = [];
   if (state.n.length && !RANK_MODELS.has(state.m)) {
-    const nuisCols = state.n.map(i => columns[i]).filter(Boolean);
-    if (nuisCols.length) {
-      const nuisData = nuisCols.map(col => activeIndices.map(i => data[i][col]));
+    nuisanceNames = state.n.map(i => columns[i]).filter(Boolean);
+    if (nuisanceNames.length) {
+      const nuisData = nuisanceNames.map(col => activeIndices.map(i => data[i][col]));
       try {
-        yActive = residualize(yActive, nuisData);
+        const result = residualizeWithStats(yActive, nuisData);
+        yActive = result.residuals;
+        nuisancePartialR2 = result.partialR2;
         isResidualized = true;
       } catch (e) {
         showError(`Residualization failed: ${e.message}`);
@@ -220,6 +224,8 @@ function render() {
     yLabel:     yColName,
     n:          activeIndices.length,
     nCensored:  censored.size,
+    nuisanceNames,
+    nuisancePartialR2,
   });
 
   // Update diagnostic plots (OLS and Robust only)

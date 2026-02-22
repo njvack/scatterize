@@ -7,6 +7,17 @@ import * as d3 from 'd3';
 // ColorBrewer Paired palette for group coloring (via D3).
 const PAIRED = d3.schemePaired;
 
+// Approximate t_{0.975, df} via Cornish-Fisher expansion (4 terms).
+// Error < 0.01 for df >= 5; used for 95% CI bands on OLS.
+const Z95 = 1.9599639845400536;
+function tQ95(df) {
+  const z = Z95, z2 = z * z;
+  return z
+    + (z2 * z + z) / (4 * df)
+    + (5 * z2 * z2 * z + 16 * z2 * z + 3 * z) / (96 * df * df)
+    + (3 * z2 * z2 * z2 * z + 19 * z2 * z2 * z + 17 * z2 * z - 15 * z) / (384 * df * df * df);
+}
+
 const MARGIN = { top: 24, right: 24, bottom: 68, left: 88 };
 const TICK_LEN = 5;         // px: per-point tick marks on axis
 const SUPERTICK_LEN = 14;   // px: hover supertick
@@ -52,6 +63,48 @@ function cornerMarkerPos(px, py, xScale, yScale, innerW, innerH) {
 }
 
 // ---------------------------------------------------------------------------
+// CI band computation
+// ---------------------------------------------------------------------------
+
+// Returns array of { x, lo, hi } for the 95% confidence band, or null if
+// insufficient parameters.  nPts controls smoothness (irrelevant for Theil-Sen
+// which is always linear, but we use the same number for consistency).
+function computeBand(r, key, [x0, x1], nPts) {
+  if (!r) return null;
+  const xs = Array.from({ length: nPts }, (_, i) => x0 + i * (x1 - x0) / (nPts - 1));
+
+  if (key === 'ols' && r.sigma != null && r.xMean != null && r.sxx != null) {
+    const t = tQ95(r.dfResidual);
+    return xs.map(xv => {
+      const fit = r.intercept + r.slope * xv;
+      const hw  = t * r.sigma * Math.sqrt(1 / r.n + (xv - r.xMean) ** 2 / r.sxx);
+      return { x: xv, lo: fit - hw, hi: fit + hw };
+    });
+  }
+
+  if (key === 'robust' && r.covIntSlope != null) {
+    return xs.map(xv => {
+      const fit    = r.intercept + r.slope * xv;
+      const varFit = r.seIntercept ** 2 + 2 * xv * r.covIntSlope + xv ** 2 * r.seSlope ** 2;
+      const hw     = Z95 * Math.sqrt(Math.max(0, varFit));
+      return { x: xv, lo: fit - hw, hi: fit + hw };
+    });
+  }
+
+  if (key === 'theilsen' && r.slopeCILow != null) {
+    // Two straight lines — only need the domain endpoints, but use nPts for
+    // a consistent path length so d3.area transition doesn't produce artifacts.
+    return xs.map(xv => {
+      const yA = r.interceptCILow  + r.slopeCILow  * xv;
+      const yB = r.interceptCIHigh + r.slopeCIHigh * xv;
+      return { x: xv, lo: Math.min(yA, yB), hi: Math.max(yA, yB) };
+    });
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -79,6 +132,7 @@ export function createScatterplot(svgEl) {
   const yAxisG  = canvas.append('g').attr('class', 'y-axis');
   const plotArea = canvas.append('g').attr('class', 'plot-area')
     .attr('clip-path', `url(#${clipId})`);
+  const ciBandEl   = plotArea.append('path').attr('class', 'ci-band');
   const regLineEl  = plotArea.append('line').attr('class', 'regression-line');
   const pointsG    = plotArea.append('g').attr('class', 'points');
   const cornersG   = canvas.append('g').attr('class', 'corners'); // outside clip
@@ -143,8 +197,7 @@ export function createScatterplot(svgEl) {
     // ── Regression line ───────────────────────────────────────────────────
 
     const hasLine = modelResult && modelResult.slope != null
-      && modelResult.intercept != null
-      && modelKey !== 'spearman';
+      && modelResult.intercept != null;
 
     if (hasLine) {
       const x0 = xScale.domain()[0];
@@ -155,6 +208,19 @@ export function createScatterplot(svgEl) {
         .attr('x2', xScale(x1)).attr('y2', yScale(modelResult.intercept + modelResult.slope * x1));
     } else {
       regLineEl.interrupt().style('display', 'none');
+    }
+
+    // ── CI band ───────────────────────────────────────────────────────────
+
+    const bandData = computeBand(modelResult, modelKey, xScale.domain(), 60);
+    if (bandData) {
+      const areaGen = d3.area()
+        .x(d => xScale(d.x))
+        .y0(d => yScale(d.lo))
+        .y1(d => yScale(d.hi));
+      ciBandEl.style('display', null).datum(bandData).attr('d', areaGen);
+    } else {
+      ciBandEl.style('display', 'none');
     }
 
     // ── Group color scale ─────────────────────────────────────────────────
@@ -437,6 +503,7 @@ export function createScatterplot(svgEl) {
     xAxisG.selectAll('*').remove();
     yAxisG.selectAll('*').remove();
     regLineEl.style('display', 'none');
+    ciBandEl.style('display', 'none');
   }
 
   return { update, clear };

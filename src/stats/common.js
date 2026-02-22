@@ -106,3 +106,32 @@ export function solveLinear(A, b) {
   const result = solve(new Matrix(A), Matrix.columnVector(b));
   return result.getColumn(0);
 }
+
+// Like residualize(), but also returns partial R² for each nuisance variable.
+// Partial R²_k = t²_k / (t²_k + df_residual), where t_k is the t-statistic
+// for nuisance k in the OLS fit of y on [1, z1, ..., zp].
+export function residualizeWithStats(y, nuisanceMatrix) {
+  const n = y.length;
+  const p = nuisanceMatrix.length;
+  const dm = Array.from({ length: n }, (_, i) => [1, ...nuisanceMatrix.map(col => col[i])]);
+  const X = new Matrix(dm);
+  const Y = Matrix.columnVector(y);
+
+  const b = new QrDecomposition(X).solve(Y).getColumn(0);
+  const residuals = y.map((yi, i) => yi - dm[i].reduce((s, xij, j) => s + xij * b[j], 0));
+
+  const ssr        = residuals.reduce((s, r) => s + r * r, 0);
+  const dfResidual = n - p - 1;
+  const s2         = ssr / dfResidual;
+
+  const XtX = X.transpose().mmul(X).to2DArray();
+  const partialR2 = nuisanceMatrix.map((_, k) => {
+    const j = k + 1;  // skip intercept column
+    const e = new Array(p + 1).fill(0); e[j] = 1;
+    const invJJ = solveLinear(XtX, e)[j];
+    const t2 = (b[j] ** 2) / (invJJ * s2);
+    return t2 / (t2 + dfResidual);
+  });
+
+  return { residuals, partialR2 };
+}

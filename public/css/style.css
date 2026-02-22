@@ -333,6 +333,16 @@ html, body {
   margin: 8px 0;
 }
 
+.stats-nuisance-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-sans);
+  padding-bottom: 4px;
+}
+
 /* ─── Diagnostic Plots ──────────────────────────────────────────────────── */
 
 .diag-plots {
@@ -499,6 +509,13 @@ kbd {
   font-family: var(--font-sans);
   fill: var(--color-text);
   font-weight: 500;
+}
+
+.ci-band {
+  fill: var(--color-regline);
+  fill-opacity: 0.12;
+  stroke: none;
+  pointer-events: none;
 }
 
 .regression-line {

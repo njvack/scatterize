@@ -93,6 +93,11 @@ export function robust(x, y, nuisance = []) {
     return solveLinear(XtWX, e)[j];
   });
 
+  // Off-diagonal [0][1] of (X'WX)^{-1}: covariance of intercept and x-slope.
+  // Reuse the column-1 solve (intercept row) to avoid an extra factorization.
+  const e1 = new Array(k).fill(0); e1[1] = 1;
+  const covIntSlope = solveLinear(XtWX, e1)[0] * s2;
+
   const slope       = b[1];
   const intercept   = b[0];
   const seSlope     = Math.sqrt(diagInv[1] * s2);
@@ -101,6 +106,7 @@ export function robust(x, y, nuisance = []) {
   return {
     slope, intercept,
     seSlope, seIntercept,
+    covIntSlope,
     tSlope:     slope     / seSlope,
     tIntercept: intercept / seIntercept,
     scale,
