@@ -16,10 +16,9 @@ const fixturesDir = join(__dirname, '..', 'fixtures');
 import { ols }      from '../../src/stats/ols.js';
 import { robust }   from '../../src/stats/robust.js';
 import { spearman } from '../../src/stats/spearman.js';
-// import { theilSen } from '../../src/stats/theilsen.js';
+import { theilSen } from '../../src/stats/theilsen.js';
 
 const NOT_IMPLEMENTED = () => { throw new Error('not yet implemented'); };
-const theilSen = NOT_IMPLEMENTED;
 
 // ---------------------------------------------------------------------------
 // CSV parser — handles well-formed R write.csv output
