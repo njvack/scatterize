@@ -26,15 +26,12 @@ const POINT_R = 4.5;        // px: default point radius
 const POINT_R_HOVER = 6.5;  // px: hovered point radius
 
 // Compute 5-number summary (min, q1, median, q3, max) for axis labeling.
+// Snaps to the nearest actual data value rather than interpolating, so labels
+// always correspond to values that exist in the data.
 function fiveNum(arr) {
   const s = [...arr].sort((a, b) => a - b);
   const n = s.length;
-  const q = p => {
-    const idx = p * (n - 1);
-    const lo = Math.floor(idx);
-    const hi = Math.ceil(idx);
-    return s[lo] + (s[hi] - s[lo]) * (idx - lo);
-  };
+  const q = p => s[Math.round(p * (n - 1))];
   return [s[0], q(0.25), q(0.5), q(0.75), s[n - 1]];
 }
 
@@ -463,8 +460,9 @@ export function createScatterplot(svgEl) {
   // supertick.  Restored by clearHover().
   function suppressNearbyTicks(axisG, isX, hoverPos) {
     axisG.selectAll('text.tick-label').each(function() {
+      const pad = isX ? 30 : 8;
       const pos = +d3.select(this).attr(isX ? 'x' : 'y');
-      if (Math.abs(pos - hoverPos) <= 30)
+      if (Math.abs(pos - hoverPos) <= pad)
         d3.select(this).style('display', 'none');
     });
   }
