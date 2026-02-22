@@ -140,6 +140,7 @@ export function createScatterplot(svgEl) {
   const voronoiG   = canvas.append('g').attr('class', 'voronoi-overlay').style('fill', 'none');
 
   let lastOnHover = null;
+  let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
 
   function update({
     points,
@@ -154,6 +155,9 @@ export function createScatterplot(svgEl) {
     onPointHover = () => {},
   }) {
     lastOnHover = onPointHover;
+    // Clear any stuck hover overlay immediately when data changes.
+    clearHover();
+    onPointHover(null);
 
     const { width: W, height: H } = svgEl.getBoundingClientRect();
     if (W === 0 || H === 0) return;
@@ -249,6 +253,7 @@ export function createScatterplot(svgEl) {
       const corner = p.censored ? cornerMarkerPos(p.displayX, p.displayY, xScale, yScale, iW, iH) : null;
       return { ...p, sx, sy, corner };
     });
+    const newPointMap = new Map(allPoints.map(p => [p.index, p]));
 
     // Active + in-range censored: drawn as circles in the plot area
     const circlePoints = allPoints.filter(p => !p.censored || !p.corner);
@@ -256,14 +261,35 @@ export function createScatterplot(svgEl) {
     pointsG.selectAll('.point')
       .data(circlePoints, d => d.index)
       .join(
-        enter => enter.append('circle').attr('class', 'point')
-          .attr('cx', d => d.sx)
-          .attr('cy', d => d.sy)
-          .attr('r', POINT_R),
+        enter => {
+          const nodes = enter.append('circle').attr('class', 'point')
+            .attr('r', POINT_R)
+            // If this circle was previously a corner diamond, start it there
+            // so it animates inward to its actual position.
+            .attr('cx', d => { const p = prevState.get(d.index); return p?.isCorner ? p.cornerX : d.sx; })
+            .attr('cy', d => { const p = prevState.get(d.index); return p?.isCorner ? p.cornerY : d.sy; });
+          nodes.transition(T).attr('cx', d => d.sx).attr('cy', d => d.sy);
+          return nodes;
+        },
         update => update.call(sel =>
           sel.transition(T).attr('cx', d => d.sx).attr('cy', d => d.sy)
         ),
-        exit => exit.remove()
+        exit => {
+          // If the exiting circle is becoming a corner diamond, animate it
+          // flying out to the corner position before removing.
+          exit.each(function(d) {
+            const next = newPointMap.get(d.index);
+            if (next?.corner) {
+              d3.select(this).raise()
+                .transition(T)
+                .attr('cx', next.corner.x)
+                .attr('cy', next.corner.y)
+                .remove();
+            } else {
+              d3.select(this).remove();
+            }
+          });
+        }
       )
       .attr('r', POINT_R)
       .classed('point--active',   d => !d.censored)
@@ -327,6 +353,13 @@ export function createScatterplot(svgEl) {
     } else {
       voronoiG.selectAll('path').remove();
     }
+
+    // Save positions for cross-element transition on next update.
+    prevState = new Map(allPoints.map(p => [p.index, {
+      sx: p.sx, sy: p.sy,
+      cornerX: p.corner?.x, cornerY: p.corner?.y,
+      isCorner: !!p.corner,
+    }]));
   }
 
   // ── Hover supertick ───────────────────────────────────────────────────
