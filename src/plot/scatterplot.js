@@ -400,6 +400,9 @@ export function createScatterplot(svgEl) {
       .attr('text-anchor', 'end')
       .attr('dominant-baseline', 'middle')
       .text(fmtNum(d.displayY));
+
+    suppressNearbyTicks(xAxisG, true, d.sx);
+    suppressNearbyTicks(yAxisG, false, d.sy);
   }
 
   function showCensorHover(d, xScale, yScale, iH, iW) {
@@ -451,10 +454,26 @@ export function createScatterplot(svgEl) {
       .attr('text-anchor', 'end')
       .attr('dominant-baseline', 'middle')
       .text(fmtNum(d.displayY));
+
+    suppressNearbyTicks(xAxisG, true, xPos);
+    suppressNearbyTicks(yAxisG, false, yPos);
+  }
+
+  // Hide regular tick marks/labels that would be overdrawn by the hover
+  // supertick.  Restored by clearHover().
+  function suppressNearbyTicks(axisG, isX, hoverPos) {
+    axisG.selectAll('text.tick-label').each(function() {
+      const pos = +d3.select(this).attr(isX ? 'x' : 'y');
+      if (Math.abs(pos - hoverPos) <= 30)
+        d3.select(this).style('display', 'none');
+    });
   }
 
   function clearHover() {
     hoverG.selectAll('*').remove();
+    // Restore any tick labels that were suppressed during hover.
+    xAxisG.selectAll('.tick-label').style('display', null);
+    yAxisG.selectAll('.tick-label').style('display', null);
   }
 
   // ── Axis drawing helper ───────────────────────────────────────────────
