@@ -1,3 +1,4 @@
+import { Matrix, solve, QrDecomposition } from 'ml-matrix';
 import { tPValue, residualize } from './common.js';
 
 // Ordinary least squares regression.
@@ -5,40 +6,40 @@ import { tPValue, residualize } from './common.js';
 // nuisance: array of covariate arrays (each length n) — residualized out of y via FWL
 // Returns: { slope, intercept, rSquared, adjRSquared,
 //            seSlope, seIntercept, tSlope, tIntercept,
-//            pSlope, pIntercept, n, dfResidual }
+//            pSlope, pIntercept, residuals, n, dfResidual }
 export function ols(x, y, nuisance = []) {
   const yFit = nuisance.length ? residualize(y, nuisance) : y;
   const n = x.length;
 
-  const xMean = x.reduce((s, v) => s + v, 0) / n;
-  const yMean = yFit.reduce((s, v) => s + v, 0) / n;
+  const dm = Array.from({ length: n }, (_, i) => [1, x[i]]);
+  const X  = new Matrix(dm);
+  const Y  = Matrix.columnVector(yFit);
 
-  let sxx = 0, sxy = 0;
-  for (let i = 0; i < n; i++) {
-    const dx = x[i] - xMean;
-    sxx += dx * dx;
-    sxy += dx * (yFit[i] - yMean);
-  }
+  const b         = new QrDecomposition(X).solve(Y).getColumn(0);
+  const intercept = b[0];
+  const slope     = b[1];
 
-  const slope     = sxy / sxx;
-  const intercept = yMean - slope * xMean;
-
-  let ssr = 0, sst = 0;
-  for (let i = 0; i < n; i++) {
-    const res = yFit[i] - (intercept + slope * x[i]);
-    ssr += res * res;
-    sst += (yFit[i] - yMean) ** 2;
-  }
+  const yMean   = yFit.reduce((s, v) => s + v, 0) / n;
+  const resids  = yFit.map((yi, i) => yi - (intercept + slope * x[i]));
+  const ssr     = resids.reduce((s, r) => s + r * r, 0);
+  const sst     = yFit.reduce((s, yi) => s + (yi - yMean) ** 2, 0);
 
   const rSquared    = 1 - ssr / sst;
   const adjRSquared = 1 - (1 - rSquared) * (n - 1) / (n - 2);
-  const s2          = ssr / (n - 2);  // residual variance
-
-  const seSlope     = Math.sqrt(s2 / sxx);
-  const seIntercept = Math.sqrt(s2 * (1 / n + xMean ** 2 / sxx));
-  const tSlope      = slope / seSlope;
-  const tIntercept  = intercept / seIntercept;
+  const s2          = ssr / (n - 2);
   const dfResidual  = n - 2;
+
+  // SE via diagonal of (X'X)⁻¹ — same approach as robust.js
+  const XtX     = X.transpose().mmul(X).to2DArray();
+  const diagInv = [0, 1].map(j => {
+    const e = [0, 0]; e[j] = 1;
+    return solve(new Matrix(XtX), Matrix.columnVector(e)).get(j, 0);
+  });
+
+  const seIntercept = Math.sqrt(diagInv[0] * s2);
+  const seSlope     = Math.sqrt(diagInv[1] * s2);
+  const tSlope      = slope     / seSlope;
+  const tIntercept  = intercept / seIntercept;
 
   return {
     slope, intercept,
@@ -47,6 +48,7 @@ export function ols(x, y, nuisance = []) {
     tSlope, tIntercept,
     pSlope:     tPValue(Math.abs(tSlope),     dfResidual),
     pIntercept: tPValue(Math.abs(tIntercept), dfResidual),
+    residuals: resids,
     n, dfResidual,
   };
 }

@@ -8,7 +8,7 @@ A pure client-side scatter plot explorer for researchers. Users paste a URL to a
 
 ## Tech Stack
 
-- **Stats:** `simple-statistics` as the base library; custom IRLS M-estimation (Tukey biweight) added to match its API style
+- **Stats:** Custom implementations throughout; `ml-matrix` for linear algebra (QR decomposition in residualization, LU solve in robust IRLS). No simple-statistics.
 - **Plotting:** D3.js v7 — keeps SVG fidelity and full control for Illustrator export
 - **CSV parsing:** Papa Parse
 - **State:** Native `URLSearchParams` + `hashchange` (no jQuery)
@@ -90,7 +90,7 @@ scatterize/
 │   ├── state.js              # URL hash state management
 │   ├── data.js               # CSV fetching and parsing (Papa Parse)
 │   ├── stats/
-│   │   ├── ols.js            # OLS via simple-statistics
+│   │   ├── ols.js            # OLS (returns residuals)
 │   │   ├── robust.js         # M-estimation (Tukey biweight IRLS)
 │   │   ├── spearman.js       # Spearman rank correlation
 │   │   ├── theilsen.js       # Theil-Sen estimator + Kendall's τ
@@ -122,4 +122,26 @@ Parse with Papa Parse (`header: true, dynamicTyping: true, skipEmptyLines: true`
 - No jQuery
 - D3 v7 API (not v3/v5 — the original used v3)
 - Keep stats modules pure functions where possible (input arrays → result objects)
-- Stats results objects should be consistent across methods: `{ slope, intercept, rSquared?, pValue, n, ... }`
+- Stats results objects should be consistent across methods: `{ slope, intercept, rSquared?, pValue, n, residuals?, ... }`
+- OLS and Robust must return `residuals` array — needed for diagnostic plots
+
+## Diagnostic Plots (Parametric Models Only)
+
+Diagnostics shown in the stats panel for OLS and Robust only — not for Spearman/Theil-Sen (rank-based residuals aren't meaningful).
+
+**Stats panel layout (top to bottom):**
+1. Model results (fixed, always visible)
+2. Descriptive stats (scrollable)
+3. Two diagnostic mini-plots, pinned near bottom, each 2:1 aspect ratio (wider than tall)
+
+**The two diagnostic plots:**
+1. **Residuals histogram** with normal curve overlay — answers "does this look bell-shaped?"
+   - Shapiro-Wilk W and p-value annotated as text on this plot
+   - Fringe on X axis showing individual residual positions (same hover-highlight as main plot)
+2. **Q-Q plot** — standard orientation: theoretical normal quantiles on X, sorted residuals on Y
+   - Do NOT reorient to share an axis with the histogram — convention matters here
+
+**Interactivity:**
+- Both diagnostic plots update live when points are censored
+- Hovering a point on the main scatter plot highlights the corresponding point on both diagnostic plots
+- Do not share axes between histogram and Q-Q plot

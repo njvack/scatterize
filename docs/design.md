@@ -41,19 +41,13 @@ No config file. No HMR (full page reload on change — fine). Simple and underst
 
 ## Architecture Decisions (Settled)
 
-### Stats library: simple-statistics + custom extensions
+### Stats library: custom implementations + ml-matrix
 
-`simple-statistics` is the base:
-- Clean, readable source
-- ES module native
-- Has: OLS (`linearRegression`, `linearRegressionLine`), Spearman (`sampleCorrelation` + rank), t-distribution, basic descriptive stats
-- Small (~40KB minified)
+All four stat methods are custom implementations validated against R, with no dependency on simple-statistics (removed). `ml-matrix` handles the linear algebra:
+- `QrDecomposition` in `residualize()` — avoids squaring the condition number vs normal equations
+- `solve()` (LU with pivoting) in the robust IRLS loop
 
-We add custom implementations for:
-- **IRLS M-estimation** (Tukey biweight robust regression) — matches simple-statistics API style
-- **Theil-Sen estimator** (if chosen) — median slope + Kendall's τ p-value
-
-All custom stats functions: pure, typed inputs (arrays of numbers), consistent output objects.
+All stats functions: pure, typed inputs (arrays of numbers), consistent output objects. OLS and Robust return `residuals` for use by diagnostic plots.
 
 ### Plotting: D3 v7
 
@@ -168,6 +162,39 @@ model_nuis <- lm(y ~ nuis1 + nuis2, data=df)
 y_resid <- resid(model_nuis)
 model_main <- lm(y_resid ~ x, data=df)
 ```
+
+---
+
+## Diagnostic Plots
+
+Shown in the stats panel for **OLS and Robust only** — parametric diagnostics don't make sense for rank-based methods (Spearman, Theil-Sen).
+
+### Stats panel layout
+
+1. Model results — fixed at top, always visible
+2. Descriptive stats — scrollable
+3. Two diagnostic mini-plots — pinned near bottom
+
+### The two plots
+
+Both are **2:1 aspect ratio** (wider than tall) so they stack compactly without wasting vertical space.
+
+**1. Residuals histogram with normal curve overlay**
+- X axis: residual values; Y axis: density
+- Normal curve fit to residuals overlaid
+- Shapiro-Wilk W and p-value as text annotation
+- Fringe on X axis showing individual residual positions, with hover-highlight matching the main plot
+
+**2. Q-Q plot**
+- Standard orientation: theoretical normal quantiles on X, sorted sample residuals on Y
+- Do not reorient to share an axis with the histogram — Q-Q convention matters
+- Hover-highlight: hovering a point on the main scatter plot highlights the corresponding point here
+
+### Interactivity
+
+- Both plots update live on point censoring (residuals recomputed from new fit)
+- Hover on main plot → highlight on both diagnostic plots
+- Do not share axes between histogram and Q-Q plot
 
 ---
 
