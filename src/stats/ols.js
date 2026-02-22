@@ -1,21 +1,23 @@
-import { tPValue } from './common.js';
+import { tPValue, residualize } from './common.js';
 
 // Ordinary least squares regression.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
+// nuisance: array of covariate arrays (each length n) — residualized out of y via FWL
 // Returns: { slope, intercept, rSquared, adjRSquared,
 //            seSlope, seIntercept, tSlope, tIntercept,
 //            pSlope, pIntercept, n, dfResidual }
-export function ols(x, y) {
+export function ols(x, y, nuisance = []) {
+  const yFit = nuisance.length ? residualize(y, nuisance) : y;
   const n = x.length;
 
   const xMean = x.reduce((s, v) => s + v, 0) / n;
-  const yMean = y.reduce((s, v) => s + v, 0) / n;
+  const yMean = yFit.reduce((s, v) => s + v, 0) / n;
 
   let sxx = 0, sxy = 0;
   for (let i = 0; i < n; i++) {
     const dx = x[i] - xMean;
     sxx += dx * dx;
-    sxy += dx * (y[i] - yMean);
+    sxy += dx * (yFit[i] - yMean);
   }
 
   const slope     = sxy / sxx;
@@ -23,9 +25,9 @@ export function ols(x, y) {
 
   let ssr = 0, sst = 0;
   for (let i = 0; i < n; i++) {
-    const res = y[i] - (intercept + slope * x[i]);
+    const res = yFit[i] - (intercept + slope * x[i]);
     ssr += res * res;
-    sst += (y[i] - yMean) ** 2;
+    sst += (yFit[i] - yMean) ** 2;
   }
 
   const rSquared    = 1 - ssr / sst;

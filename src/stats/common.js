@@ -1,4 +1,5 @@
 // Shared statistical utilities
+import { Matrix, solve, QrDecomposition } from 'ml-matrix';
 
 // ---------------------------------------------------------------------------
 // Log gamma (Lanczos approximation, accurate to ~15 significant figures)
@@ -82,60 +83,26 @@ export function tPValue(t, df) {
 // ---------------------------------------------------------------------------
 // Residualize y against one or more nuisance variables (columns of X matrix).
 // Returns the residuals from OLS of y on [1, nuisance...].
-// nuisanceMatrix is an array of arrays: [[n1_0, n2_0, ...], [n1_1, n2_1, ...], ...]
+// nuisanceMatrix is an array of arrays (one per nuisance variable, length n each).
+// Uses QR decomposition on the design matrix directly (avoids squaring the
+// condition number that normal equations would incur).
 // ---------------------------------------------------------------------------
 export function residualize(y, nuisanceMatrix) {
-  // Build design matrix with intercept
   const n = y.length;
-  const X = nuisanceMatrix[0].map((_, col) => nuisanceMatrix.map(row => row[col]));
-  // X is array of nuisance vectors; prepend intercept column
-  const dm = y.map((_, i) => [1, ...nuisanceMatrix.map(col => col[i])]);
+  // Design matrix: n rows × (1 + #nuisance) cols, intercept first
+  const dm = Array.from({ length: n }, (_, i) => [1, ...nuisanceMatrix.map(col => col[i])]);
+  const X = new Matrix(dm);
+  const Y = Matrix.columnVector(y);
 
-  // OLS: b = (X'X)^-1 X'y — small matrix, direct computation via normal equations
-  // Using simple Gram-Schmidt / direct solve for small k
-  const k = dm[0].length;
+  const qr = new QrDecomposition(X);
+  const b = qr.solve(Y).getColumn(0);   // β via QR: R β = Q'y
 
-  // X'X (k x k) and X'y (k x 1)
-  const XtX = Array.from({ length: k }, () => new Array(k).fill(0));
-  const Xty = new Array(k).fill(0);
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < k; j++) {
-      Xty[j] += dm[i][j] * y[i];
-      for (let l = 0; l < k; l++) XtX[j][l] += dm[i][j] * dm[i][l];
-    }
-  }
-
-  const b = solveLinear(XtX, Xty);
   return y.map((yi, i) => yi - dm[i].reduce((s, xij, j) => s + xij * b[j], 0));
 }
 
-// Solve Ax = b via Gaussian elimination with partial pivoting
-function solveLinear(A, b) {
-  const n = b.length;
-  const M = A.map((row, i) => [...row, b[i]]);  // augmented matrix
-
-  for (let col = 0; col < n; col++) {
-    // Partial pivot
-    let maxRow = col;
-    for (let row = col + 1; row < n; row++) {
-      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
-    }
-    [M[col], M[maxRow]] = [M[maxRow], M[col]];
-
-    const pivot = M[col][col];
-    if (Math.abs(pivot) < 1e-14) throw new Error('Singular matrix in residualize()');
-    for (let row = col + 1; row < n; row++) {
-      const f = M[row][col] / pivot;
-      for (let j = col; j <= n; j++) M[row][j] -= f * M[col][j];
-    }
-  }
-
-  // Back substitution
-  const x = new Array(n).fill(0);
-  for (let i = n - 1; i >= 0; i--) {
-    x[i] = M[i][n];
-    for (let j = i + 1; j < n; j++) x[i] -= M[i][j] * x[j];
-    x[i] /= M[i][i];
-  }
-  return x;
+// Solve Ax = b via LU decomposition with partial pivoting (ml-matrix).
+// A: array-of-arrays (k×k); b: array (length k). Returns array (length k).
+export function solveLinear(A, b) {
+  const result = solve(new Matrix(A), Matrix.columnVector(b));
+  return result.getColumn(0);
 }

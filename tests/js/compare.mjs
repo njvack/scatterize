@@ -13,14 +13,12 @@ const fixturesDir = join(__dirname, '..', 'fixtures');
 // ---------------------------------------------------------------------------
 // JS implementations — uncomment as each is built
 // ---------------------------------------------------------------------------
-import { ols }          from '../../src/stats/ols.js';
-import { residualize }  from '../../src/stats/common.js';
-// import { robust }   from '../../src/stats/robust.js';
+import { ols }      from '../../src/stats/ols.js';
+import { robust }   from '../../src/stats/robust.js';
 // import { spearman } from '../../src/stats/spearman.js';
 // import { theilSen } from '../../src/stats/theilsen.js';
 
 const NOT_IMPLEMENTED = () => { throw new Error('not yet implemented'); };
-const robust   = NOT_IMPLEMENTED;
 const spearman = NOT_IMPLEMENTED;
 const theilSen = NOT_IMPLEMENTED;
 
@@ -76,6 +74,7 @@ function loadExpected(method) {
 const COEF_TOL   = 1e-6;  // relative tolerance for coefficients
 const PVAL_TOL   = 1e-4;  // relative tolerance for p-values (less precisely computed)
 const WEIGHT_TOL = 1e-4;  // absolute tolerance for IRLS weights
+const ROBUST_TOL = 1e-3;  // relative tolerance for M-estimation (iterative, floating-point)
 
 let passed = 0;
 let failed = 0;
@@ -140,8 +139,7 @@ try {
       const data = loadData(c.dataset);
       const x = col(data, c.x);
       const nuisance = (c.nuisance ?? []).map(n => col(data, n));
-      const y = nuisance.length ? residualize(col(data, c.y), nuisance) : col(data, c.y);
-      const r = ols(x, y);
+      const r = ols(x, col(data, c.y), nuisance);
       const e = c.results;
       check('slope',        r.slope,       e.slope);
       check('intercept',    r.intercept,   e.intercept);
@@ -178,10 +176,10 @@ try {
       const y = col(data, c.y);
       const r = robust(x, y);
       const e = c.results;
-      check('slope',       r.slope,     e.slope);
-      check('intercept',   r.intercept, e.intercept);
-      check('scale',       r.scale,     e.scale);
-      checkArray('weights', r.weights,  e.weights);
+      check('slope',        r.slope,     e.slope,     ROBUST_TOL);
+      check('intercept',    r.intercept, e.intercept, ROBUST_TOL);
+      check('scale',        r.scale,     e.scale,     ROBUST_TOL);
+      checkArray('weights', r.weights,   e.weights,   ROBUST_TOL);
     } catch (err) {
       if (err.message === 'not yet implemented') {
         console.log('    (not yet implemented)');

@@ -1,7 +1,11 @@
-*pyc
-settings.py
-env
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# macOS
 .DS_Store
-.sass-cache
-config
-Capfile
+
+# editor / Claude Code
+.claude/
