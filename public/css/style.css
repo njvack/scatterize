@@ -543,8 +543,9 @@ kbd {
 }
 
 .tick-mark {
-  stroke: #999;
+  stroke: #333;
   stroke-width: 0.75;
+  opacity: 0.3;
 }
 
 .tick-mark--hover {
