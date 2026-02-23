@@ -38,6 +38,7 @@ function fiveNum(arr) {
 
 // Format a number for axis labels: drop trailing zeros, limit precision.
 function fmtNum(v) {
+  if (v == null || !Number.isFinite(v)) return '';
   if (Math.abs(v) >= 10000 || (Math.abs(v) < 0.001 && v !== 0)) {
     return v.toExponential(2);
   }
@@ -478,7 +479,8 @@ export function createScatterplot(svgEl) {
       .attr('y2', isX ? 0 : iH);
 
     // Per-point tick marks
-    const inRange = vals.filter(v => v >= scale.domain()[0] && v <= scale.domain()[1]);
+    const finiteVals = vals.filter(Number.isFinite);
+    const inRange = finiteVals.filter(v => v >= scale.domain()[0] && v <= scale.domain()[1]);
     for (const v of inRange) {
       const pos = scale(v);
       g.append('line')
@@ -490,7 +492,7 @@ export function createScatterplot(svgEl) {
     }
 
     // Quartile labels
-    const labels = customTicks ?? fiveNum(vals);
+    const labels = customTicks ?? fiveNum(finiteVals);
     for (const v of labels) {
       const pos = scale(v);
       if (pos < -2 || pos > len + 2) continue; // skip if outside visible range
