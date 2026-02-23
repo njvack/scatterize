@@ -671,9 +671,6 @@ kbd {
     padding-top: var(--panel-pad);
   }
 
-  /* Diagnostic plots are too small to be useful on mobile */
-  .diag-plots { display: none !important; }
-
   /* Reset auto-margin trick that only works in a fixed-height flex column */
   .control-group--bottom {
     margin-top: 14px;

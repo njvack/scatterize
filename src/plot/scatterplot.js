@@ -18,7 +18,8 @@ function tQ95(df) {
     + (3 * z2 * z2 * z2 * z + 19 * z2 * z2 * z + 17 * z2 * z - 15 * z) / (384 * df * df * df);
 }
 
-const MARGIN = { top: 24, right: 24, bottom: 68, left: 88 };
+const MARGIN_DESKTOP = { top: 24, right: 24, bottom: 68, left: 88 };
+const MARGIN_MOBILE  = { top: 16, right: 16, bottom: 52, left: 56 };
 const TICK_LEN = 5;         // px: per-point tick marks on axis
 const SUPERTICK_LEN = 14;   // px: hover supertick
 const CORNER_R = 5;         // px: out-of-range corner marker radius
@@ -156,6 +157,7 @@ export function createScatterplot(svgEl) {
 
     const { width: W, height: H } = svgEl.getBoundingClientRect();
     if (W === 0 || H === 0) return;
+    const MARGIN = W < 420 ? MARGIN_MOBILE : MARGIN_DESKTOP;
     const iW = W - MARGIN.left - MARGIN.right;
     const iH = H - MARGIN.top - MARGIN.bottom;
 
@@ -513,7 +515,7 @@ export function createScatterplot(svgEl) {
         .classed('axis-label', true)
         .attr('transform', `rotate(-90)`)
         .attr('x', -iH / 2)
-        .attr('y', -(TICK_LEN + 68))
+        .attr('y', -(MARGIN.left - 15))
         .attr('text-anchor', 'middle')
         .text(label);
     }
