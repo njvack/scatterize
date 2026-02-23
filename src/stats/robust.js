@@ -107,6 +107,7 @@ export function robust(x, y, nuisance = []) {
     tIntercept: intercept / seIntercept,
     scale,
     weights: w,
+    residuals: r,
     n,
   };
 }
