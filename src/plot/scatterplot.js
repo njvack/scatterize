@@ -203,10 +203,20 @@ export function createScatterplot(svgEl) {
     if (hasLine) {
       const x0 = xScale.domain()[0];
       const x1 = xScale.domain()[1];
+      const ly0 = yScale(modelResult.intercept + modelResult.slope * x0);
+      const ly1 = yScale(modelResult.intercept + modelResult.slope * x1);
+      const isNew = !regLineEl.attr('x1');
       regLineEl.style('display', null);
-      regLineEl.transition(T)
-        .attr('x1', xScale(x0)).attr('y1', yScale(modelResult.intercept + modelResult.slope * x0))
-        .attr('x2', xScale(x1)).attr('y2', yScale(modelResult.intercept + modelResult.slope * x1));
+      if (isNew) {
+        // First render: place directly to avoid animating from SVG origin.
+        regLineEl
+          .attr('x1', xScale(x0)).attr('y1', ly0)
+          .attr('x2', xScale(x1)).attr('y2', ly1);
+      } else {
+        regLineEl.transition(T)
+          .attr('x1', xScale(x0)).attr('y1', ly0)
+          .attr('x2', xScale(x1)).attr('y2', ly1);
+      }
     } else {
       regLineEl.interrupt().style('display', 'none');
     }
