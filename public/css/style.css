@@ -132,7 +132,7 @@ html, body {
   display: grid;
   grid-template-columns: var(--controls-width) 1fr var(--stats-width);
   grid-template-rows: 1fr;
-  height: calc(100vh - var(--header-height) - var(--footer-height));
+  height: calc(100dvh - var(--header-height) - var(--footer-height));
   overflow: hidden;
 }
 
@@ -615,6 +615,69 @@ kbd {
   stroke-width: 1.5;
   opacity: 0.8;
   cursor: pointer;
+}
+
+/* ─── Mobile layout ─────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  html, body {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .app-grid {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* Show plot first, then controls, then stats */
+  .plot-container { order: 1; }
+  .panel-controls  { order: 2; }
+  .panel-stats     { order: 3; }
+
+  .plot-container {
+    height: 72vw;
+    min-height: 260px;
+    flex-shrink: 0;
+  }
+
+  /* Panels expand to content rather than clipping */
+  .panel {
+    overflow-y: visible;
+    border-right: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .panel-stats {
+    display: block;
+    overflow: visible;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    padding: var(--panel-pad);
+  }
+
+  .stats-section {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .stats-section--desc {
+    overflow-y: visible;
+    min-height: 0;
+    padding-top: var(--panel-pad);
+  }
+
+  /* Diagnostic plots are too small to be useful on mobile */
+  .diag-plots { display: none !important; }
+
+  /* Reset auto-margin trick that only works in a fixed-height flex column */
+  .control-group--bottom {
+    margin-top: 14px;
+  }
 }
 
 /* Diagnostic plot SVG elements */
