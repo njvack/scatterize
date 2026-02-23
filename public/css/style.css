@@ -28,6 +28,7 @@
   --color-censored:   #aaaaaa;
 
   --header-height: 52px;
+  --footer-height: 32px;
   --controls-width: 190px;
   --stats-width: 230px;
   --panel-pad: 14px;
@@ -64,6 +65,12 @@ html, body {
   white-space: nowrap;
   color: var(--color-text);
 }
+
+.site-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+.site-title-link:hover { text-decoration: underline; }
 
 .url-bar {
   display: flex;
@@ -125,7 +132,7 @@ html, body {
   display: grid;
   grid-template-columns: var(--controls-width) 1fr var(--stats-width);
   grid-template-rows: 1fr;
-  height: calc(100vh - var(--header-height));
+  height: calc(100vh - var(--header-height) - var(--footer-height));
   overflow: hidden;
 }
 
@@ -428,19 +435,36 @@ kbd {
   line-height: 1.4;
 }
 
-.btn-link {
+/* ─── Footer ────────────────────────────────────────────────────────────── */
+
+.site-footer {
+  height: var(--footer-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.footer-link {
+  font-size: 12px;
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+  text-decoration: none;
   background: none;
   border: none;
   padding: 0;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--color-text-muted);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  display: block;
 }
-.btn-link:hover { color: var(--color-text); }
+.footer-link:hover { color: var(--color-text); text-decoration: underline; }
+
+.footer-sep {
+  color: var(--color-border-mid);
+  font-size: 12px;
+  user-select: none;
+}
 
 /* ─── Error Banner ──────────────────────────────────────────────────────── */
 
