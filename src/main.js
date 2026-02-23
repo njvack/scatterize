@@ -250,13 +250,9 @@ function render() {
   const hasDiag = (state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length;
   if (diagEl) diagEl.classList.toggle('hidden', !hasDiag);
 
-  // Defer diagnostics draw to the next frame so the browser flushes layout
-  // after the class toggle above. getBoundingClientRect returns 0 on a
-  // newly-unhidden element within the same synchronous call (Safari/iOS),
-  // and scatter.update() also fires onPointHover(null) → updateDiagnostics
-  // internally before we get here, which would bail for the same reason.
-  requestAnimationFrame(() => updateDiagnostics(modelResult, activeIndices));
-
+  // Update diagnostic plots (OLS and Robust only)
+  updateDiagnostics(modelResult, activeIndices);
+  
   // Keep form controls in sync (keyboard nav changes state without touching the DOM)
   syncControls(state);
 }
