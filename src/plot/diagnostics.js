@@ -207,7 +207,7 @@ function fullDrawHistogram(svg, residuals) {
       .attr('x2', xScale(r)).attr('y2', fringeY + 3);
   });
 
-  return { g, xScale, fringeY, residuals };
+  return { g, xScale, fringeY, residuals, hasHover: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +216,10 @@ function fullDrawHistogram(svg, residuals) {
 
 function highlightHistogram(state, activeIndices, hoveredIndex) {
   if (!state) return;
-  state.g.selectAll('.diag-fringe--hovered').remove();
+  if (state.hasHover) {
+    state.g.selectAll('.diag-fringe--hovered').remove();
+    state.hasHover = false;
+  }
   if (hoveredIndex == null) return;
   const i = activeIndices ? activeIndices.indexOf(hoveredIndex) : -1;
   if (i < 0) return;
@@ -225,6 +228,7 @@ function highlightHistogram(state, activeIndices, hoveredIndex) {
     .classed('diag-fringe--hovered', true)
     .attr('x1', state.xScale(r)).attr('y1', state.fringeY - 3)
     .attr('x2', state.xScale(r)).attr('y2', state.fringeY + 3);
+  state.hasHover = true;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,7 +301,7 @@ function fullDrawQQ(svg, residuals) {
     .attr('text-anchor', 'middle')
     .text('sample');
 
-  return { g, xScale, yScale, sortedWithIdx, theoretical };
+  return { g, xScale, yScale, sortedWithIdx, theoretical, hasHover: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -306,7 +310,10 @@ function fullDrawQQ(svg, residuals) {
 
 function highlightQQ(state, activeIndices, hoveredIndex) {
   if (!state) return;
-  state.g.selectAll('.diag-point--hovered').remove();
+  if (state.hasHover) {
+    state.g.selectAll('.diag-point--hovered').remove();
+    state.hasHover = false;
+  }
   if (hoveredIndex == null) return;
   const residIdx = activeIndices ? activeIndices.indexOf(hoveredIndex) : -1;
   if (residIdx < 0) return;
@@ -317,6 +324,7 @@ function highlightQQ(state, activeIndices, hoveredIndex) {
     .attr('cx', state.xScale(state.theoretical[si]))
     .attr('cy', state.yScale(state.sortedWithIdx[si].r))
     .attr('r', 4);
+  state.hasHover = true;
 }
 
 // ---------------------------------------------------------------------------

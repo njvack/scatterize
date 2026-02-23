@@ -33,6 +33,10 @@ const SUPERTICK_LEN = 14;   // px: hover supertick
 const CORNER_R = 5;         // px: out-of-range corner marker radius
 const POINT_R = 4.5;        // px: default point radius
 const POINT_R_HOVER = 6.5;  // px: hovered point radius
+const SNAP_PX = 2;           // px: grid cell size for Delaunay deduplication
+const JITTER  = 0.15;       // px: random offset added to deduplicated coords to
+                             //     prevent degenerate triangles from coincident pts
+const MAX_HOVER_DIST = 40;  // px: beyond this from nearest representative, no hover
 
 // Compute 5-number summary (min, q1, median, q3, max) for axis labeling.
 // Snaps to the nearest actual data value rather than interpolating, so labels
@@ -356,12 +360,23 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     // event handlers and never mutates during user interaction, so the browser
     // can cache its rasterized texture across hover frames.
 
-    const voronoiPoints = allPoints;
+    // Collapse coincident/sub-pixel screen positions before triangulating.
+    // At 2px the grid shape is invisible; it just prevents degenerate cells.
+    // A tiny random jitter breaks collinearity without affecting hover feel.
+    const gridMap = new Map();
+    for (const p of allPoints) {
+      const px = p.corner ? p.corner.x : p.sx;
+      const py = p.corner ? p.corner.y : p.sy;
+      const key = `${Math.round(px / SNAP_PX)},${Math.round(py / SNAP_PX)}`;
+      if (!gridMap.has(key)) gridMap.set(key, p);
+    }
+    const voronoiPoints = [...gridMap.values()];
+
     overlayCanvas.selectAll('rect.interaction-rect').remove();
 
     if (voronoiPoints.length >= 2) {
-      const vx = d => d.corner ? d.corner.x : d.sx;
-      const vy = d => d.corner ? d.corner.y : d.sy;
+      const vx = d => (d.corner ? d.corner.x : d.sx) + (Math.random() * 2 - 1) * JITTER;
+      const vy = d => (d.corner ? d.corner.y : d.sy) + (Math.random() * 2 - 1) * JITTER;
       const delaunay = d3.Delaunay.from(voronoiPoints, vx, vy);
 
       // Extend slightly beyond plot area so corner markers are reachable.
@@ -376,10 +391,22 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         .on('mousemove', (event) => {
           const [mx, my] = d3.pointer(event);
           const i = delaunay.find(mx, my);
+          const d = voronoiPoints[i];
+          const px = d.corner ? d.corner.x : d.sx;
+          const py = d.corner ? d.corner.y : d.sy;
+
+          if (Math.hypot(mx - px, my - py) > MAX_HOVER_DIST) {
+            if (currentHoverIdx !== null) {
+              currentHoverIdx = null;
+              clearHover();
+              onPointHover(null);
+            }
+            return;
+          }
+
           if (i === currentHoverIdx) return;
           currentHoverIdx = i;
           clearHover();
-          const d = voronoiPoints[i];
           if (d.censored) {
             showCensorHover(d, xScale, yScale, iH);
             onPointHover(null);

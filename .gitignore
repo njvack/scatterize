@@ -9,3 +9,5 @@ public/dist/
 
 # editor / Claude Code
 .claude/
+
+tmp/
