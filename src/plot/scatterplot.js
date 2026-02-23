@@ -139,6 +139,7 @@ export function createScatterplot(svgEl) {
   const voronoiG   = canvas.append('g').attr('class', 'voronoi-overlay').style('fill', 'none');
 
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
+  let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
 
   function update({
     points,
@@ -155,6 +156,7 @@ export function createScatterplot(svgEl) {
     // Clear any stuck hover overlay immediately when data changes.
     clearHover();
     onPointHover(null);
+    currentHoverIdx = null;
 
     const { width: W, height: H } = svgEl.getBoundingClientRect();
     if (W === 0 || H === 0) return;
@@ -323,43 +325,54 @@ export function createScatterplot(svgEl) {
       )
       .attr('d', d3.symbol().type(d3.symbolDiamond).size(60));
 
-    // ── Voronoi hit areas ─────────────────────────────────────────────────
-    // All points participate, including censored ones.  Corner points use
-    // their clamped boundary position so their Voronoi cell covers the
-    // nearest plot edge rather than some far-off out-of-range coordinate.
+    // ── Hit detection: single overlay rect + delaunay.find() ─────────────
+    // Using per-cell Voronoi <path> elements with mouseover is catastrophically
+    // slow for large datasets — the browser hit-tests thousands of polygons on
+    // every mouse move in its rendering pipeline (invisible to the JS profiler).
+    // Instead: one transparent rect, one mousemove, one delaunay.find() call.
 
     const voronoiPoints = allPoints;
+    voronoiG.selectAll('*').remove();
 
     if (voronoiPoints.length >= 2) {
       const vx = d => d.corner ? d.corner.x : d.sx;
       const vy = d => d.corner ? d.corner.y : d.sy;
       const delaunay = d3.Delaunay.from(voronoiPoints, vx, vy);
-      // Extend bounds by the diamond margin so corner cells cover the strip
-      // where the diamond markers actually appear.
-      const VP = CORNER_R + 2;
-      const voronoi  = delaunay.voronoi([-VP, -VP, iW + VP, iH + VP]);
 
-      voronoiG.selectAll('path')
-        .data(voronoiPoints)
-        .join('path')
-        .attr('d', (_, i) => voronoi.renderCell(i))
+      // Extend slightly beyond plot area so corner markers are reachable.
+      const VP = CORNER_R + 2;
+      voronoiG.append('rect')
+        .attr('x', -VP).attr('y', -VP)
+        .attr('width', iW + 2 * VP).attr('height', iH + 2 * VP)
+        .style('fill', 'none')
         .style('pointer-events', 'all')
         .style('cursor', 'pointer')
-        .on('mouseover', (event, d) => {
+        .on('mousemove', (event) => {
+          const [mx, my] = d3.pointer(event);
+          const i = delaunay.find(mx, my);
+          if (i === currentHoverIdx) return;
+          currentHoverIdx = i;
+          clearHover();
+          const d = voronoiPoints[i];
           if (d.censored) {
             showCensorHover(d, xScale, yScale, iH);
+            onPointHover(null);
           } else {
             showHover(d, iH, colorOf(d));
             onPointHover(d.index);
           }
         })
-        .on('mouseout', () => {
+        .on('mouseleave', () => {
+          if (currentHoverIdx === null) return;
+          currentHoverIdx = null;
           clearHover();
           onPointHover(null);
         })
-        .on('click', (event, d) => onPointClick(d.index));
-    } else {
-      voronoiG.selectAll('path').remove();
+        .on('click', (event) => {
+          const [mx, my] = d3.pointer(event);
+          const i = delaunay.find(mx, my);
+          if (i >= 0) onPointClick(voronoiPoints[i].index);
+        });
     }
 
     // Save positions for cross-element transition on next update.

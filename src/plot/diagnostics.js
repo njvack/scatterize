@@ -68,32 +68,56 @@ export function createDiagnostics(histContainer, qqContainer) {
   const histSvg = d3.select(histContainer);
   const qqSvg   = d3.select(qqContainer);
 
+  // State from the last full draw — reused by hover-only updates.
+  let histState = null; // { g, xScale, fringeY, residuals }
+  let qqState   = null; // { g, xScale, yScale, sortedWithIdx, theoretical }
+  let lastResiduals     = null;
+  let lastActiveIndices = null;
+
   function update({ residuals, activeIndices, hoveredIndex = null }) {
     if (!residuals || residuals.length < 3) {
       histSvg.selectAll('*').remove();
       qqSvg.selectAll('*').remove();
+      histState = null;
+      qqState   = null;
+      lastResiduals     = null;
+      lastActiveIndices = null;
       return;
     }
 
-    drawHistogram(histSvg, residuals, activeIndices, hoveredIndex);
-    drawQQ(qqSvg, residuals, activeIndices, hoveredIndex);
+    // Full redraw only when the underlying data changes, not on every hover.
+    if (residuals !== lastResiduals || activeIndices !== lastActiveIndices) {
+      histState = fullDrawHistogram(histSvg, residuals);
+      qqState   = fullDrawQQ(qqSvg, residuals);
+      lastResiduals     = residuals;
+      lastActiveIndices = activeIndices;
+    }
+
+    // Hover highlight: append/remove a single element — no full redraw.
+    highlightHistogram(histState, activeIndices, hoveredIndex);
+    highlightQQ(qqState, activeIndices, hoveredIndex);
   }
 
   function clear() {
     histSvg.selectAll('*').remove();
     qqSvg.selectAll('*').remove();
+    histState = null;
+    qqState   = null;
+    lastResiduals     = null;
+    lastActiveIndices = null;
   }
 
   return { update, clear };
 }
 
 // ---------------------------------------------------------------------------
-// Histogram with normal curve + fringe
+// Histogram with normal curve + fringe — full draw
+// Returns { g, xScale, fringeY, residuals } for use by highlightHistogram().
 // ---------------------------------------------------------------------------
 
-function drawHistogram(svg, residuals, activeIndices, hoveredIndex) {
+function fullDrawHistogram(svg, residuals) {
   const { width: W, height: H } = svg.node().getBoundingClientRect();
-  if (W === 0 || H === 0) return;
+  if (W === 0 || H === 0) return null;
   const m = DIAG_MARGIN;
   const iW = W - m.left - m.right;
   const iH = H - m.top - m.bottom - FRINGE_H;
@@ -174,27 +198,43 @@ function drawHistogram(svg, residuals, activeIndices, hoveredIndex) {
     }
   }
 
-  // Fringe (rug plot)
+  // Fringe (rug plot) — all marks drawn uniformly; hover adds its own on top
   const fringeY = iH + FRINGE_H / 2;
-  const hoveredResidIndex = activeIndices ? activeIndices.indexOf(hoveredIndex) : -1;
-
-  residuals.forEach((r, i) => {
-    const isHovered = i === hoveredResidIndex;
+  residuals.forEach(r => {
     g.append('line')
-      .classed('diag-fringe', !isHovered)
-      .classed('diag-fringe--hovered', isHovered)
+      .classed('diag-fringe', true)
       .attr('x1', xScale(r)).attr('y1', fringeY - 3)
       .attr('x2', xScale(r)).attr('y2', fringeY + 3);
   });
+
+  return { g, xScale, fringeY, residuals };
 }
 
 // ---------------------------------------------------------------------------
-// Q-Q plot: theoretical (X) vs sample (Y)
+// Histogram hover highlight
 // ---------------------------------------------------------------------------
 
-function drawQQ(svg, residuals, activeIndices, hoveredIndex) {
+function highlightHistogram(state, activeIndices, hoveredIndex) {
+  if (!state) return;
+  state.g.selectAll('.diag-fringe--hovered').remove();
+  if (hoveredIndex == null) return;
+  const i = activeIndices ? activeIndices.indexOf(hoveredIndex) : -1;
+  if (i < 0) return;
+  const r = state.residuals[i];
+  state.g.append('line')
+    .classed('diag-fringe--hovered', true)
+    .attr('x1', state.xScale(r)).attr('y1', state.fringeY - 3)
+    .attr('x2', state.xScale(r)).attr('y2', state.fringeY + 3);
+}
+
+// ---------------------------------------------------------------------------
+// Q-Q plot: theoretical (X) vs sample (Y) — full draw
+// Returns { g, xScale, yScale, sortedWithIdx, theoretical } for highlightQQ().
+// ---------------------------------------------------------------------------
+
+function fullDrawQQ(svg, residuals) {
   const { width: W, height: H } = svg.node().getBoundingClientRect();
-  if (W === 0 || H === 0) return;
+  if (W === 0 || H === 0) return null;
   const m = DIAG_MARGIN;
   const iW = W - m.left - m.right;
   const iH = H - m.top - m.bottom;
@@ -229,17 +269,13 @@ function drawQQ(svg, residuals, activeIndices, hoveredIndex) {
     .attr('x1', xScale(xd[0])).attr('y1', yScale(intercept + slope * xd[0]))
     .attr('x2', xScale(xd[1])).attr('y2', yScale(intercept + slope * xd[1]));
 
-  const hoveredResidIdx = activeIndices ? activeIndices.indexOf(hoveredIndex) : -1;
-
-  // Points
-  sortedWithIdx.forEach(({ r, i: residIdx }, si) => {
-    const isHovered = residIdx === hoveredResidIdx;
+  // Points — all drawn uniformly; hover adds its own circle on top
+  sortedWithIdx.forEach(({ r }, si) => {
     g.append('circle')
-      .classed('diag-point', !isHovered)
-      .classed('diag-point--hovered', isHovered)
+      .classed('diag-point', true)
       .attr('cx', xScale(theoretical[si]))
       .attr('cy', yScale(r))
-      .attr('r', isHovered ? 4 : 2.5);
+      .attr('r', 2.5);
   });
 
   // Axes
@@ -260,6 +296,27 @@ function drawQQ(svg, residuals, activeIndices, hoveredIndex) {
     .attr('x', -iH / 2).attr('y', -m.left + 8)
     .attr('text-anchor', 'middle')
     .text('sample');
+
+  return { g, xScale, yScale, sortedWithIdx, theoretical };
+}
+
+// ---------------------------------------------------------------------------
+// Q-Q hover highlight
+// ---------------------------------------------------------------------------
+
+function highlightQQ(state, activeIndices, hoveredIndex) {
+  if (!state) return;
+  state.g.selectAll('.diag-point--hovered').remove();
+  if (hoveredIndex == null) return;
+  const residIdx = activeIndices ? activeIndices.indexOf(hoveredIndex) : -1;
+  if (residIdx < 0) return;
+  const si = state.sortedWithIdx.findIndex(d => d.i === residIdx);
+  if (si < 0) return;
+  state.g.append('circle')
+    .classed('diag-point--hovered', true)
+    .attr('cx', state.xScale(state.theoretical[si]))
+    .attr('cy', state.yScale(state.sortedWithIdx[si].r))
+    .attr('r', 4);
 }
 
 // ---------------------------------------------------------------------------
