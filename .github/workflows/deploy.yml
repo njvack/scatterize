@@ -67,7 +67,7 @@ jobs:
 
             1. Download `scatterize.zip`
             2. Unzip it
-            3. Serve the folder with any static web server (nginx, Apache, `python3 -m http.server`, etc.)
+            3. Open index.html in your web browser
 
             Your data is processed entirely in the browser and never sent anywhere.
           files: scatterize.zip
