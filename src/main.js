@@ -99,11 +99,28 @@ function render() {
     : 'categorical';
 
   const censored = new Set(state.c);
+
+  // Compute nuisance names early: needed for active-index filtering and clash check.
+  const nuisanceNames = (!RANK_MODELS.has(state.m) && state.n.length)
+    ? state.n.map(i => columns[i]).filter(Boolean)
+    : [];
+
+  // Warn if a nuisance variable is also the X or Y variable.
+  const nuisClash = nuisanceNames.filter(n => n === xColName || n === yColName);
+  if (nuisClash.length) {
+    showError(`Warning: "${nuisClash.join('", "')}" is selected as both a model variable and a nuisance covariate — results will be misleading.`);
+  } else {
+    showError(null);
+  }
+
+  // Rows where any nuisance value is missing are excluded from the fit (silently,
+  // same treatment as missing X or Y).
   const activeIndices = data
     .map((_, i) => i)
     .filter(i => !censored.has(i)
       && Number.isFinite(data[i][xColName])
-      && Number.isFinite(data[i][yColName]));
+      && Number.isFinite(data[i][yColName])
+      && nuisanceNames.every(col => Number.isFinite(data[i][col])));
 
   if (!activeIndices.length) {
     showEmptyState(false);
@@ -121,23 +138,19 @@ function render() {
 
   // Residualize Y against nuisance covariates (OLS/Robust only)
   let isResidualized = false;
-  let nuisanceNames  = [];
   let nuisancePartialR2 = [];
   let nNuisance = 0;
-  if (state.n.length && !RANK_MODELS.has(state.m)) {
-    nuisanceNames = state.n.map(i => columns[i]).filter(Boolean);
-    if (nuisanceNames.length) {
-      const nuisData = nuisanceNames.map(col => activeIndices.map(i => data[i][col]));
-      try {
-        const result = residualizeWithStats(yActive, nuisData);
-        yActive = result.residuals;
-        nuisancePartialR2 = result.partialR2;
-        isResidualized = true;
-        nNuisance = nuisanceNames.length;
-      } catch (e) {
-        showError(`Residualization failed: ${e.message}`);
-        return;
-      }
+  if (nuisanceNames.length) {
+    const nuisData = nuisanceNames.map(col => activeIndices.map(i => data[i][col]));
+    try {
+      const result = residualizeWithStats(yActive, nuisData);
+      yActive = result.residuals;
+      nuisancePartialR2 = result.partialR2;
+      isResidualized = true;
+      nNuisance = nuisanceNames.length;
+    } catch (e) {
+      showError(`Residualization failed: ${e.message}`);
+      return;
     }
   }
 
