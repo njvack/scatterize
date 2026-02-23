@@ -68,6 +68,7 @@
         <p class="empty-title">No data loaded</p>
         <p class="empty-hint">Paste a CSV or Google Sheets URL in the bar above and click Load.</p>
         <p class="empty-hint">Also accepts GitHub file and Gist URLs.</p>
+        <p class="empty-hint">Or drop a CSV file anywhere on the page.</p>
       </div>
     </div>
     <svg id="scatter-svg" class="scatter-svg"></svg>
@@ -100,6 +101,12 @@
 <div class="error-banner" id="error-banner" hidden>
   <span id="error-message"></span>
   <button class="error-close" id="error-close" aria-label="Dismiss">×</button>
+</div>
+
+<div class="drop-overlay" id="drop-overlay" aria-hidden="true">
+  <div class="drop-overlay-inner">
+    <p class="drop-message">Drop CSV file to load</p>
+  </div>
 </div>
 
 <script src="dist/main.js"></script>

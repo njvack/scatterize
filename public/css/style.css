@@ -474,6 +474,43 @@ kbd {
 }
 .error-close:hover { opacity: 1; }
 
+/* ─── Drop Overlay ──────────────────────────────────────────────────────── */
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(39, 128, 227, 0.06);
+  border: 3px dashed var(--color-accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+  z-index: 200;
+}
+
+.drop-overlay.visible {
+  opacity: 1;
+}
+
+.drop-overlay-inner {
+  background: var(--color-bg);
+  border: 2px solid var(--color-accent);
+  border-radius: 8px;
+  padding: 20px 36px;
+  text-align: center;
+  box-shadow: 0 2px 16px rgba(39, 128, 227, 0.15);
+}
+
+.drop-message {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin: 0;
+}
+
 /* ─── D3 Plot Styles ────────────────────────────────────────────────────── */
 
 .axis-line {

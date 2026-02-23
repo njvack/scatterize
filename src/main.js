@@ -3,6 +3,7 @@
 
 import { getState, setState, onStateChange } from './state.js';
 import { fetchData }                          from './data.js';
+import { storeLocalFile, localFileName }      from './localfile.js';
 import { createScatterplot }                  from './plot/scatterplot.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
 import { populateControls, bindControls, syncControls, updateStats } from './plot/dashboard.js';
@@ -331,6 +332,49 @@ function setupKeyboard() {
 }
 
 // ---------------------------------------------------------------------------
+// File drop
+// ---------------------------------------------------------------------------
+
+function setupFileDrop() {
+  const overlay  = document.getElementById('drop-overlay');
+  const urlInput = document.getElementById('data-url');
+  let dragDepth  = 0;
+
+  document.addEventListener('dragenter', e => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    dragDepth++;
+    overlay?.classList.add('visible');
+  });
+
+  document.addEventListener('dragleave', () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) overlay?.classList.remove('visible');
+  });
+
+  document.addEventListener('dragover', e => e.preventDefault());
+
+  document.addEventListener('drop', async e => {
+    e.preventDefault();
+    dragDepth = 0;
+    overlay?.classList.remove('visible');
+
+    const file = e.dataTransfer?.files[0];
+    if (!file) return;
+
+    let key;
+    try {
+      key = await storeLocalFile(file);
+    } catch (err) {
+      showError(err.message);
+      return;
+    }
+
+    if (urlInput) urlInput.value = file.name;
+    setState({ src: key, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // SVG export
 // ---------------------------------------------------------------------------
 
@@ -382,6 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindControls();
   setupKeyboard();
   setupExport();
+  setupFileDrop();
 
   // React to URL hash changes
   onStateChange(async (state) => {
@@ -404,7 +449,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initial load
   const state = getState();
   const urlInput = document.getElementById('data-url');
-  if (urlInput && state.src) urlInput.value = state.src;
+  if (urlInput && state.src) {
+    urlInput.value = state.src.startsWith('local:') ? localFileName(state.src) : state.src;
+  }
 
   if (state.src) {
     const ok = await loadData(state.src);

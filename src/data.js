@@ -2,6 +2,7 @@
 // URL transformation and CSV fetching via Papa Parse.
 
 import Papa from 'papaparse';
+import { readLocalText } from './localfile.js';
 
 // Transform a user-pasted URL to a directly-fetchable CSV URL.
 // Handles: Google Sheets, GitHub repo files, GitHub Gists.
@@ -47,9 +48,26 @@ export function transformUrl(url) {
   return url;
 }
 
+function parseCsvText(text) {
+  const result = Papa.parse(text, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+  });
+  const serious = result.errors.filter(e => e.type !== 'Delimiter');
+  if (serious.length) throw new Error(`CSV parse error: ${serious[0].message}`);
+  if (!result.data.length) throw new Error('The CSV appears to be empty.');
+  return result.data;
+}
+
 // Fetch a CSV from the given URL (transforming first) and parse it with Papa Parse.
+// Accepts local:<hash> keys produced by localfile.js (reads from localStorage).
 // Returns an array of row objects.
 export async function fetchData(url) {
+  if (url.startsWith('local:')) {
+    return parseCsvText(readLocalText(url));
+  }
+
   const fetchUrl = transformUrl(url);
   let response;
   try {
@@ -70,21 +88,5 @@ export async function fetchData(url) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
 
-  const text = await response.text();
-  const result = Papa.parse(text, {
-    header: true,
-    dynamicTyping: true,
-    skipEmptyLines: true,
-  });
-
-  const serious = result.errors.filter(e => e.type !== 'Delimiter');
-  if (serious.length) {
-    throw new Error(`CSV parse error: ${serious[0].message}`);
-  }
-
-  if (!result.data.length) {
-    throw new Error('The CSV appears to be empty.');
-  }
-
-  return result.data;
+  return parseCsvText(await response.text());
 }
