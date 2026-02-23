@@ -187,9 +187,9 @@ export function createScatterplot(svgEl) {
     yAxisG.attr('transform', `translate(0,0)`);
 
     drawAxis(xAxisG, active.map(p => p.displayX), xScale, iH, iW, 'x',
-             xLabel, customXTicks);
+             xLabel, customXTicks, MARGIN);
     drawAxis(yAxisG, active.map(p => p.displayY), yScale, iH, iW, 'y',
-             yLabel, customYTicks);
+             yLabel, customYTicks, MARGIN);
 
     // ── Transition ────────────────────────────────────────────────────────
 
@@ -454,7 +454,7 @@ export function createScatterplot(svgEl) {
 
   // ── Axis drawing helper ───────────────────────────────────────────────
 
-  function drawAxis(g, vals, scale, iH, iW, orient, label, customTicks) {
+  function drawAxis(g, vals, scale, iH, iW, orient, label, customTicks, margin) {
     g.selectAll('*').remove();
 
     const isX = orient === 'x';
@@ -515,7 +515,7 @@ export function createScatterplot(svgEl) {
         .classed('axis-label', true)
         .attr('transform', `rotate(-90)`)
         .attr('x', -iH / 2)
-        .attr('y', -(MARGIN.left - 15))
+        .attr('y', -(margin.left - 15))
         .attr('text-anchor', 'middle')
         .text(label);
     }
