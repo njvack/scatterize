@@ -425,7 +425,10 @@ function setupExport() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Set up plot components
-  scatter = createScatterplot(document.getElementById('scatter-svg'));
+  scatter = createScatterplot(
+    document.getElementById('scatter-svg'),
+    document.getElementById('overlay-svg')
+  );
 
   const histSvg = document.getElementById('diag-hist');
   const qqSvg   = document.getElementById('diag-qq');

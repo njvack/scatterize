@@ -1,6 +1,14 @@
 // src/plot/scatterplot.js
 // D3 v7 scatter plot with per-point axis ticks, quartile labels,
 // regression line, censoring, Voronoi hover/click, and superticks.
+//
+// Performance architecture: the main SVG is fully static between data/model
+// changes — no event handlers, no DOM mutations during hover.  All hover
+// rendering and mouse interaction live in a separate overlay SVG so the
+// browser can cache the main SVG rasterization independently.
+//
+// NOTE: SVG export currently captures only the main SVG (axis tick-label text
+// lives in the overlay and will be absent from exports).  This is a known gap.
 
 import * as d3 from 'd3';
 import { Z95 } from '../stats/common.js';
@@ -107,7 +115,7 @@ function computeBand(r, key, [x0, x1], nPts) {
 // Public API
 // ---------------------------------------------------------------------------
 
-// createScatterplot(svgEl) → { update(opts), clear() }
+// createScatterplot(svgEl, overlaySvgEl) → { update(opts), clear() }
 //
 // opts shape:
 //   points: [{ index, displayX, displayY, originalX, originalY, group, censored }]
@@ -117,10 +125,11 @@ function computeBand(r, key, [x0, x1], nPts) {
 //   customXTicks, customYTicks: number[] | null
 //   onPointClick(index): called when a point is clicked
 //   onPointHover(index | null): called on hover change
-export function createScatterplot(svgEl) {
-  const svg = d3.select(svgEl);
+export function createScatterplot(svgEl, overlaySvgEl) {
+  const svg        = d3.select(svgEl);
+  const overlaySvg = d3.select(overlaySvgEl);
 
-  // Create SVG structure once.
+  // ── Main SVG structure (static between data changes) ───────────────────
   const defs = svg.append('defs');
   const clipId = 'plot-clip-' + Math.random().toString(36).slice(2);
   const clipRect = defs.append('clipPath').attr('id', clipId)
@@ -135,8 +144,15 @@ export function createScatterplot(svgEl) {
   const regLineEl  = plotArea.append('line').attr('class', 'regression-line');
   const pointsG    = plotArea.append('g').attr('class', 'points');
   const cornersG   = canvas.append('g').attr('class', 'corners'); // outside clip
-  const hoverG     = canvas.append('g').attr('class', 'hover-layer').style('pointer-events', 'none');
-  const voronoiG   = canvas.append('g').attr('class', 'voronoi-overlay').style('fill', 'none');
+
+  // ── Overlay SVG structure (hover rendering + mouse interaction) ─────────
+  // axisLabelsG: tick label text — updated on data change, suppressed on hover
+  // hoverG: hover indicator + supertick lines — cleared/drawn on hover change
+  // interaction rect: appended to overlayCanvas per update() call
+  const overlayCanvas = overlaySvg.append('g').attr('class', 'overlay-canvas');
+  const axisLabelsG   = overlayCanvas.append('g').attr('class', 'axis-labels');
+  const hoverG        = overlayCanvas.append('g').attr('class', 'hover-layer')
+    .style('pointer-events', 'none');
 
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
   let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
@@ -164,9 +180,14 @@ export function createScatterplot(svgEl) {
     const iW = W - MARGIN.left - MARGIN.right;
     const iH = H - MARGIN.top - MARGIN.bottom;
 
+    // Sync main SVG dimensions.
     svg.attr('viewBox', `0 0 ${W} ${H}`);
     canvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
     clipRect.attr('width', iW).attr('height', iH);
+
+    // Sync overlay SVG to same coordinate system.
+    overlaySvg.attr('viewBox', `0 0 ${W} ${H}`);
+    overlayCanvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
 
     // Scales from uncensored points only.
     const active = points.filter(p => !p.censored);
@@ -184,15 +205,20 @@ export function createScatterplot(svgEl) {
       .domain([yExt[0] - yPad, yExt[1] + yPad])
       .range([iH, 0]);
 
-    // ── Axes ──────────────────────────────────────────────────────────────
+    // ── Axes (spine + tick marks only — labels go to overlay) ─────────────
 
     xAxisG.attr('transform', `translate(0,${iH})`);
     yAxisG.attr('transform', `translate(0,0)`);
 
-    drawAxis(xAxisG, active.map(p => p.displayX), xScale, iH, iW, 'x',
-             xLabel, customXTicks, MARGIN);
-    drawAxis(yAxisG, active.map(p => p.displayY), yScale, iH, iW, 'y',
-             yLabel, customYTicks, MARGIN);
+    drawAxis(xAxisG, active.map(p => p.displayX), xScale, iH, iW, 'x');
+    drawAxis(yAxisG, active.map(p => p.displayY), yScale, iH, iW, 'y');
+
+    // Axis labels drawn into overlay so suppression never touches main SVG.
+    axisLabelsG.selectAll('*').remove();
+    drawAxisLabels(axisLabelsG, active.map(p => p.displayX), xScale, iH, iW, 'x',
+                   xLabel, customXTicks, MARGIN);
+    drawAxisLabels(axisLabelsG, active.map(p => p.displayY), yScale, iH, iW, 'y',
+                   yLabel, customYTicks, MARGIN);
 
     // ── Transition ────────────────────────────────────────────────────────
 
@@ -325,14 +351,13 @@ export function createScatterplot(svgEl) {
       )
       .attr('d', d3.symbol().type(d3.symbolDiamond).size(60));
 
-    // ── Hit detection: single overlay rect + delaunay.find() ─────────────
-    // Using per-cell Voronoi <path> elements with mouseover is catastrophically
-    // slow for large datasets — the browser hit-tests thousands of polygons on
-    // every mouse move in its rendering pipeline (invisible to the JS profiler).
-    // Instead: one transparent rect, one mousemove, one delaunay.find() call.
+    // ── Hit detection: interaction rect in overlay + delaunay.find() ──────
+    // Mouse events live entirely in the overlay SVG.  The main SVG has zero
+    // event handlers and never mutates during user interaction, so the browser
+    // can cache its rasterized texture across hover frames.
 
     const voronoiPoints = allPoints;
-    voronoiG.selectAll('*').remove();
+    overlayCanvas.selectAll('rect.interaction-rect').remove();
 
     if (voronoiPoints.length >= 2) {
       const vx = d => d.corner ? d.corner.x : d.sx;
@@ -341,7 +366,8 @@ export function createScatterplot(svgEl) {
 
       // Extend slightly beyond plot area so corner markers are reachable.
       const VP = CORNER_R + 2;
-      voronoiG.append('rect')
+      overlayCanvas.append('rect')
+        .attr('class', 'interaction-rect')
         .attr('x', -VP).attr('y', -VP)
         .attr('width', iW + 2 * VP).attr('height', iH + 2 * VP)
         .style('fill', 'none')
@@ -386,7 +412,7 @@ export function createScatterplot(svgEl) {
   // ── Hover supertick ───────────────────────────────────────────────────
 
   // Draw X and Y superticks at the given pixel positions with data-value labels,
-  // and suppress nearby regular tick labels to avoid overdraw.
+  // and suppress nearby axis tick labels to avoid overdraw.
   function drawHoverSuperticks(xPos, xVal, yPos, yVal, iH) {
     hoverG.append('line')
       .classed('tick-mark--hover', true)
@@ -410,8 +436,8 @@ export function createScatterplot(svgEl) {
       .attr('dominant-baseline', 'middle')
       .text(fmtNum(yVal));
 
-    suppressNearbyTicks(xAxisG, true, xPos);
-    suppressNearbyTicks(yAxisG, false, yPos);
+    suppressNearbyLabels(true,  xPos);
+    suppressNearbyLabels(false, yPos);
   }
 
   function showHover(d, iH, color) {
@@ -458,12 +484,15 @@ export function createScatterplot(svgEl) {
     drawHoverSuperticks(xPos, d.displayX, yPos, d.displayY, iH);
   }
 
-  // Hide regular tick marks/labels that would be overdrawn by the hover
-  // supertick.  Restored by clearHover().
-  function suppressNearbyTicks(axisG, isX, hoverPos) {
-    axisG.selectAll('text.tick-label').each(function() {
-      const pad = isX ? 30 : 8;
-      const pos = +d3.select(this).attr(isX ? 'x' : 'y');
+  // Hide axis tick labels in the overlay that would be overdrawn by the hover
+  // supertick.  Operates only on the small overlay axisLabelsG — never touches
+  // the main SVG.  Restored by clearHover().
+  function suppressNearbyLabels(isX, hoverPos) {
+    const selector = isX ? 'text.tick-label--x' : 'text.tick-label--y';
+    const attr     = isX ? 'x' : 'y';
+    const pad      = isX ? 30 : 8;
+    axisLabelsG.selectAll(selector).each(function() {
+      const pos = +d3.select(this).attr(attr);
       if (Math.abs(pos - hoverPos) <= pad)
         d3.select(this).style('display', 'none');
     });
@@ -471,18 +500,18 @@ export function createScatterplot(svgEl) {
 
   function clearHover() {
     hoverG.selectAll('*').remove();
-    // Restore any tick labels that were suppressed during hover.
-    xAxisG.selectAll('.tick-label').style('display', null);
-    yAxisG.selectAll('.tick-label').style('display', null);
+    // Restore any axis labels that were suppressed during hover.
+    axisLabelsG.selectAll('.tick-label--x, .tick-label--y').style('display', null);
   }
 
-  // ── Axis drawing helper ───────────────────────────────────────────────
+  // ── Axis drawing helpers ──────────────────────────────────────────────
 
-  function drawAxis(g, vals, scale, iH, iW, orient, label, customTicks, margin) {
+  // Draw axis spine + per-point tick mark lines only (no text).
+  // Text is drawn separately by drawAxisLabels() into the overlay SVG.
+  function drawAxis(g, vals, scale, iH, iW, orient) {
     g.selectAll('*').remove();
 
     const isX = orient === 'x';
-    const len = isX ? iW : iH;
 
     // Axis spine
     g.append('line')
@@ -503,9 +532,19 @@ export function createScatterplot(svgEl) {
         .attr('x2', isX ? pos : -TICK_LEN)
         .attr('y2', isX ? TICK_LEN : pos);
     }
+  }
 
-    // Quartile labels
+  // Draw axis tick label text and axis title into the overlay group g.
+  // Uses absolute coordinates matching overlayCanvas (same origin as canvas).
+  // Labels get tick-label--x / tick-label--y classes for targeted suppression.
+  function drawAxisLabels(g, vals, scale, iH, iW, orient, label, customTicks, margin) {
+    const isX        = orient === 'x';
+    const len        = isX ? iW : iH;
+    const labelClass = isX ? 'tick-label--x' : 'tick-label--y';
+
+    const finiteVals = vals.filter(Number.isFinite);
     const labels = customTicks ?? fiveNum(finiteVals);
+
     for (const v of labels) {
       const pos = scale(v);
       if (pos < -2 || pos > len + 2) continue; // skip if outside visible range
@@ -513,26 +552,30 @@ export function createScatterplot(svgEl) {
       if (isX) {
         g.append('text')
           .classed('tick-label', true)
-          .attr('x', pos).attr('y', TICK_LEN + 3)
+          .classed(labelClass, true)
+          .attr('x', pos)
+          .attr('y', iH + TICK_LEN + 3)
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'hanging')
           .text(fmt);
       } else {
         g.append('text')
           .classed('tick-label', true)
-          .attr('x', -TICK_LEN - 3).attr('y', pos)
+          .classed(labelClass, true)
+          .attr('x', -TICK_LEN - 3)
+          .attr('y', pos)
           .attr('text-anchor', 'end')
           .attr('dominant-baseline', 'middle')
           .text(fmt);
       }
     }
 
-    // Axis label
+    // Axis title
     if (isX) {
       g.append('text')
         .classed('axis-label', true)
         .attr('x', iW / 2)
-        .attr('y', TICK_LEN + 28)
+        .attr('y', iH + TICK_LEN + 28)
         .attr('text-anchor', 'middle')
         .text(label);
     } else {
@@ -551,8 +594,9 @@ export function createScatterplot(svgEl) {
     // so subsequent update() calls still work.
     pointsG.selectAll('*').remove();
     cornersG.selectAll('*').remove();
-    voronoiG.selectAll('*').remove();
-    hoverG.selectAll('*').remove();
+    clearHover();                                      // clears hoverG + restores axisLabelsG visibility
+    axisLabelsG.selectAll('*').remove();
+    overlayCanvas.selectAll('rect.interaction-rect').remove();
     xAxisG.selectAll('*').remove();
     yAxisG.selectAll('*').remove();
     regLineEl.style('display', 'none');

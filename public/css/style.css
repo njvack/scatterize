@@ -243,6 +243,13 @@ html, body {
   height: 100%;
 }
 
+.overlay-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 /* ─── Empty State ───────────────────────────────────────────────────────── */
 
 .empty-state {
