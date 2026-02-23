@@ -245,14 +245,17 @@ function render() {
     nuisancePartialR2,
   });
 
-  // Show/hide diag plots section BEFORE drawing so SVGs have valid dimensions.
-  // (getBoundingClientRect returns 0 on display:none elements, causing draw to bail.)
+  // Show/hide diag plots section.
   const diagEl = document.getElementById('diag-plots');
   const hasDiag = (state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length;
   if (diagEl) diagEl.classList.toggle('hidden', !hasDiag);
 
-  // Update diagnostic plots (OLS and Robust only)
-  updateDiagnostics(modelResult, activeIndices);
+  // Defer diagnostics draw to the next frame so the browser flushes layout
+  // after the class toggle above. getBoundingClientRect returns 0 on a
+  // newly-unhidden element within the same synchronous call (Safari/iOS),
+  // and scatter.update() also fires onPointHover(null) → updateDiagnostics
+  // internally before we get here, which would bail for the same reason.
+  requestAnimationFrame(() => updateDiagnostics(modelResult, activeIndices));
 
   // Keep form controls in sync (keyboard nav changes state without touching the DOM)
   syncControls(state);
