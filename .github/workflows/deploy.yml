@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -32,6 +32,14 @@ jobs:
         with:
           path: public
 
+      - name: Create zip for self-hosting
+        run: cd public && zip -r ../scatterize.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scatterize-zip
+          path: scatterize.zip
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -41,3 +49,26 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: scatterize-zip
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          body: |
+            Self-hostable build — no server-side code required.
+
+            1. Download `scatterize.zip`
+            2. Unzip it
+            3. Serve the folder with any static web server (nginx, Apache, `python3 -m http.server`, etc.)
+
+            Your data is processed entirely in the browser and never sent anywhere.
+          files: scatterize.zip
+          make_latest: true
