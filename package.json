@@ -4,7 +4,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "esbuild src/main.js --bundle --outfile=public/dist/main.js --servedir=public --watch",
+    "dev": "esbuild src/main.js --bundle --outfile=public/dist/main.js --servedir=public --watch --sourcemap",
     "build": "esbuild src/main.js --bundle --outfile=public/dist/main.js --minify",
     "test": "node --test tests/js/state.test.mjs tests/js/data.test.mjs && node tests/js/compare.mjs",
     "test:stats": "node tests/js/compare.mjs",
