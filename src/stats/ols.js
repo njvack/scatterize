@@ -1,5 +1,5 @@
-import { Matrix, solve, QrDecomposition } from 'ml-matrix';
-import { tPValue, residualize } from './common.js';
+import { Matrix, QrDecomposition } from 'ml-matrix';
+import { tPValue, residualize, diagInverse } from './common.js';
 
 // Ordinary least squares regression.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
@@ -45,11 +45,7 @@ export function ols(x, y, nuisance = []) {
   const dfResidual  = n - 2;
 
   // SE via diagonal of (X'X)⁻¹ — same approach as robust.js
-  const XtX     = X.transpose().mmul(X).to2DArray();
-  const diagInv = [0, 1].map(j => {
-    const e = [0, 0]; e[j] = 1;
-    return solve(new Matrix(XtX), Matrix.columnVector(e)).get(j, 0);
-  });
+  const diagInv = diagInverse(X.transpose().mmul(X).to2DArray());
 
   const seIntercept = Math.sqrt(diagInv[0] * s2);
   const seSlope     = Math.sqrt(diagInv[1] * s2);

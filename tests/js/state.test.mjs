@@ -19,7 +19,6 @@ test('parseState: empty string returns defaults', () => {
   assert.deepEqual(s.n, []);
   assert.deepEqual(s.c, []);
   assert.equal(s.h, null);
-  assert.equal(s.f, null);
   assert.equal(s.xl, null);
   assert.equal(s.yl, null);
 });
@@ -43,10 +42,9 @@ test('parseState: nuisance and censor as int lists', () => {
   assert.deepEqual(s.c, [0, 7]);
 });
 
-test('parseState: group and filter as ints', () => {
-  const s = parseState('h=3&f=2');
+test('parseState: group as int', () => {
+  const s = parseState('h=3');
   assert.equal(s.h, 3);
-  assert.equal(s.f, 2);
 });
 
 test('parseState: custom axis tick float lists', () => {
@@ -110,12 +108,11 @@ test('serializeState: empty n and c are omitted', () => {
   assert.equal(params.get('c'), null);
 });
 
-test('serializeState: null h and f are omitted', () => {
+test('serializeState: null h is omitted', () => {
   const params = new URLSearchParams(
-    serializeState({ ...DEFAULTS, src: 'x', h: null, f: null })
+    serializeState({ ...DEFAULTS, src: 'x', h: null })
   );
   assert.equal(params.get('h'), null);
-  assert.equal(params.get('f'), null);
 });
 
 test('serializeState: h=0 is included (falsy but valid index)', () => {
@@ -125,12 +122,11 @@ test('serializeState: h=0 is included (falsy but valid index)', () => {
   assert.equal(params.get('h'), '0');
 });
 
-test('serializeState: h and f included when set', () => {
+test('serializeState: h included when set', () => {
   const params = new URLSearchParams(
-    serializeState({ ...DEFAULTS, src: 'x', h: 2, f: 4 })
+    serializeState({ ...DEFAULTS, src: 'x', h: 2 })
   );
   assert.equal(params.get('h'), '2');
-  assert.equal(params.get('f'), '4');
 });
 
 test('serializeState: xl/yl float lists serialized correctly', () => {
@@ -150,7 +146,7 @@ test('round-trip: parse → serialize → parse preserves all fields', () => {
     'src=https%3A%2F%2Fexample.com%2Fdata.csv',
     'x=2', 'y=3', 'm=robust',
     'n=1%2C4', 'c=0%2C2',
-    'h=5', 'f=6',
+    'h=5',
     'xl=0%2C1%2C2.5', 'yl=-1%2C0',
   ].join('&');
   const parsed = parseState(original);

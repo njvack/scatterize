@@ -3,6 +3,7 @@
 // Shown in the stats panel for OLS and Robust only.
 
 import * as d3 from 'd3';
+import { mean, stdev } from '../stats/common.js';
 
 // ---------------------------------------------------------------------------
 // Normal distribution utilities
@@ -44,17 +45,6 @@ function normalQuantile(p) {
 function normalPDF(x, mu, sigma) {
   const z = (x - mu) / sigma;
   return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
-}
-
-// Sample mean
-function mean(arr) {
-  return arr.reduce((s, v) => s + v, 0) / arr.length;
-}
-
-// Sample standard deviation
-function stdev(arr) {
-  const mu = mean(arr);
-  return Math.sqrt(arr.reduce((s, v) => s + (v - mu) ** 2, 0) / (arr.length - 1));
 }
 
 // ---------------------------------------------------------------------------
@@ -121,10 +111,10 @@ function drawHistogram(svg, residuals, activeIndices, hoveredIndex) {
     .range([0, iW]);
 
   // Bins
-  const bins = d3.bin()
+  const binGen = d3.bin()
     .domain(xScale.domain())
-    .thresholds(Math.min(20, Math.ceil(Math.sqrt(residuals.length))))
-    (residuals);
+    .thresholds(Math.min(20, Math.ceil(Math.sqrt(residuals.length))));
+  const bins = binGen(residuals);
 
   const maxDensity = d3.max(bins, b => {
     const bw = b.x1 - b.x0;

@@ -59,7 +59,8 @@ export async function fetchData(url) {
       throw new Error(
         'Could not fetch this URL. ' +
         'For Google Sheets: File → Share → "Anyone with the link". ' +
-        'For other CSVs, the server must send CORS headers.'
+        'For other CSVs, the server must send CORS headers.',
+        { cause: err }
       );
     }
     throw err;

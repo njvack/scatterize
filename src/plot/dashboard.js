@@ -2,8 +2,9 @@
 // Populates control panel selectors and renders the stats panel.
 
 import { setState } from '../state.js';
+import { RANK_MODELS } from '../stats/common.js';
 
-const RANK_MODELS = new Set(['spearman', 'theilsen']);
+const MODEL_DISPLAY_NAMES = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' };
 
 // ---------------------------------------------------------------------------
 // Controls
@@ -123,7 +124,7 @@ export function syncControls(state) {
 }
 
 // Bind all control change events. Called once after initial render.
-export function bindControls(state) {
+export function bindControls() {
   const xSel = document.getElementById('x-select');
   const ySel = document.getElementById('y-select');
   const mSel = document.getElementById('model-select');
@@ -160,7 +161,7 @@ const FMT = {
 };
 
 // Render the model results section of the stats panel.
-export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensored,
+export function updateStats({ modelResult, modelKey, n, nCensored,
                                nuisanceNames = [], nuisancePartialR2 = [] }) {
   const el = document.getElementById('stats-model');
   if (!el) return;
@@ -172,8 +173,8 @@ export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensore
   }
 
   const hasNuisance = nuisanceNames.length > 0 && (modelKey === 'ols' || modelKey === 'robust');
-  const rows = buildStatRows(modelResult, modelKey, xLabel, yLabel, hasNuisance);
-  const title = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' }[modelKey] ?? modelKey;
+  const rows = buildStatRows(modelResult, modelKey, hasNuisance);
+  const title = MODEL_DISPLAY_NAMES[modelKey] ?? modelKey;
 
   const hasNuisanceStats = nuisanceNames.length > 0 && nuisancePartialR2.length > 0
     && (modelKey === 'ols' || modelKey === 'robust');
@@ -210,45 +211,39 @@ export function updateStats({ modelResult, modelKey, xLabel, yLabel, n, nCensore
   }
 }
 
-function buildStatRows(r, key, xLabel, yLabel, hasNuisance = false) {
+const PARAMETRIC_ROWS = r => [
+  ['slope', FMT.coef(r.slope)],
+  ['SE',    FMT.coef(r.seSlope)],
+  ['t',     FMT.stat(r.tSlope)],
+  ['p',     FMT.pval(r.pSlope)],
+];
+
+function buildStatRows(r, key, hasNuisance = false) {
   switch (key) {
-    case 'ols':
-      return [
-        ['slope', FMT.coef(r.slope)],
-        ['SE', FMT.coef(r.seSlope)],
-        ['t', FMT.stat(r.tSlope)],
-        ['p', FMT.pval(r.pSlope)],
-        ...(hasNuisance ? [
-          ['R² (full model)', FMT.r2(r.fullModelRSquared)],
-          ['adj. R² (full model)', FMT.r2(r.fullModelAdjRSquared)],
-          ['R² (partial, X)', FMT.r2(r.rSquared)],
-        ] : [
-          ['R²', FMT.r2(r.rSquared)],
-          ['adj. R²', FMT.r2(r.adjRSquared)],
-        ]),
-        ['intercept', FMT.coef(r.intercept)],
-      ];
+    case 'ols': {
+      const r2Rows = hasNuisance
+        ? [['R² (full model)',      FMT.r2(r.fullModelRSquared)],
+           ['adj. R² (full model)', FMT.r2(r.fullModelAdjRSquared)],
+           ['R² (partial, X)',      FMT.r2(r.rSquared)]]
+        : [['R²',      FMT.r2(r.rSquared)],
+           ['adj. R²', FMT.r2(r.adjRSquared)]];
+      return [...PARAMETRIC_ROWS(r), ...r2Rows, ['intercept', FMT.coef(r.intercept)]];
+    }
     case 'robust':
-      return [
-        ['slope', FMT.coef(r.slope)],
-        ['SE', FMT.coef(r.seSlope)],
-        ['t', FMT.stat(r.tSlope)],
-        ['p', FMT.pval(r.pSlope)],
-        ['intercept', FMT.coef(r.intercept)],
-      ];
+      return [...PARAMETRIC_ROWS(r), ['intercept', FMT.coef(r.intercept)]];
     case 'spearman':
       return [
-        ['ρ', FMT.stat(r.rho)],
-        ['p', FMT.pval(r.pValue)],
-        ['slope', FMT.coef(r.slope)],
+        ['ρ',         FMT.stat(r.rho)],
+        ['p',         FMT.pval(r.pValue)],
+        ['slope',     FMT.coef(r.slope)],
         ['intercept', FMT.coef(r.intercept)],
       ];
     case 'theilsen':
       return [
-        ['slope', FMT.coef(r.slope)],
+        ['slope',     FMT.coef(r.slope)],
         ['intercept', FMT.coef(r.intercept)],
-        ['τ', FMT.stat(r.tau)],
-        ['p', FMT.pval(r.pValue)],
+        ['τ',         FMT.stat(r.tau)],
+        ['p',         FMT.pval(r.pValue)],
       ];
     default:
       return Object.entries(r)

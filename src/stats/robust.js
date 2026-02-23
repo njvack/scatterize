@@ -1,4 +1,4 @@
-import { solveLinear } from './common.js';
+import { solveLinear, diagInverse } from './common.js';
 
 // M-estimation: IRLS with Tukey biweight weights.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
@@ -42,7 +42,7 @@ function doWls(dm, y, w, n, k) {
   return { b: solveLinear(XtWX, XtWy), XtWX };
 }
 
-function residuals(dm, y, b, n) {
+function residuals(dm, y, b) {
   return y.map((yi, i) => yi - dm[i].reduce((sum, xij, j) => sum + xij * b[j], 0));
 }
 
@@ -61,7 +61,7 @@ export function robust(x, y, nuisance = []) {
   // Initialize with OLS
   const ones = new Array(n).fill(1);
   let { b } = doWls(dm, y, ones, n, k);
-  let r = residuals(dm, y, b, n);
+  let r = residuals(dm, y, b);
   let scale = madScale(r);
   let w = bisquareWeights(r, scale);
 
@@ -78,7 +78,7 @@ export function robust(x, y, nuisance = []) {
     if (b.every((bj, j) => Math.abs(bj - bPrev[j]) <= 1e-4 * (Math.abs(bPrev[j]) + 1e-3))) break;
 
     // Only update r/s/w if not yet converged (so on break, w is from last WLS input)
-    r = residuals(dm, y, b, n);
+    r = residuals(dm, y, b);
     scale = madScale(r);
     w = bisquareWeights(r, scale);
   }
@@ -87,11 +87,7 @@ export function robust(x, y, nuisance = []) {
   // SE: s² * diag((X'WX)⁻¹) using the same w and scale.
   const { XtWX } = doWls(dm, y, w, n, k);
   const s2 = scale * scale;
-  const diagInv = Array.from({ length: k }, (_, j) => {
-    const e = new Array(k).fill(0);
-    e[j] = 1;
-    return solveLinear(XtWX, e)[j];
-  });
+  const diagInv = diagInverse(XtWX);
 
   // Off-diagonal [0][1] of (X'WX)^{-1}: covariance of intercept and x-slope.
   // Reuse the column-1 solve (intercept row) to avoid an extra factorization.

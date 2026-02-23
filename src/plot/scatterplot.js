@@ -3,13 +3,13 @@
 // regression line, censoring, Voronoi hover/click, and superticks.
 
 import * as d3 from 'd3';
+import { Z95 } from '../stats/common.js';
 
 // ColorBrewer Paired palette for group coloring (via D3).
 const PAIRED = d3.schemePaired;
 
 // Approximate t_{0.975, df} via Cornish-Fisher expansion (4 terms).
 // Error < 0.01 for df >= 5; used for 95% CI bands on OLS.
-const Z95 = 1.9599639845400536;
 function tQ95(df) {
   const z = Z95, z2 = z * z;
   return z
@@ -136,7 +136,6 @@ export function createScatterplot(svgEl) {
   const hoverG     = canvas.append('g').attr('class', 'hover-layer').style('pointer-events', 'none');
   const voronoiG   = canvas.append('g').attr('class', 'voronoi-overlay').style('fill', 'none');
 
-  let lastOnHover = null;
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
 
   function update({
@@ -151,7 +150,6 @@ export function createScatterplot(svgEl) {
     onPointClick = () => {},
     onPointHover = () => {},
   }) {
-    lastOnHover = onPointHover;
     // Clear any stuck hover overlay immediately when data changes.
     clearHover();
     onPointHover(null);
@@ -336,9 +334,9 @@ export function createScatterplot(svgEl) {
         .style('cursor', 'pointer')
         .on('mouseover', (event, d) => {
           if (d.censored) {
-            showCensorHover(d, xScale, yScale, iH, iW);
+            showCensorHover(d, xScale, yScale, iH);
           } else {
-            showHover(d, xScale, yScale, iH, iW, colorOf(d));
+            showHover(d, iH, colorOf(d));
             onPointHover(d.index);
           }
         })
@@ -361,10 +359,38 @@ export function createScatterplot(svgEl) {
 
   // ── Hover supertick ───────────────────────────────────────────────────
 
-  function showHover(d, xScale, yScale, iH, iW, color) {
+  // Draw X and Y superticks at the given pixel positions with data-value labels,
+  // and suppress nearby regular tick labels to avoid overdraw.
+  function drawHoverSuperticks(xPos, xVal, yPos, yVal, iH) {
+    hoverG.append('line')
+      .classed('tick-mark--hover', true)
+      .attr('x1', xPos).attr('y1', iH + 1)
+      .attr('x2', xPos).attr('y2', iH + SUPERTICK_LEN);
+    hoverG.append('text')
+      .classed('tick-label--hover', true)
+      .attr('x', xPos).attr('y', iH + SUPERTICK_LEN + 3)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'hanging')
+      .text(fmtNum(xVal));
+
+    hoverG.append('line')
+      .classed('tick-mark--hover', true)
+      .attr('x1', -1).attr('y1', yPos)
+      .attr('x2', -SUPERTICK_LEN).attr('y2', yPos);
+    hoverG.append('text')
+      .classed('tick-label--hover', true)
+      .attr('x', -SUPERTICK_LEN - 3).attr('y', yPos)
+      .attr('text-anchor', 'end')
+      .attr('dominant-baseline', 'middle')
+      .text(fmtNum(yVal));
+
+    suppressNearbyTicks(xAxisG, true, xPos);
+    suppressNearbyTicks(yAxisG, false, yPos);
+  }
+
+  function showHover(d, iH, color) {
     hoverG.selectAll('*').remove();
 
-    // Highlight ring on the point
     hoverG.append('circle')
       .attr('cx', d.sx).attr('cy', d.sy)
       .attr('r', POINT_R_HOVER)
@@ -373,36 +399,10 @@ export function createScatterplot(svgEl) {
       .attr('stroke-width', 1.5)
       .style('pointer-events', 'none');
 
-    // X supertick
-    const xSy = iH;
-    hoverG.append('line')
-      .classed('tick-mark--hover', true)
-      .attr('x1', d.sx).attr('y1', xSy + 1)
-      .attr('x2', d.sx).attr('y2', xSy + SUPERTICK_LEN);
-    hoverG.append('text')
-      .classed('tick-label--hover', true)
-      .attr('x', d.sx).attr('y', xSy + SUPERTICK_LEN + 3)
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'hanging')
-      .text(fmtNum(d.displayX));
-
-    // Y supertick
-    hoverG.append('line')
-      .classed('tick-mark--hover', true)
-      .attr('x1', -1).attr('y1', d.sy)
-      .attr('x2', -SUPERTICK_LEN).attr('y2', d.sy);
-    hoverG.append('text')
-      .classed('tick-label--hover', true)
-      .attr('x', -SUPERTICK_LEN - 3).attr('y', d.sy)
-      .attr('text-anchor', 'end')
-      .attr('dominant-baseline', 'middle')
-      .text(fmtNum(d.displayY));
-
-    suppressNearbyTicks(xAxisG, true, d.sx);
-    suppressNearbyTicks(yAxisG, false, d.sy);
+    drawHoverSuperticks(d.sx, d.displayX, d.sy, d.displayY, iH);
   }
 
-  function showCensorHover(d, xScale, yScale, iH, iW) {
+  function showCensorHover(d, xScale, yScale, iH) {
     const cx = d.corner ? d.corner.x : d.sx;
     const cy = d.corner ? d.corner.y : d.sy;
     hoverG.selectAll('*').remove();
@@ -425,35 +425,11 @@ export function createScatterplot(svgEl) {
         .style('pointer-events', 'none');
     }
 
-    // Superticks: for corner points use the clamped corner coordinate so the
-    // tick lands just past the axis edge rather than at the true (far
-    // out-of-range) scaled position, which would be off-screen.
+    // For corner points use the clamped pixel position so the tick lands just
+    // past the axis edge rather than at the true (far out-of-range) position.
     const xPos = d.corner ? d.corner.x : xScale(d.displayX);
-    hoverG.append('line')
-      .classed('tick-mark--hover', true)
-      .attr('x1', xPos).attr('y1', iH + 1)
-      .attr('x2', xPos).attr('y2', iH + SUPERTICK_LEN);
-    hoverG.append('text')
-      .classed('tick-label--hover', true)
-      .attr('x', xPos).attr('y', iH + SUPERTICK_LEN + 3)
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'hanging')
-      .text(fmtNum(d.displayX));
-
     const yPos = d.corner ? d.corner.y : yScale(d.displayY);
-    hoverG.append('line')
-      .classed('tick-mark--hover', true)
-      .attr('x1', -1).attr('y1', yPos)
-      .attr('x2', -SUPERTICK_LEN).attr('y2', yPos);
-    hoverG.append('text')
-      .classed('tick-label--hover', true)
-      .attr('x', -SUPERTICK_LEN - 3).attr('y', yPos)
-      .attr('text-anchor', 'end')
-      .attr('dominant-baseline', 'middle')
-      .text(fmtNum(d.displayY));
-
-    suppressNearbyTicks(xAxisG, true, xPos);
-    suppressNearbyTicks(yAxisG, false, yPos);
+    drawHoverSuperticks(xPos, d.displayX, yPos, d.displayY, iH);
   }
 
   // Hide regular tick marks/labels that would be overdrawn by the hover

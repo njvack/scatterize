@@ -10,7 +10,7 @@ import { ols }      from './stats/ols.js';
 import { robust }   from './stats/robust.js';
 import { spearman } from './stats/spearman.js';
 import { theilSen } from './stats/theilsen.js';
-import { residualize, residualizeWithStats } from './stats/common.js';
+import { residualizeWithStats, RANK_MODELS, rank } from './stats/common.js';
 
 // ---------------------------------------------------------------------------
 // App state (in-memory, not in URL)
@@ -21,7 +21,6 @@ let columns = [];    // numeric-eligible column names (usable in models)
 let colMeta = [];    // all column metadata: [{ name, isNumeric, colorType }]
 
 const MODELS = { ols, robust, spearman, theilsen: theilSen };
-const RANK_MODELS = new Set(['spearman', 'theilsen']);
 
 let scatter     = null;
 let diagnostics = null;
@@ -71,23 +70,6 @@ async function loadData(url) {
   } finally {
     setLoading(false);
   }
-}
-
-// ---------------------------------------------------------------------------
-// Rank transform for Spearman display
-// ---------------------------------------------------------------------------
-
-function rankTransform(arr) {
-  const indexed = arr.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
-  const ranks = new Array(arr.length);
-  for (let i = 0; i < indexed.length; ) {
-    let j = i;
-    while (j < indexed.length - 1 && indexed[j].v === indexed[j + 1].v) j++;
-    const avg = (i + j) / 2 + 1;
-    for (let k = i; k <= j; k++) ranks[indexed[k].i] = avg;
-    i = j + 1;
-  }
-  return ranks;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,8 +144,8 @@ function render() {
   let displayX = xActive;
   let displayY = yActive;
   if (state.m === 'spearman') {
-    displayX = rankTransform(xActive);
-    displayY = rankTransform(yActive);
+    displayX = rank(xActive);
+    displayY = rank(yActive);
   }
 
   // Run model
@@ -397,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Wire controls and keyboard
-  bindControls(getState());
+  bindControls();
   setupKeyboard();
   setupExport();
 

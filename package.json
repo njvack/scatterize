@@ -8,7 +8,8 @@
     "build": "esbuild src/main.js --bundle --outfile=public/dist/main.js --minify",
     "test": "node --test tests/js/state.test.mjs tests/js/data.test.mjs && node tests/js/compare.mjs",
     "test:stats": "node tests/js/compare.mjs",
-    "test:app": "node --test tests/js/state.test.mjs tests/js/data.test.mjs"
+    "test:app": "node --test tests/js/state.test.mjs tests/js/data.test.mjs",
+    "lint": "eslint src/"
   },
   "dependencies": {
     "d3": "^7.9.0",
@@ -16,6 +17,9 @@
     "papaparse": "^5.4.1"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "@eslint/js": "^10.0.1",
+    "esbuild": "^0.25.0",
+    "eslint": "^10.0.1",
+    "globals": "^17.3.0"
   }
 }

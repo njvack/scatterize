@@ -57,11 +57,10 @@ export function serializeState(state) {
     params.set('y', String(state.y ?? DEFAULTS.y));
     params.set('m', state.m ?? DEFAULTS.m);
   }
-  if (state.n?.length)  params.set('n', state.n.join(','));
-  if (state.c?.length)  params.set('c', state.c.join(','));
-  if (state.h != null)  params.set('h', String(state.h));
-  if (state.xl?.length) params.set('xl', state.xl.join(','));
-  if (state.yl?.length) params.set('yl', state.yl.join(','));
+  if (state.h != null) params.set('h', String(state.h));
+  for (const key of ['n', 'c', 'xl', 'yl']) {
+    if (state[key]?.length) params.set(key, state[key].join(','));
+  }
   return params.toString();
 }
 

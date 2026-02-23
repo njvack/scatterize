@@ -1,6 +1,12 @@
 // Shared statistical utilities
 import { Matrix, solve, QrDecomposition } from 'ml-matrix';
 
+// z_{0.975}: standard normal 95% CI critical value
+export const Z95 = 1.9599639845400536;
+
+// Model keys that use rank methods and don't support nuisance covariates
+export const RANK_MODELS = new Set(['spearman', 'theilsen']);
+
 // ---------------------------------------------------------------------------
 // Log gamma (Lanczos approximation, accurate to ~15 significant figures)
 // ---------------------------------------------------------------------------
@@ -87,49 +93,80 @@ export function tPValue(t, df) {
 // Uses QR decomposition on the design matrix directly (avoids squaring the
 // condition number that normal equations would incur).
 // ---------------------------------------------------------------------------
-export function residualize(y, nuisanceMatrix) {
+
+// Private helper: fit OLS of y on [1, nuisance...], return fit components.
+function _olsNuisanceFit(y, nuisanceMatrix) {
   const n = y.length;
-  // Design matrix: n rows × (1 + #nuisance) cols, intercept first
   const dm = Array.from({ length: n }, (_, i) => [1, ...nuisanceMatrix.map(col => col[i])]);
   const X = new Matrix(dm);
-  const Y = Matrix.columnVector(y);
+  const b = new QrDecomposition(X).solve(Matrix.columnVector(y)).getColumn(0);
+  const residuals = y.map((yi, i) => yi - dm[i].reduce((s, xij, j) => s + xij * b[j], 0));
+  return { X, b, residuals };
+}
 
-  const qr = new QrDecomposition(X);
-  const b = qr.solve(Y).getColumn(0);   // β via QR: R β = Q'y
-
-  return y.map((yi, i) => yi - dm[i].reduce((s, xij, j) => s + xij * b[j], 0));
+export function residualize(y, nuisanceMatrix) {
+  return _olsNuisanceFit(y, nuisanceMatrix).residuals;
 }
 
 // Solve Ax = b via LU decomposition with partial pivoting (ml-matrix).
 // A: array-of-arrays (k×k); b: array (length k). Returns array (length k).
 export function solveLinear(A, b) {
-  const result = solve(new Matrix(A), Matrix.columnVector(b));
-  return result.getColumn(0);
+  return solve(new Matrix(A), Matrix.columnVector(b)).getColumn(0);
+}
+
+// Compute diagonal of M^{-1} via column-wise solve: M x = e_j for each j.
+// M: array-of-arrays (k×k). Returns array of length k.
+export function diagInverse(M) {
+  const k = M.length;
+  return Array.from({ length: k }, (_, j) => {
+    const e = new Array(k).fill(0); e[j] = 1;
+    return solveLinear(M, e)[j];
+  });
+}
+
+// Sample mean
+export function mean(arr) {
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+// Sample standard deviation (Bessel-corrected)
+export function stdev(arr) {
+  const mu = mean(arr);
+  return Math.sqrt(arr.reduce((s, v) => s + (v - mu) ** 2, 0) / (arr.length - 1));
+}
+
+// Assign ranks (1-indexed, average ranks for ties)
+export function rank(arr) {
+  const n = arr.length;
+  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => arr[a] - arr[b]);
+  const ranks = new Array(n);
+  let i = 0;
+  while (i < n) {
+    let j = i;
+    while (j < n - 1 && arr[idx[j]] === arr[idx[j + 1]]) j++;
+    const avgRank = (i + j) / 2 + 1;
+    for (let k = i; k <= j; k++) ranks[idx[k]] = avgRank;
+    i = j + 1;
+  }
+  return ranks;
 }
 
 // Like residualize(), but also returns partial R² for each nuisance variable.
 // Partial R²_k = t²_k / (t²_k + df_residual), where t_k is the t-statistic
 // for nuisance k in the OLS fit of y on [1, z1, ..., zp].
 export function residualizeWithStats(y, nuisanceMatrix) {
+  const { X, b, residuals } = _olsNuisanceFit(y, nuisanceMatrix);
   const n = y.length;
   const p = nuisanceMatrix.length;
-  const dm = Array.from({ length: n }, (_, i) => [1, ...nuisanceMatrix.map(col => col[i])]);
-  const X = new Matrix(dm);
-  const Y = Matrix.columnVector(y);
-
-  const b = new QrDecomposition(X).solve(Y).getColumn(0);
-  const residuals = y.map((yi, i) => yi - dm[i].reduce((s, xij, j) => s + xij * b[j], 0));
 
   const ssr        = residuals.reduce((s, r) => s + r * r, 0);
   const dfResidual = n - p - 1;
   const s2         = ssr / dfResidual;
 
-  const XtX = X.transpose().mmul(X).to2DArray();
+  const diagXtX = diagInverse(X.transpose().mmul(X).to2DArray());
   const partialR2 = nuisanceMatrix.map((_, k) => {
-    const j = k + 1;  // skip intercept column
-    const e = new Array(p + 1).fill(0); e[j] = 1;
-    const invJJ = solveLinear(XtX, e)[j];
-    const t2 = (b[j] ** 2) / (invJJ * s2);
+    const j  = k + 1;  // skip intercept column
+    const t2 = (b[j] ** 2) / (diagXtX[j] * s2);
     return t2 / (t2 + dfResidual);
   });
 
