@@ -160,6 +160,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
 
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
   let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
+  let lastMousePos = null;    // [mx, my] in overlay coords; null when mouse is outside
 
   function update({
     points,
@@ -379,6 +380,33 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       const vy = d => (d.corner ? d.corner.y : d.sy) + (Math.random() * 2 - 1) * JITTER;
       const delaunay = d3.Delaunay.from(voronoiPoints, vx, vy);
 
+      function handleHover(mx, my) {
+        const i = delaunay.find(mx, my);
+        const d = voronoiPoints[i];
+        const px = d.corner ? d.corner.x : d.sx;
+        const py = d.corner ? d.corner.y : d.sy;
+
+        if (Math.hypot(mx - px, my - py) > MAX_HOVER_DIST) {
+          if (currentHoverIdx !== null) {
+            currentHoverIdx = null;
+            clearHover();
+            onPointHover(null);
+          }
+          return;
+        }
+
+        if (i === currentHoverIdx) return;
+        currentHoverIdx = i;
+        clearHover();
+        if (d.censored) {
+          showCensorHover(d, xScale, yScale, iH);
+          onPointHover(null);
+        } else {
+          showHover(d, iH, colorOf(d));
+          onPointHover(d.index);
+        }
+      }
+
       // Extend slightly beyond plot area so corner markers are reachable.
       const VP = CORNER_R + 2;
       overlayCanvas.append('rect')
@@ -390,32 +418,11 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         .style('cursor', 'pointer')
         .on('mousemove', (event) => {
           const [mx, my] = d3.pointer(event);
-          const i = delaunay.find(mx, my);
-          const d = voronoiPoints[i];
-          const px = d.corner ? d.corner.x : d.sx;
-          const py = d.corner ? d.corner.y : d.sy;
-
-          if (Math.hypot(mx - px, my - py) > MAX_HOVER_DIST) {
-            if (currentHoverIdx !== null) {
-              currentHoverIdx = null;
-              clearHover();
-              onPointHover(null);
-            }
-            return;
-          }
-
-          if (i === currentHoverIdx) return;
-          currentHoverIdx = i;
-          clearHover();
-          if (d.censored) {
-            showCensorHover(d, xScale, yScale, iH);
-            onPointHover(null);
-          } else {
-            showHover(d, iH, colorOf(d));
-            onPointHover(d.index);
-          }
+          lastMousePos = [mx, my];
+          handleHover(mx, my);
         })
         .on('mouseleave', () => {
+          lastMousePos = null;
           if (currentHoverIdx === null) return;
           currentHoverIdx = null;
           clearHover();
@@ -426,6 +433,10 @@ export function createScatterplot(svgEl, overlaySvgEl) {
           const i = delaunay.find(mx, my);
           if (i >= 0) onPointClick(voronoiPoints[i].index);
         });
+
+      // Re-establish hover at the last known position after a data/model change
+      // (e.g. censoring a point) so the highlight doesn't vanish until mousemove.
+      if (lastMousePos) handleHover(...lastMousePos);
     }
 
     // Save positions for cross-element transition on next update.
