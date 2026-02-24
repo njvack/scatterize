@@ -1,5 +1,14 @@
 /* Scatterize — Quarto/R-docs aesthetic */
 
+/* ─── Fonts ─────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "League Spartan";
+  src: url("../fonts/LeagueSpartan-VF.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* ─── Reset & Base ─────────────────────────────────────────────────────── */
 
 /* Ensure [hidden] is respected even when author styles set display. */
@@ -10,9 +19,7 @@
 }
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-
+  --font-sans: "League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --color-bg:         #ffffff;
   --color-surface:    #f8f9fa;
   --color-border:     #dee2e6;
@@ -60,7 +67,7 @@ html, body {
 
 .site-title {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   margin: 0;
   white-space: nowrap;
   color: var(--color-text);
@@ -84,7 +91,7 @@ html, body {
   min-width: 0;
   padding: 5px 10px;
   font-size: 13px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   border: 1px solid var(--color-border-mid);
   border-radius: 4px;
   background: var(--color-bg);
@@ -321,8 +328,8 @@ html, body {
 .stats-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
-  font-family: var(--font-mono);
+  font-size: 14px;
+  font-family: var(--font-sans);
 }
 
 .stats-table td {
@@ -335,7 +342,7 @@ html, body {
   padding-right: 10px;
   white-space: nowrap;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .stats-table td:last-child {
@@ -434,7 +441,7 @@ html, body {
 
 kbd {
   display: inline-block;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   padding: 1px 5px;
   border: 1px solid var(--color-border-mid);
@@ -457,7 +464,7 @@ kbd {
 }
 
 .footer-link {
-  font-size: 12px;
+  font-size: 13px;
   font-family: var(--font-sans);
   color: var(--color-text-muted);
   text-decoration: none;
@@ -470,7 +477,7 @@ kbd {
 
 .footer-sep {
   color: var(--color-border-mid);
-  font-size: 12px;
+  font-size: 13px;
   user-select: none;
 }
 
@@ -562,20 +569,20 @@ kbd {
 }
 
 .tick-label {
-  font-size: 11px;
-  font-family: var(--font-mono);
+  font-size: 13px;
+  font-family: var(--font-sans);
   fill: var(--color-text-muted);
 }
 
 .tick-label--hover {
-  font-size: 11px;
-  font-family: var(--font-mono);
+  font-size: 13px;
+  font-family: var(--font-sans);
   fill: var(--color-text);
   font-weight: 600;
 }
 
 .axis-label {
-  font-size: 12px;
+  font-size: 14px;
   font-family: var(--font-sans);
   fill: var(--color-text);
   font-weight: 500;
@@ -695,4 +702,4 @@ kbd {
 .diag-fringe { stroke: var(--color-point); stroke-width: 0.75; opacity: 0.5; }
 .diag-fringe--hovered { stroke: var(--color-regline); stroke-width: 1.5; opacity: 1; }
 .diag-axis { stroke: #999; stroke-width: 0.75; fill: none; }
-.diag-tick-label { font-size: 9px; font-family: var(--font-mono); fill: var(--color-text-muted); }
+.diag-tick-label { font-size: 9px; font-family: var(--font-sans); fill: var(--color-text-muted); }

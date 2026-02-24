@@ -148,9 +148,14 @@ export function bindControls() {
 // Stats panel
 // ---------------------------------------------------------------------------
 
+function fmtNum(v, decimals) {
+  if (Math.abs(v) >= 10000) return v.toExponential(3);
+  return v.toFixed(decimals);
+}
+
 const FMT = {
-  coef: v => v == null ? '—' : v.toFixed(4),
-  stat: v => v == null ? '—' : v.toFixed(3),
+  coef: v => v == null ? '—' : fmtNum(v, 4),
+  stat: v => v == null ? '—' : fmtNum(v, 3),
   pval: v => {
     if (v == null) return '—';
     if (v < 0.001) return '<0.001';
