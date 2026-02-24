@@ -183,19 +183,12 @@ function fullDrawHistogram(svg, residuals) {
   g.append('line').classed('diag-axis', true)
     .attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', iH);
 
-  // X axis ticks
+  // X axis ticks (marks only, no labels)
   for (const v of [mu - 2 * sd, mu - sd, mu, mu + sd, mu + 2 * sd]) {
     const x = xScale(v);
     if (x < 0 || x > iW) continue;
     g.append('line').classed('diag-axis', true)
       .attr('x1', x).attr('y1', iH).attr('x2', x).attr('y2', iH + 4);
-    if (v === mu || Math.abs(v - mu) === sd || Math.abs(v - mu) === 2 * sd) {
-      g.append('text').classed('diag-tick-label', true)
-        .attr('x', x).attr('y', iH + 6)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'hanging')
-        .text(fmtShort(v));
-    }
   }
 
   // Fringe (rug plot) — all marks drawn uniformly; hover adds its own on top
