@@ -4,7 +4,7 @@
 import { getState, setState, onStateChange } from './state.js';
 import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
-import { createScatterplot }                  from './plot/scatterplot.js';
+import { createScatterplot, buildColorOf }     from './plot/scatterplot.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
 import { populateControls, bindControls, syncControls, updateStats } from './plot/dashboard.js';
 import { ols }      from './stats/ols.js';
@@ -25,7 +25,8 @@ const MODELS = { ols, robust, spearman, theilsen: theilSen };
 
 let scatter     = null;
 let diagnostics = null;
-let hoveredIndex = null;  // currently hovered original row index
+let hoveredIndex = null;       // currently hovered original row index
+let currentPointColors = null; // parallel to residuals, one color per active point
 
 // ---------------------------------------------------------------------------
 // Column classification
@@ -216,6 +217,11 @@ function render() {
     };
   });
 
+  // Compute group colors for active points (used by diagnostic QQ coloring).
+  const active = points.filter(p => !p.censored);
+  const colorOf = buildColorOf(active, groupColorType);
+  currentPointColors = activeIndices.map(i => colorOf(points[i]));
+
   // Update scatter plot
   scatter.update({
     points,
@@ -261,9 +267,10 @@ function updateDiagnostics(modelResult, activeIndices) {
   const state = getState();
   if ((state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length) {
     diagnostics.update({
-      residuals:     modelResult.residuals,
+      residuals:    modelResult.residuals,
       activeIndices,
       hoveredIndex,
+      pointColors:  currentPointColors,
     });
   } else {
     diagnostics?.clear();
@@ -430,13 +437,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('overlay-svg')
   );
 
-  const histSvg = document.getElementById('diag-hist');
-  const qqSvg   = document.getElementById('diag-qq');
-  if (histSvg && qqSvg) {
-    diagnostics = createDiagnostics(histSvg, qqSvg);
-  } else {
-    diagnostics = { update: () => {}, clear: () => {} };
-  }
+  const combinedSvg = document.getElementById('diag-combined');
+  diagnostics = combinedSvg
+    ? createDiagnostics(combinedSvg)
+    : { update: () => {}, clear: () => {} };
 
   // Wire controls and keyboard
   bindControls();

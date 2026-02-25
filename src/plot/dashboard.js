@@ -191,7 +191,7 @@ export function updateStats({ modelResult, modelKey, n, nCensored,
     : '';
 
   const html = `
-    <p class="stats-model-name">${title}</p>
+    <h3>${title}</h3>
     <table class="stats-table">
       ${rows.map(([label, val]) => `<tr><td>${label}</td><td>${val}</td></tr>`).join('')}
       ${hasNuisanceStats ? `
@@ -207,7 +207,7 @@ export function updateStats({ modelResult, modelKey, n, nCensored,
   const descEl = document.getElementById('stats-desc');
   if (descEl) {
     descEl.innerHTML = `
-      <p class="stats-label">Sample</p>
+      <h3>Sample</h3>
       <table class="stats-table">
         <tr><td>n (active)</td><td>${FMT.n(n)}</td></tr>
         ${nCensored > 0 ? `<tr><td>censored</td><td>${FMT.n(nCensored)}</td></tr>` : ''}

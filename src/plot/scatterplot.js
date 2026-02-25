@@ -116,10 +116,31 @@ function computeBand(r, key, [x0, x1], nPts) {
 }
 
 // ---------------------------------------------------------------------------
+// Color scale builder — exported for use by diagnostics and main.js
+// ---------------------------------------------------------------------------
+
+// buildColorOf(points, groupColorType) → (point) => color string
+// `points` should be the active (uncensored) subset used to determine the scale range/groups.
+export function buildColorOf(points, groupColorType) {
+  const groupValues = points.map(p => p.group).filter(g => g != null);
+  if (groupColorType === 'continuous' && groupValues.length) {
+    const [lo, hi] = d3.extent(groupValues);
+    const colorScale = d3.scaleSequential(d3.interpolateViridis)
+      .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]);
+    return p => p.group == null ? 'var(--color-point)' : colorScale(p.group);
+  }
+  const groups = [...new Set(groupValues.map(String))].sort();
+  return p => {
+    if (p.group == null || groups.length === 0) return 'var(--color-point)';
+    return PAIRED[groups.indexOf(String(p.group)) % PAIRED.length];
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-// createScatterplot(svgEl, overlaySvgEl) → { update(opts), clear() }
+// createScatterplot(svgEl, overlaySvgEl) → { update(opts), clear(), highlightPoint(index | null) }
 //
 // opts shape:
 //   points: [{ index, displayX, displayY, originalX, originalY, group, censored }]
@@ -161,6 +182,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
   let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
   let lastMousePos = null;    // [mx, my] in overlay coords; null when mouse is outside
+  let _plotState = null;      // { allPoints, iH, colorOf, xScale, yScale } — for highlightPoint
 
   function update({
     points,
@@ -270,21 +292,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
 
     // ── Group color scale ─────────────────────────────────────────────────
 
-    const groupValues = active.map(p => p.group).filter(g => g != null);
-    let colorOf;
-    if (groupColorType === 'continuous' && groupValues.length) {
-      const [lo, hi] = d3.extent(groupValues);
-      const colorScale = d3.scaleSequential(d3.interpolateViridis)
-        .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]);
-      colorOf = p => p.group == null ? 'var(--color-point)' : colorScale(p.group);
-    } else {
-      // categorical or string: discrete Paired palette
-      const groups = [...new Set(groupValues.map(String))].sort();
-      colorOf = p => {
-        if (p.group == null || groups.length === 0) return 'var(--color-point)';
-        return PAIRED[groups.indexOf(String(p.group)) % PAIRED.length];
-      };
-    }
+    const colorOf = buildColorOf(active, groupColorType);
 
     // ── Points ────────────────────────────────────────────────────────────
 
@@ -295,6 +303,9 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       return { ...p, sx, sy, corner };
     });
     const newPointMap = new Map(allPoints.map(p => [p.index, p]));
+
+    // Store state for highlightPoint() called from outside (e.g. QQ hover → main scatter).
+    _plotState = { allPoints, iH, colorOf, xScale, yScale };
 
     // Active + in-range censored: drawn as circles in the plot area
     const circlePoints = allPoints.filter(p => !p.censored || !p.corner);
@@ -641,5 +652,16 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     ciBandEl.style('display', 'none');
   }
 
-  return { update, clear };
+  // highlightPoint(index | null) — called externally (e.g. from QQ hover) to show
+  // the hover indicator on a specific point without triggering onPointHover callback.
+  function highlightPoint(index) {
+    currentHoverIdx = null;
+    clearHover();
+    if (index == null || !_plotState) return;
+    const d = _plotState.allPoints.find(p => p.index === index);
+    if (!d || d.censored) return;
+    showHover(d, _plotState.iH, _plotState.colorOf(d));
+  }
+
+  return { update, clear, highlightPoint };
 }
