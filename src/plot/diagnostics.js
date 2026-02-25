@@ -65,8 +65,9 @@ const DIAG_MARGIN = { top: 8, right: 8, bottom: 20, left: 8 };
 //   hoveredIndex: number | null    original row index of hovered point
 //   pointColors: string[] | null   parallel to residuals, one color per active point
 //   onQQHover: (index | null) => void
-export function createDiagnostics(container) {
-  const svg = d3.select(container);
+export function createDiagnostics(container, overlayContainer) {
+  const svg        = d3.select(container);
+  const overlaySvg = overlayContainer ? d3.select(overlayContainer) : null;
 
   let diagState = null;
   let lastResiduals     = null;
@@ -75,6 +76,7 @@ export function createDiagnostics(container) {
   function update({ residuals, activeIndices, hoveredIndex = null, pointColors = null }) {
     if (!residuals || residuals.length < 3) {
       svg.selectAll('*').remove();
+      if (overlaySvg) overlaySvg.selectAll('*').remove();
       diagState = null;
       lastResiduals     = null;
       lastActiveIndices = null;
@@ -83,17 +85,18 @@ export function createDiagnostics(container) {
 
     // Full redraw only when underlying data changes, not on every hover.
     if (residuals !== lastResiduals || activeIndices !== lastActiveIndices) {
-      diagState = fullDraw(svg, residuals, activeIndices, pointColors);
+      diagState = fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors);
       lastResiduals     = residuals;
       lastActiveIndices = activeIndices;
     }
 
-    // Hover highlight: append/remove elements — no full redraw.
+    // Hover highlight: append/remove elements into overlay — no full redraw.
     highlightDiag(diagState, activeIndices, hoveredIndex);
   }
 
   function clear() {
     svg.selectAll('*').remove();
+    if (overlaySvg) overlaySvg.selectAll('*').remove();
     diagState = null;
     lastResiduals     = null;
     lastActiveIndices = null;
@@ -106,7 +109,7 @@ export function createDiagnostics(container) {
 // Full draw — single SVG with joined distplot (left) and QQ (right)
 // ---------------------------------------------------------------------------
 
-function fullDraw(svg, residuals, activeIndices, pointColors) {
+function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
   const { width: W, height: H } = svg.node().getBoundingClientRect();
   if (W === 0 || H === 0) return null;
 
@@ -168,11 +171,23 @@ function fullDraw(svg, residuals, activeIndices, pointColors) {
   const { sortedWithIdx, theoretical, xScale: qqXScale } =
     drawQQ(qqG, residuals, n, iH, yScale, panelW, pointColors);
 
+  // ── Overlay SVG structure (hover rendering) ───────────────────────────
+  let overlayInnerG = null;
+  let overlayQqG    = null;
+  if (overlaySvg) {
+    overlaySvg.selectAll('*').remove();
+    overlaySvg.attr('viewBox', `0 0 ${W} ${H}`);
+    overlayInnerG = overlaySvg.append('g').attr('transform', `translate(0, ${m.top})`);
+    overlayQqG    = overlayInnerG.append('g').attr('transform', `translate(${sharedAxisX}, 0)`);
+  }
+
   return {
     svg,
     innerG,
     fringeG,
     qqG,
+    overlayInnerG,
+    overlayQqG,
     yScale,
     iH,
     m,
@@ -321,8 +336,13 @@ function drawQQ(g, residuals, n, iH, yScale, panelW, pointColors) {
 function highlightDiag(state, activeIndices, hoveredIndex) {
   if (!state) return;
 
+  // Hover elements live in the overlay if available, otherwise fall back to main SVG.
+  const hoverInnerG = state.overlayInnerG ?? state.innerG;
+  const hoverQqG    = state.overlayQqG    ?? state.qqG;
+
   if (state.hasHover) {
-    state.innerG.selectAll('.diag-fringe--hovered, .diag-point--hovered').remove();
+    hoverInnerG.selectAll('.diag-fringe--hovered').remove();
+    hoverQqG.selectAll('.diag-point--hovered').remove();
     state.hasHover = false;
   }
 
@@ -334,7 +354,7 @@ function highlightDiag(state, activeIndices, hoveredIndex) {
   const y = state.yScale(r);
 
   // Fringe highlight on shared axis.
-  state.innerG.append('line')
+  hoverInnerG.append('line')
     .classed('diag-fringe--hovered', true)
     .attr('x1', state.sharedAxisX - 6)
     .attr('y1', y)
@@ -344,7 +364,7 @@ function highlightDiag(state, activeIndices, hoveredIndex) {
   // QQ point highlight.
   const si = state.sortedWithIdx.findIndex(d => d.i === i);
   if (si >= 0) {
-    state.qqG.append('circle')
+    hoverQqG.append('circle')
       .classed('diag-point--hovered', true)
       .attr('cx', state.qqXScale(state.theoretical[si]))
       .attr('cy', state.yScale(state.sortedWithIdx[si].r))

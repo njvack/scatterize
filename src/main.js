@@ -437,9 +437,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('overlay-svg')
   );
 
-  const combinedSvg = document.getElementById('diag-combined');
+  const combinedSvg  = document.getElementById('diag-combined');
+  const diagOverlay  = document.getElementById('diag-overlay');
   diagnostics = combinedSvg
-    ? createDiagnostics(combinedSvg)
+    ? createDiagnostics(combinedSvg, diagOverlay)
     : { update: () => {}, clear: () => {} };
 
   // Wire controls and keyboard
