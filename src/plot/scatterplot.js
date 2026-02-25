@@ -7,14 +7,27 @@
 // rendering and mouse interaction live in a separate overlay SVG so the
 // browser can cache the main SVG rasterization independently.
 //
-// NOTE: SVG export currently captures only the main SVG (axis tick-label text
-// lives in the overlay and will be absent from exports).  This is a known gap.
-
 import * as d3 from 'd3';
 import { Z95 } from '../stats/common.js';
 
 // ColorBrewer Paired palette for group coloring (via D3).
 const PAIRED = d3.schemePaired;
+
+// Read CSS custom properties once at init — used to apply all visual styles
+// inline so SVG export works without a stylesheet.
+export function readPalette() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = name => cs.getPropertyValue(name).trim();
+  return {
+    point:    v('--color-point'),
+    regline:  v('--color-regline'),
+    censored: v('--color-censored'),
+    bg:       v('--color-bg'),
+    text:     v('--color-text'),
+    muted:    v('--color-text-muted'),
+    font:     v('--font-sans'),
+  };
+}
 
 // Approximate t_{0.975, df} via Cornish-Fisher expansion (4 terms).
 // Error < 0.01 for df >= 5; used for 95% CI bands on OLS.
@@ -121,17 +134,17 @@ function computeBand(r, key, [x0, x1], nPts) {
 
 // buildColorOf(points, groupColorType) → (point) => color string
 // `points` should be the active (uncensored) subset used to determine the scale range/groups.
-export function buildColorOf(points, groupColorType) {
+export function buildColorOf(points, groupColorType, fallbackColor = 'currentColor') {
   const groupValues = points.map(p => p.group).filter(g => g != null);
   if (groupColorType === 'continuous' && groupValues.length) {
     const [lo, hi] = d3.extent(groupValues);
     const colorScale = d3.scaleSequential(d3.interpolateViridis)
       .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]);
-    return p => p.group == null ? 'var(--color-point)' : colorScale(p.group);
+    return p => p.group == null ? fallbackColor : colorScale(p.group);
   }
   const groups = [...new Set(groupValues.map(String))].sort();
   return p => {
-    if (p.group == null || groups.length === 0) return 'var(--color-point)';
+    if (p.group == null || groups.length === 0) return fallbackColor;
     return PAIRED[groups.indexOf(String(p.group)) % PAIRED.length];
   };
 }
@@ -151,6 +164,7 @@ export function buildColorOf(points, groupColorType) {
 //   onPointClick(index): called when a point is clicked
 //   onPointHover(index | null): called on hover change
 export function createScatterplot(svgEl, overlaySvgEl) {
+  const palette    = readPalette();
   const svg        = d3.select(svgEl);
   const overlaySvg = d3.select(overlaySvgEl);
 
@@ -160,21 +174,41 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   const clipRect = defs.append('clipPath').attr('id', clipId)
     .append('rect');
 
+  // Solid background for export (Illustrator needs a background rect).
+  svg.append('rect').attr('class', 'plot-bg')
+    .attr('fill', palette.bg)
+    .attr('width', '100%').attr('height', '100%');
+
   const canvas = svg.append('g').attr('class', 'canvas');
   const xAxisG  = canvas.append('g').attr('class', 'x-axis');
   const yAxisG  = canvas.append('g').attr('class', 'y-axis');
+  // Axis label text lives in both the main SVG (for export) and the overlay
+  // (for interactive hover suppression).  These groups use canvas coordinates.
+  const xAxisLabelsG = canvas.append('g').attr('class', 'x-axis-labels');
+  const yAxisLabelsG = canvas.append('g').attr('class', 'y-axis-labels');
   const plotArea = canvas.append('g').attr('class', 'plot-area')
     .attr('clip-path', `url(#${clipId})`);
-  const ciBandEl   = plotArea.append('path').attr('class', 'ci-band');
-  const regLineEl  = plotArea.append('line').attr('class', 'regression-line');
+  const ciBandEl   = plotArea.append('path').attr('class', 'ci-band')
+    .style('fill', palette.regline).style('fill-opacity', '0.12')
+    .style('stroke', 'none').style('pointer-events', 'none');
+  const regLineEl  = plotArea.append('line').attr('class', 'regression-line')
+    .style('stroke', palette.regline).style('stroke-width', '1.75')
+    .style('fill', 'none');
   const pointsG    = plotArea.append('g').attr('class', 'points');
   const cornersG   = canvas.append('g').attr('class', 'corners'); // outside clip
 
   // ── Overlay SVG structure (hover rendering + mouse interaction) ─────────
-  // axisLabelsG: tick label text — updated on data change, suppressed on hover
+  // xStripRect / yStripRect: opaque background rects that cover the main SVG
+  //   axis label strips so the overlay labels render over a clean background.
+  //   Sized once per layout in update(); never redrawn between data changes.
+  // axisLabelsG: mirror of main SVG labels — suppressed near hover supertick
   // hoverG: hover indicator + supertick lines — cleared/drawn on hover change
   // interaction rect: appended to overlayCanvas per update() call
   const overlayCanvas = overlaySvg.append('g').attr('class', 'overlay-canvas');
+  const xStripRect = overlayCanvas.append('rect').attr('class', 'axis-strip axis-strip--x')
+    .attr('fill', palette.bg).style('pointer-events', 'none');
+  const yStripRect = overlayCanvas.append('rect').attr('class', 'axis-strip axis-strip--y')
+    .attr('fill', palette.bg).style('pointer-events', 'none');
   const axisLabelsG   = overlayCanvas.append('g').attr('class', 'axis-labels');
   const hoverG        = overlayCanvas.append('g').attr('class', 'hover-layer')
     .style('pointer-events', 'none');
@@ -216,6 +250,18 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     overlaySvg.attr('viewBox', `0 0 ${W} ${H}`);
     overlayCanvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
 
+    // Size axis strip rects.  These cover the main SVG axis label strips so
+    // the overlay labels render over a clean background.  The fringe tick
+    // marks (TICK_LEN px beyond the spine) remain visible above the rects.
+    xStripRect
+      .attr('x', -MARGIN.left).attr('y', iH + TICK_LEN)
+      .attr('width', iW + MARGIN.left + MARGIN.right)
+      .attr('height', MARGIN.bottom - TICK_LEN);
+    yStripRect
+      .attr('x', -MARGIN.left).attr('y', -MARGIN.top)
+      .attr('width', MARGIN.left - TICK_LEN)
+      .attr('height', iH + MARGIN.top + MARGIN.bottom);
+
     // Scales from uncensored points only.
     const active = points.filter(p => !p.censored);
     if (!active.length) return;
@@ -232,7 +278,10 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .domain([yExt[0] - yPad, yExt[1] + yPad])
       .range([iH, 0]);
 
-    // ── Axes (spine + tick marks only — labels go to overlay) ─────────────
+    // ── Axes ──────────────────────────────────────────────────────────────
+    // Spines + fringe tick marks in the axis groups; labels in separate groups
+    // so they sit above the data layer without being clipped.  Labels are also
+    // mirrored into the overlay for interactive suppression during hover.
 
     xAxisG.attr('transform', `translate(0,${iH})`);
     yAxisG.attr('transform', `translate(0,0)`);
@@ -240,7 +289,15 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     drawAxis(xAxisG, active.map(p => p.displayX), xScale, iH, iW, 'x');
     drawAxis(yAxisG, active.map(p => p.displayY), yScale, iH, iW, 'y');
 
-    // Axis labels drawn into overlay so suppression never touches main SVG.
+    // Main SVG labels (captured by export).
+    xAxisLabelsG.selectAll('*').remove();
+    drawAxisLabels(xAxisLabelsG, active.map(p => p.displayX), xScale, iH, iW, 'x',
+                   xLabel, customXTicks, MARGIN);
+    yAxisLabelsG.selectAll('*').remove();
+    drawAxisLabels(yAxisLabelsG, active.map(p => p.displayY), yScale, iH, iW, 'y',
+                   yLabel, customYTicks, MARGIN);
+
+    // Overlay labels (covered by strip rects; suppressed near hover supertick).
     axisLabelsG.selectAll('*').remove();
     drawAxisLabels(axisLabelsG, active.map(p => p.displayX), xScale, iH, iW, 'x',
                    xLabel, customXTicks, MARGIN);
@@ -292,7 +349,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
 
     // ── Group color scale ─────────────────────────────────────────────────
 
-    const colorOf = buildColorOf(active, groupColorType);
+    const colorOf = buildColorOf(active, groupColorType, palette.point);
 
     // ── Points ────────────────────────────────────────────────────────────
 
@@ -346,9 +403,14 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .attr('r', POINT_R)
       .classed('point--active',   d => !d.censored)
       .classed('point--censored', d => d.censored)
-      .style('fill',    d => d.censored ? null : colorOf(d))
-      .style('stroke',  d => d.censored ? null : null)
-      .style('opacity', d => d.weight != null ? 0.15 + 0.7 * d.weight : null)
+      .style('fill',         d => d.censored ? 'none' : colorOf(d))
+      .style('stroke',       d => d.censored ? palette.censored : 'none')
+      .style('stroke-width', d => d.censored ? '1.25px' : null)
+      .style('opacity',      d => {
+        if (d.censored) return 0.7;
+        return d.weight != null ? 0.15 + 0.7 * d.weight : 0.85;
+      })
+      .style('cursor', 'pointer')
       .on('click', (event, d) => { event.stopPropagation(); onPointClick(d.index); });
 
     // Out-of-range censored: corner diamonds drawn outside clip
@@ -365,7 +427,9 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         ),
         exit => exit.remove()
       )
-      .attr('d', d3.symbol().type(d3.symbolDiamond).size(60));
+      .attr('d', d3.symbol().type(d3.symbolDiamond).size(60))
+      .style('fill', 'none').style('stroke', palette.censored)
+      .style('stroke-width', '1.5').style('opacity', '0.8').style('cursor', 'pointer');
 
     // ── Hit detection: interaction rect in overlay + delaunay.find() ──────
     // Mouse events live entirely in the overlay SVG.  The main SVG has zero
@@ -470,10 +534,13 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   function drawHoverSuperticks(xPos, xVal, yPos, yVal, iH) {
     hoverG.append('line')
       .classed('tick-mark--hover', true)
+      .style('stroke', palette.text).style('stroke-width', '1.5')
       .attr('x1', xPos).attr('y1', iH + 1)
       .attr('x2', xPos).attr('y2', iH + SUPERTICK_LEN);
     hoverG.append('text')
       .classed('tick-label--hover', true)
+      .style('fill', palette.text).style('font-size', '13px')
+      .style('font-family', palette.font).style('font-weight', '600')
       .attr('x', xPos).attr('y', iH + SUPERTICK_LEN + 3)
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'hanging')
@@ -481,10 +548,13 @@ export function createScatterplot(svgEl, overlaySvgEl) {
 
     hoverG.append('line')
       .classed('tick-mark--hover', true)
+      .style('stroke', palette.text).style('stroke-width', '1.5')
       .attr('x1', -1).attr('y1', yPos)
       .attr('x2', -SUPERTICK_LEN).attr('y2', yPos);
     hoverG.append('text')
       .classed('tick-label--hover', true)
+      .style('fill', palette.text).style('font-size', '13px')
+      .style('font-family', palette.font).style('font-weight', '600')
       .attr('x', -SUPERTICK_LEN - 3).attr('y', yPos)
       .attr('text-anchor', 'end')
       .attr('dominant-baseline', 'middle')
@@ -501,7 +571,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .attr('cx', d.sx).attr('cy', d.sy)
       .attr('r', POINT_R_HOVER)
       .attr('fill', color)
-      .attr('stroke', '#333')
+      .attr('stroke', palette.text)
       .attr('stroke-width', 1.5)
       .style('pointer-events', 'none');
 
@@ -517,7 +587,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       hoverG.append('path')
         .attr('transform', `translate(${cx},${cy})`)
         .attr('d', d3.symbol().type(d3.symbolDiamond).size(60))
-        .attr('fill', 'var(--color-censored)')
+        .attr('fill', palette.censored)
         .attr('stroke', 'none')
         .attr('opacity', 1)
         .style('pointer-events', 'none');
@@ -526,7 +596,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         .attr('cx', cx).attr('cy', cy)
         .attr('r', POINT_R_HOVER)
         .attr('fill', 'none')
-        .attr('stroke', 'var(--color-censored)')
+        .attr('stroke', palette.censored)
         .attr('stroke-width', 2)
         .style('pointer-events', 'none');
     }
@@ -570,6 +640,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     // Axis spine
     g.append('line')
       .classed('axis-line', true)
+      .style('stroke', '#555').style('stroke-width', '1')
       .attr('x1', 0).attr('y1', 0)
       .attr('x2', isX ? iW : 0)
       .attr('y2', isX ? 0 : iH);
@@ -581,6 +652,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       const pos = scale(v);
       g.append('line')
         .classed('tick-mark', true)
+        .style('stroke', '#333').style('stroke-width', '0.75').style('opacity', '0.3')
         .attr('x1', isX ? pos : 0)
         .attr('y1', isX ? 0 : pos)
         .attr('x2', isX ? pos : -TICK_LEN)
@@ -607,6 +679,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         g.append('text')
           .classed('tick-label', true)
           .classed(labelClass, true)
+          .style('fill', palette.muted).style('font-size', '13px').style('font-family', palette.font)
           .attr('x', pos)
           .attr('y', iH + TICK_LEN + 3)
           .attr('text-anchor', 'middle')
@@ -616,6 +689,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         g.append('text')
           .classed('tick-label', true)
           .classed(labelClass, true)
+          .style('fill', palette.muted).style('font-size', '13px').style('font-family', palette.font)
           .attr('x', -TICK_LEN - 3)
           .attr('y', pos)
           .attr('text-anchor', 'end')
@@ -628,6 +702,8 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     if (isX) {
       g.append('text')
         .classed('axis-label', true)
+        .style('fill', palette.text).style('font-size', '14px')
+        .style('font-family', palette.font).style('font-weight', '500')
         .attr('x', iW / 2)
         .attr('y', iH + TICK_LEN + 28)
         .attr('text-anchor', 'middle')
@@ -635,6 +711,8 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     } else {
       g.append('text')
         .classed('axis-label', true)
+        .style('fill', palette.text).style('font-size', '14px')
+        .style('font-family', palette.font).style('font-weight', '500')
         .attr('transform', `rotate(-90)`)
         .attr('x', -iH / 2)
         .attr('y', -(margin.left - 15))
@@ -650,6 +728,8 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     cornersG.selectAll('*').remove();
     clearHover();                                      // clears hoverG + restores axisLabelsG visibility
     axisLabelsG.selectAll('*').remove();
+    xAxisLabelsG.selectAll('*').remove();
+    yAxisLabelsG.selectAll('*').remove();
     overlayCanvas.selectAll('rect.interaction-rect').remove();
     xAxisG.selectAll('*').remove();
     yAxisG.selectAll('*').remove();

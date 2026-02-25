@@ -5,6 +5,21 @@
 import * as d3 from 'd3';
 import { mean, stdev } from '../stats/common.js';
 
+// Read CSS custom properties once at init — same as scatterplot.js readPalette.
+function readPalette() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = name => cs.getPropertyValue(name).trim();
+  return {
+    point:    v('--color-point'),
+    regline:  v('--color-regline'),
+    censored: v('--color-censored'),
+    bg:       v('--color-bg'),
+    text:     v('--color-text'),
+    muted:    v('--color-text-muted'),
+    font:     v('--font-sans'),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Normal distribution utilities
 // ---------------------------------------------------------------------------
@@ -66,6 +81,7 @@ const DIAG_MARGIN = { top: 8, right: 8, bottom: 20, left: 8 };
 //   pointColors: string[] | null   parallel to residuals, one color per active point
 //   onQQHover: (index | null) => void
 export function createDiagnostics(container, overlayContainer) {
+  const palette    = readPalette();
   const svg        = d3.select(container);
   const overlaySvg = overlayContainer ? d3.select(overlayContainer) : null;
 
@@ -85,7 +101,7 @@ export function createDiagnostics(container, overlayContainer) {
 
     // Full redraw only when underlying data changes, not on every hover.
     if (residuals !== lastResiduals || activeIndices !== lastActiveIndices) {
-      diagState = fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors);
+      diagState = fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palette);
       lastResiduals     = residuals;
       lastActiveIndices = activeIndices;
     }
@@ -109,7 +125,7 @@ export function createDiagnostics(container, overlayContainer) {
 // Full draw — single SVG with joined distplot (left) and QQ (right)
 // ---------------------------------------------------------------------------
 
-function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
+function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palette) {
   const { width: W, height: H } = svg.node().getBoundingClientRect();
   if (W === 0 || H === 0) return null;
 
@@ -140,6 +156,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
 
   // ── Shared Y axis line ────────────────────────────────────────────────
   innerG.append('line').classed('diag-axis', true)
+    .style('stroke', '#999').style('stroke-width', '0.75').style('fill', 'none')
     .attr('x1', sharedAxisX).attr('y1', 0)
     .attr('x2', sharedAxisX).attr('y2', iH);
 
@@ -147,6 +164,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
   for (const v of yScale.ticks(4)) {
     const y = yScale(v);
     innerG.append('line').classed('diag-axis', true)
+      .style('stroke', '#999').style('stroke-width', '0.75').style('fill', 'none')
       .attr('x1', sharedAxisX - 3).attr('y1', y)
       .attr('x2', sharedAxisX).attr('y2', y);
   }
@@ -154,13 +172,14 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
   // ── Distplot panel ────────────────────────────────────────────────────
   // Origin at (m.left, 0) within innerG. Bars extend left from x = panelW.
   const distG = innerG.append('g').attr('transform', `translate(${m.left}, 0)`);
-  drawDist(distG, residuals, n, mu, sd, panelW, iH, yScale);
+  drawDist(distG, residuals, n, mu, sd, panelW, iH, yScale, palette);
 
   // ── Fringe (rug) on shared axis ───────────────────────────────────────
   // Drawn after distplot so it renders on top of bars/KDE fill. Not hoverable.
   const fringeG = innerG.append('g').attr('class', 'diag-fringe-group');
   for (const r of residuals) {
     fringeG.append('line').classed('diag-fringe', true)
+      .style('stroke', palette.muted).style('stroke-width', '0.75').style('opacity', '0.4')
       .attr('x1', sharedAxisX - 4).attr('y1', yScale(r))
       .attr('x2', sharedAxisX).attr('y2', yScale(r));
   }
@@ -169,7 +188,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
   // Origin at (sharedAxisX, 0) within innerG.
   const qqG = innerG.append('g').attr('transform', `translate(${sharedAxisX}, 0)`);
   const { sortedWithIdx, theoretical, xScale: qqXScale } =
-    drawQQ(qqG, residuals, n, iH, yScale, panelW, pointColors);
+    drawQQ(qqG, residuals, n, iH, yScale, panelW, pointColors, palette);
 
   // ── Overlay SVG structure (hover rendering) ───────────────────────────
   let overlayInnerG = null;
@@ -196,6 +215,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
     sortedWithIdx,
     theoretical,
     qqXScale,
+    palette,
     hasHover: false,
   };
 }
@@ -205,7 +225,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors) {
 // Bars/curve extend LEFT from x = panelW (the shared axis edge in local coords).
 // ---------------------------------------------------------------------------
 
-function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale) {
+function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale, palette) {
   const k = Math.round(Math.sqrt(n));
 
   if (k <= 20) {
@@ -229,6 +249,7 @@ function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale) {
     g.selectAll('.diag-bar')
       .data(bins)
       .join('rect').classed('diag-bar', true)
+      .style('fill', '#b8cce4').style('stroke', '#8aaccf').style('stroke-width', '0.5')
       .attr('x', b => {
         const bw = b.x1 - b.x0;
         const density = bw > 0 ? b.length / (n * bw) : 0;
@@ -247,7 +268,9 @@ function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale) {
     const line = d3.line()
       .y(v => yScale(v))
       .x(v => xScale(normalPDF(v, mu, sd)));
-    g.append('path').classed('diag-curve', true).attr('d', line(curveVals));
+    g.append('path').classed('diag-curve', true)
+      .style('fill', 'none').style('stroke', palette.regline).style('stroke-width', '1')
+      .attr('d', line(curveVals));
 
   } else {
     // KDE with Silverman IQR-robust bandwidth.
@@ -280,13 +303,17 @@ function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale) {
       .y((_, i) => yScale(evalPts[i]))
       .x0(panelW)
       .x1(d => xScale(d));
-    g.append('path').classed('diag-bar', true).attr('d', area(densities));
+    g.append('path').classed('diag-bar', true)
+      .style('fill', '#b8cce4').style('stroke', '#8aaccf').style('stroke-width', '0.5')
+      .attr('d', area(densities));
 
     // Normal curve — same style as QQ reference line.
     const normalLine = d3.line()
       .y((_, i) => yScale(evalPts[i]))
       .x(d => xScale(d));
-    g.append('path').classed('diag-curve', true).attr('d', normalLine(normalDensities));
+    g.append('path').classed('diag-curve', true)
+      .style('fill', 'none').style('stroke', palette.regline).style('stroke-width', '1')
+      .attr('d', normalLine(normalDensities));
   }
 }
 
@@ -294,7 +321,7 @@ function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale) {
 // QQ plot: theoretical (X) vs sample Y (shared yScale)
 // ---------------------------------------------------------------------------
 
-function drawQQ(g, residuals, n, iH, yScale, panelW, pointColors) {
+function drawQQ(g, residuals, n, iH, yScale, panelW, pointColors, palette) {
   const sortedWithIdx = residuals.map((r, i) => ({ r, i })).sort((a, b) => a.r - b.r);
   const theoretical = sortedWithIdx.map((_, i) => normalQuantile((i + 0.5) / n));
 
@@ -312,14 +339,16 @@ function drawQQ(g, residuals, n, iH, yScale, panelW, pointColors) {
   const intercept = q1s - slope * q1t;
   const xd = xScale.domain();
   g.append('line').classed('diag-curve', true)
+    .style('fill', 'none').style('stroke', palette.regline).style('stroke-width', '1')
     .attr('x1', xScale(xd[0])).attr('y1', yScale(intercept + slope * xd[0]))
     .attr('x2', xScale(xd[1])).attr('y2', yScale(intercept + slope * xd[1]));
 
   // QQ points colored by group.
   const pointsLayer = g.append('g').attr('class', 'qq-points');
   sortedWithIdx.forEach(({ r, i }, si) => {
-    const color = pointColors ? pointColors[i] : 'var(--color-point)';
+    const color = pointColors ? pointColors[i] : palette.point;
     pointsLayer.append('circle').classed('diag-point', true)
+      .style('opacity', '0.7')
       .attr('cx', xScale(theoretical[si]))
       .attr('cy', yScale(r))
       .attr('r', 2.5)
@@ -356,6 +385,7 @@ function highlightDiag(state, activeIndices, hoveredIndex) {
   // Fringe highlight on shared axis.
   hoverInnerG.append('line')
     .classed('diag-fringe--hovered', true)
+    .style('stroke', state.palette.regline).style('stroke-width', '1.5').style('opacity', '1')
     .attr('x1', state.sharedAxisX - 6)
     .attr('y1', y)
     .attr('x2', state.sharedAxisX)
@@ -366,6 +396,7 @@ function highlightDiag(state, activeIndices, hoveredIndex) {
   if (si >= 0) {
     hoverQqG.append('circle')
       .classed('diag-point--hovered', true)
+      .style('fill', state.palette.regline).style('opacity', '1')
       .attr('cx', state.qqXScale(state.theoretical[si]))
       .attr('cy', state.yScale(state.sortedWithIdx[si].r))
       .attr('r', 4);

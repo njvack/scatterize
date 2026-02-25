@@ -4,7 +4,7 @@
 import { getState, setState, onStateChange } from './state.js';
 import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
-import { createScatterplot, buildColorOf }     from './plot/scatterplot.js';
+import { createScatterplot, buildColorOf, readPalette } from './plot/scatterplot.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
 import { populateControls, bindControls, syncControls, updateStats } from './plot/dashboard.js';
 import { ols }      from './stats/ols.js';
@@ -219,7 +219,7 @@ function render() {
 
   // Compute group colors for active points (used by diagnostic QQ coloring).
   const active = points.filter(p => !p.censored);
-  const colorOf = buildColorOf(active, groupColorType);
+  const colorOf = buildColorOf(active, groupColorType, readPalette().point);
   currentPointColors = activeIndices.map(i => colorOf(points[i]));
 
   // Update scatter plot
@@ -398,20 +398,21 @@ function setupFileDrop() {
 // SVG export
 // ---------------------------------------------------------------------------
 
+// All visual styles are inlined on SVG elements at draw time, so cloneNode(true)
+// produces a fully self-contained SVG with no external stylesheet dependencies.
 function setupExport() {
   document.getElementById('export-btn')?.addEventListener('click', () => {
     const svgEl = document.getElementById('scatter-svg');
     if (!svgEl) return;
 
-    // Inline styles for Illustrator compatibility
     const clone = svgEl.cloneNode(true);
-    const css = [...document.styleSheets]
-      .flatMap(s => { try { return [...s.cssRules]; } catch { return []; } })
-      .map(r => r.cssText).join('\n');
 
-    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-    style.textContent = css;
-    clone.prepend(style);
+    const state = getState();
+    const xName = columns[state.x] ?? `col${state.x ?? 'x'}`;
+    const yName = columns[state.y] ?? `col${state.y ?? 'y'}`;
+    const defaultName = `scatterize-${xName}-vs-${yName}.svg`;
+    const filename = window.prompt('Save as:', defaultName);
+    if (filename == null) return;
 
     const blob = new Blob(
       ['<?xml version="1.0" encoding="UTF-8"?>\n', new XMLSerializer().serializeToString(clone)],
@@ -419,8 +420,7 @@ function setupExport() {
     );
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    const state = getState();
-    a.download = `scatterize-${state.x ?? 'x'}-vs-${state.y ?? 'y'}.svg`;
+    a.download = filename.endsWith('.svg') ? filename : `${filename}.svg`;
     a.click();
     URL.revokeObjectURL(a.href);
   });
