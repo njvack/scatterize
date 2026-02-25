@@ -391,6 +391,16 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       const vy = d => (d.corner ? d.corner.y : d.sy) + (Math.random() * 2 - 1) * JITTER;
       const delaunay = d3.Delaunay.from(voronoiPoints, vx, vy);
 
+      // Extend slightly beyond plot area so corner markers are reachable.
+      const VP = CORNER_R + 2;
+      const interactionRect = overlayCanvas.append('rect')
+        .attr('class', 'interaction-rect')
+        .attr('x', -VP).attr('y', -VP)
+        .attr('width', iW + 2 * VP).attr('height', iH + 2 * VP)
+        .style('fill', 'none')
+        .style('pointer-events', 'all')
+        .style('cursor', 'default');
+
       function handleHover(mx, my) {
         const i = delaunay.find(mx, my);
         const d = voronoiPoints[i];
@@ -402,6 +412,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
             currentHoverIdx = null;
             clearHover();
             onPointHover(null);
+            interactionRect.style('cursor', 'default');
           }
           return;
         }
@@ -409,6 +420,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         if (i === currentHoverIdx) return;
         currentHoverIdx = i;
         clearHover();
+        interactionRect.style('cursor', 'pointer');
         if (d.censored) {
           showCensorHover(d, xScale, yScale, iH);
           onPointHover(null);
@@ -418,15 +430,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         }
       }
 
-      // Extend slightly beyond plot area so corner markers are reachable.
-      const VP = CORNER_R + 2;
-      overlayCanvas.append('rect')
-        .attr('class', 'interaction-rect')
-        .attr('x', -VP).attr('y', -VP)
-        .attr('width', iW + 2 * VP).attr('height', iH + 2 * VP)
-        .style('fill', 'none')
-        .style('pointer-events', 'all')
-        .style('cursor', 'pointer')
+      interactionRect
         .on('mousemove', (event) => {
           const [mx, my] = d3.pointer(event);
           lastMousePos = [mx, my];
@@ -434,15 +438,16 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         })
         .on('mouseleave', () => {
           lastMousePos = null;
-          if (currentHoverIdx === null) return;
-          currentHoverIdx = null;
-          clearHover();
-          onPointHover(null);
+          if (currentHoverIdx !== null) {
+            currentHoverIdx = null;
+            clearHover();
+            onPointHover(null);
+          }
+          interactionRect.style('cursor', 'default');
         })
-        .on('click', (event) => {
-          const [mx, my] = d3.pointer(event);
-          const i = delaunay.find(mx, my);
-          if (i >= 0) onPointClick(voronoiPoints[i].index);
+        .on('click', () => {
+          if (currentHoverIdx === null) return;
+          onPointClick(voronoiPoints[currentHoverIdx].index);
         });
 
       // Re-establish hover at the last known position after a data/model change
