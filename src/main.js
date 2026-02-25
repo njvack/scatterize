@@ -357,7 +357,7 @@ function setupKeyboard() {
 
 function setupFileDrop() {
   const overlay  = document.getElementById('drop-overlay');
-  const urlInput = document.getElementById('data-url');
+  const urlInput = document.getElementById('source-url');
   let dragDepth  = 0;
 
   document.addEventListener('dragenter', e => {
@@ -451,6 +451,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // React to URL hash changes
   onStateChange(async (state) => {
+    // Sync URL input field (back/forward navigation changes hash without touching the input)
+    const urlInput = document.getElementById('source-url');
+    if (urlInput) {
+      urlInput.value = state.src
+        ? (state.src.startsWith('local:') ? localFileName(state.src) : state.src)
+        : '';
+    }
+
     // If src changed from what we have loaded, reload data
     const currentSrc = data ? (window._loadedSrc ?? null) : null;
     if (state.src && state.src !== currentSrc) {
@@ -469,7 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initial load
   const state = getState();
-  const urlInput = document.getElementById('data-url');
+  const urlInput = document.getElementById('source-url');
   if (urlInput && state.src) {
     urlInput.value = state.src.startsWith('local:') ? localFileName(state.src) : state.src;
   }
@@ -486,14 +494,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load button
   document.getElementById('load-btn')?.addEventListener('click', () => {
-    const url = document.getElementById('data-url')?.value?.trim();
+    const url = document.getElementById('source-url')?.value?.trim();
     if (!url) return;
     // Reset variable/model state when loading a new URL
     setState({ src: url, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
   });
 
   // Allow Enter key in URL input
-  document.getElementById('data-url')?.addEventListener('keydown', e => {
+  document.getElementById('source-url')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('load-btn')?.click();
   });
 
