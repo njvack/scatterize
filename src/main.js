@@ -412,11 +412,31 @@ function setupFileDrop() {
 }
 
 // ---------------------------------------------------------------------------
-// SVG export
+// SVG / PNG export
 // ---------------------------------------------------------------------------
 
 // All visual styles are inlined on SVG elements at draw time, so cloneNode(true)
 // produces a fully self-contained SVG with no external stylesheet dependencies.
+
+function exportFilename(ext) {
+  const state = getState();
+  const xName = columns[state.x] ?? `col${state.x ?? 'x'}`;
+  const yName = columns[state.y] ?? `col${state.y ?? 'y'}`;
+  return `scatterize-${xName}-vs-${yName}.${ext}`;
+}
+
+let _fontBase64 = null;
+async function fetchFontBase64() {
+  if (_fontBase64) return _fontBase64;
+  const resp = await fetch('fonts/LeagueSpartan-VF.woff2');
+  const buf = await resp.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  _fontBase64 = btoa(binary);
+  return _fontBase64;
+}
+
 function setupExport() {
   document.getElementById('export-btn')?.addEventListener('click', () => {
     const svgEl = document.getElementById('scatter-svg');
@@ -424,10 +444,7 @@ function setupExport() {
 
     const clone = svgEl.cloneNode(true);
 
-    const state = getState();
-    const xName = columns[state.x] ?? `col${state.x ?? 'x'}`;
-    const yName = columns[state.y] ?? `col${state.y ?? 'y'}`;
-    const defaultName = `scatterize-${xName}-vs-${yName}.svg`;
+    const defaultName = exportFilename('svg');
     const filename = window.prompt('Save as:', defaultName);
     if (filename == null) return;
 
@@ -440,6 +457,54 @@ function setupExport() {
     a.download = filename.endsWith('.svg') ? filename : `${filename}.svg`;
     a.click();
     URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('export-png-btn')?.addEventListener('click', async () => {
+    const svgEl = document.getElementById('scatter-svg');
+    if (!svgEl) return;
+
+    const defaultName = exportFilename('png');
+    const filename = window.prompt('Save as:', defaultName);
+    if (filename == null) return;
+
+    const scale = 2;
+    const width = svgEl.clientWidth;
+    const height = svgEl.clientHeight;
+
+    // Embed the font so the canvas rasterizer renders text correctly.
+    const fontBase64 = await fetchFontBase64();
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute('width', width);
+    clone.setAttribute('height', height);
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.textContent = `@font-face { font-family: "League Spartan"; src: url("data:font/woff2;base64,${fontBase64}") format("woff2"); font-weight: 100 900; }`;
+    clone.insertBefore(style, clone.firstChild);
+
+    const svgStr = new XMLSerializer().serializeToString(clone);
+    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename.endsWith('.png') ? filename : `${filename}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, 'image/png');
+    };
+    img.src = url;
   });
 }
 
