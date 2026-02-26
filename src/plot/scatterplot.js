@@ -50,6 +50,8 @@ const SNAP_PX = 2;           // px: grid cell size for Delaunay deduplication
 const JITTER  = 0.15;       // px: random offset added to deduplicated coords to
                              //     prevent degenerate triangles from coincident pts
 const MAX_HOVER_DIST = 40;  // px: beyond this from nearest representative, no hover
+const CORNER_BOT_STRIP_Y  = 28;  // px below plot spine for outB corner diamonds
+const CORNER_LEFT_STRIP_X = 60;  // px left  of plot spine for outL corner diamonds
 
 // Compute 5-number summary (min, q1, median, q3, max) for axis labeling.
 // Snaps to the nearest actual data value rather than interpolating, so labels
@@ -81,9 +83,9 @@ function cornerMarkerPos(px, py, xScale, yScale, innerW, innerH) {
   const outT = sy < 0, outB = sy > innerH;
   if (!outL && !outR && !outT && !outB) return null;
   const PAD = CORNER_R + 2;
-  const mx = outL ? -PAD : outR ? innerW + PAD : Math.max(0, Math.min(innerW, sx));
-  const my = outT ? -PAD : outB ? innerH + PAD : Math.max(0, Math.min(innerH, sy));
-  return { x: mx, y: my };
+  const mx = outL ? -CORNER_LEFT_STRIP_X : outR ? innerW + PAD : Math.max(0, Math.min(innerW, sx));
+  const my = outT ? -PAD : outB ? innerH + CORNER_BOT_STRIP_Y : Math.max(0, Math.min(innerH, sy));
+  return { x: mx, y: my, outL, outB };
 }
 
 // ---------------------------------------------------------------------------
@@ -209,8 +211,10 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     .attr('fill', palette.bg).style('pointer-events', 'none');
   const yStripRect = overlayCanvas.append('rect').attr('class', 'axis-strip axis-strip--y')
     .attr('fill', palette.bg).style('pointer-events', 'none');
-  const axisLabelsG   = overlayCanvas.append('g').attr('class', 'axis-labels');
-  const hoverG        = overlayCanvas.append('g').attr('class', 'hover-layer')
+  const axisLabelsG     = overlayCanvas.append('g').attr('class', 'axis-labels');
+  const cornersOverlayG = overlayCanvas.append('g').attr('class', 'corners-overlay')
+    .style('pointer-events', 'none');
+  const hoverG          = overlayCanvas.append('g').attr('class', 'hover-layer')
     .style('pointer-events', 'none');
 
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
@@ -431,6 +435,23 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .style('fill', 'none').style('stroke', palette.censored)
       .style('stroke-width', '1.5').style('opacity', '0.8').style('cursor', 'pointer');
 
+    // Overlay corner diamonds — rendered after strip rects so they're visible.
+    // No click handler (interaction delegated to interaction rect + Delaunay).
+    // data-cx set for outB diamonds (X-axis suppression); data-cy for outL (Y-axis).
+    cornersOverlayG.selectAll('.point--corner')
+      .data(cornerPoints, d => d.index)
+      .join(
+        enter => enter.append('path').attr('class', 'point--corner'),
+        update => update,
+        exit => exit.remove()
+      )
+      .attr('transform', d => `translate(${d.corner.x},${d.corner.y})`)
+      .attr('d', d3.symbol().type(d3.symbolDiamond).size(60))
+      .attr('data-cx', d => d.corner.outB ? d.corner.x : null)
+      .attr('data-cy', d => d.corner.outL ? d.corner.y : null)
+      .style('fill', 'none').style('stroke', palette.censored)
+      .style('stroke-width', '1.5').style('opacity', '0.8');
+
     // ── Hit detection: interaction rect in overlay + delaunay.find() ──────
     // Mouse events live entirely in the overlay SVG.  The main SVG has zero
     // event handlers and never mutates during user interaction, so the browser
@@ -455,12 +476,16 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       const vy = d => (d.corner ? d.corner.y : d.sy) + (Math.random() * 2 - 1) * JITTER;
       const delaunay = d3.Delaunay.from(voronoiPoints, vx, vy);
 
-      // Extend slightly beyond plot area so corner markers are reachable.
-      const VP = CORNER_R + 2;
+      // Extend beyond plot area so corner markers are reachable.
+      // Left/bottom have larger extensions to cover the new corner positions.
+      const LEFT_EXT = CORNER_LEFT_STRIP_X + CORNER_R + 2;  // 67 px left of spine
+      const BOT_EXT  = CORNER_BOT_STRIP_Y  + CORNER_R + 2;  // 35 px below spine
+      const EDGE_VP  = CORNER_R + 2;                         //  7 px (top / right)
       const interactionRect = overlayCanvas.append('rect')
         .attr('class', 'interaction-rect')
-        .attr('x', -VP).attr('y', -VP)
-        .attr('width', iW + 2 * VP).attr('height', iH + 2 * VP)
+        .attr('x', -LEFT_EXT).attr('y', -EDGE_VP)
+        .attr('width',  iW + LEFT_EXT + EDGE_VP)
+        .attr('height', iH + EDGE_VP  + BOT_EXT)
         .style('fill', 'none')
         .style('pointer-events', 'all')
         .style('cursor', 'default');
@@ -486,7 +511,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         clearHover();
         interactionRect.style('cursor', 'pointer');
         if (d.censored) {
-          showCensorHover(d, xScale, yScale, iH);
+          showCensorHover(d, xScale, yScale, iH, iW);
           onPointHover(null);
         } else {
           showHover(d, iH, colorOf(d));
@@ -560,8 +585,8 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .attr('dominant-baseline', 'middle')
       .text(fmtNum(yVal));
 
-    suppressNearbyLabels(true,  xPos);
-    suppressNearbyLabels(false, yPos);
+    suppressOverlappingItems(true,  xPos);
+    suppressOverlappingItems(false, yPos);
   }
 
   function showHover(d, iH, color) {
@@ -578,7 +603,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     drawHoverSuperticks(d.sx, d.displayX, d.sy, d.displayY, iH);
   }
 
-  function showCensorHover(d, xScale, yScale, iH) {
+  function showCensorHover(d, xScale, yScale, iH, iW) {
     const cx = d.corner ? d.corner.x : d.sx;
     const cy = d.corner ? d.corner.y : d.sy;
     hoverG.selectAll('*').remove();
@@ -601,31 +626,46 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         .style('pointer-events', 'none');
     }
 
-    // For corner points use the clamped pixel position so the tick lands just
-    // past the axis edge rather than at the true (far out-of-range) position.
-    const xPos = d.corner ? d.corner.x : xScale(d.displayX);
-    const yPos = d.corner ? d.corner.y : yScale(d.displayY);
+    // Clamp corner supertick positions to the plot area so superticks land on
+    // the axis spine even when the corner diamond is far outside (e.g. outB is
+    // 28 px below the spine — clamping puts the X-tick at the spine, not below).
+    const xPos = d.corner ? Math.max(0, Math.min(iW, d.corner.x)) : xScale(d.displayX);
+    const yPos = d.corner ? Math.max(0, Math.min(iH, d.corner.y)) : yScale(d.displayY);
     drawHoverSuperticks(xPos, d.displayX, yPos, d.displayY, iH);
   }
 
-  // Hide axis tick labels in the overlay that would be overdrawn by the hover
-  // supertick.  Operates only on the small overlay axisLabelsG — never touches
-  // the main SVG.  Restored by clearHover().
-  function suppressNearbyLabels(isX, hoverPos) {
+  // Hide axis tick labels and corner overlay diamonds that would be overdrawn
+  // by the hover supertick.  Uses actual bounding-box widths for labels.
+  // Operates only on overlay elements — never touches the main SVG.
+  // Restored by clearHover().
+  function suppressOverlappingItems(isX, hoverPos) {
+    // Suppress axis tick labels whose bounding box overlaps the supertick.
     const selector = isX ? 'text.tick-label--x' : 'text.tick-label--y';
-    const attr     = isX ? 'x' : 'y';
-    const pad      = isX ? 30 : 8;
     axisLabelsG.selectAll(selector).each(function() {
-      const pos = +d3.select(this).attr(attr);
-      if (Math.abs(pos - hoverPos) <= pad)
+      const el  = d3.select(this);
+      const pos = +(isX ? el.attr('x') : el.attr('y'));
+      const box = this.getBBox();
+      const half = isX ? box.width / 2 : box.height / 2;
+      if (Math.abs(pos - hoverPos) <= half + 2) el.style('display', 'none');
+    });
+
+    // Suppress corner overlay diamonds whose position overlaps the supertick.
+    // data-cx is set only on outB diamonds (relevant for X-axis suppression);
+    // data-cy is set only on outL diamonds (relevant for Y-axis suppression).
+    const cornerAttr = isX ? 'data-cx' : 'data-cy';
+    const DIAMOND_HALF = CORNER_R + 1;
+    cornersOverlayG.selectAll('.point--corner').each(function() {
+      const pos = +d3.select(this).attr(cornerAttr);
+      if (!isNaN(pos) && Math.abs(pos - hoverPos) <= DIAMOND_HALF + 2)
         d3.select(this).style('display', 'none');
     });
   }
 
   function clearHover() {
     hoverG.selectAll('*').remove();
-    // Restore any axis labels that were suppressed during hover.
+    // Restore any axis labels or corner diamonds suppressed during hover.
     axisLabelsG.selectAll('.tick-label--x, .tick-label--y').style('display', null);
+    cornersOverlayG.selectAll('.point--corner').style('display', null);
   }
 
   // ── Axis drawing helpers ──────────────────────────────────────────────
@@ -705,7 +745,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         .style('fill', palette.text).style('font-size', '14px')
         .style('font-family', palette.font).style('font-weight', '500')
         .attr('x', iW / 2)
-        .attr('y', iH + TICK_LEN + 28)
+        .attr('y', iH + TICK_LEN + 42)
         .attr('text-anchor', 'middle')
         .text(label);
     } else {
@@ -726,6 +766,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     // so subsequent update() calls still work.
     pointsG.selectAll('*').remove();
     cornersG.selectAll('*').remove();
+    cornersOverlayG.selectAll('*').remove();
     clearHover();                                      // clears hoverG + restores axisLabelsG visibility
     axisLabelsG.selectAll('*').remove();
     xAxisLabelsG.selectAll('*').remove();
