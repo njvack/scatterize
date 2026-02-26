@@ -28,6 +28,9 @@ let diagnostics = null;
 let hoveredIndex = null;       // currently hovered original row index
 let currentPointColors = null; // parallel to residuals, one color per active point
 
+const LOAD_BLANK_DELAY = 250; // ms before showing loading message
+let loadingTimer = null;
+
 // ---------------------------------------------------------------------------
 // Column classification
 // ---------------------------------------------------------------------------
@@ -56,7 +59,7 @@ function classifyColumns(data) {
 
 async function loadData(url) {
   showError(null);
-  setLoading(true);
+  setLoading(true, url);
   try {
     data    = await fetchData(url);
     colMeta = classifyColumns(data);
@@ -306,11 +309,25 @@ function showError(msg) {
   }
 }
 
-function setLoading(on) {
+function setLoading(on, url) {
   const btn = document.getElementById('load-btn');
   if (btn) {
     btn.disabled = on;
     btn.textContent = on ? 'Loading…' : 'Load';
+  }
+  if (on) {
+    showEmptyState(false);
+    document.body.style.cursor = 'wait';
+    loadingTimer = setTimeout(() => {
+      const msgEl = document.getElementById('loading-message');
+      if (msgEl) msgEl.textContent = `Loading data from ${url}`;
+      document.getElementById('loading-state')?.classList.remove('hidden');
+    }, LOAD_BLANK_DELAY);
+  } else {
+    clearTimeout(loadingTimer);
+    loadingTimer = null;
+    document.body.style.cursor = '';
+    document.getElementById('loading-state')?.classList.add('hidden');
   }
 }
 

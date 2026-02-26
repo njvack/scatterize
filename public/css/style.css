@@ -258,6 +258,22 @@ html, body {
   will-change: transform;
 }
 
+/* ─── Loading State ─────────────────────────────────────────────────────── */
+
+.loading-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.loading-state.hidden {
+  display: none;
+}
+
 /* ─── Empty State ───────────────────────────────────────────────────────── */
 
 .empty-state {
