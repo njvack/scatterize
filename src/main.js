@@ -529,10 +529,11 @@ function setupShareModal() {
     modal.showModal();
   });
 
-  // Close on backdrop click
+  // Close on backdrop click or Escape
   modal.addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.close();
   });
+  modal.addEventListener('cancel', e => e.currentTarget.close());
 
   // SVG scatter download
   document.getElementById('svg-download-btn')?.addEventListener('click', () => {

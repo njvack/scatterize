@@ -26,7 +26,7 @@ Pure client-side scatter plot explorer: paste a CSV/Google Sheet URL → interac
 ## HTML and CSS
 
 - Use semantic HTML structure
-- Don't put classes / ids on elements that don't need them
+- Don't put classes / ids on elements that don't need them. `<button class="btn">` is a trauma response imported from bootstrap; let's break the cycle
 - Structure main page sections filled with related content with `<section>`
 - CSS nesting is encouraged
 
