@@ -492,6 +492,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     render();
   });
 
+  // Redraw on window resize (coalescing: renders on most events, never piles up)
+  let _resizeBusy = false;
+  let _resizePending = false;
+
+  function renderOnResize() {
+    if (_resizeBusy) {
+      _resizePending = true;
+      return;
+    }
+    _resizeBusy = true;
+    render();
+    _resizeBusy = false;
+    if (_resizePending) {
+      _resizePending = false;
+      setTimeout(renderOnResize, 0);
+    }
+  }
+
+  window.addEventListener('resize', renderOnResize);
+
   // Initial load
   const state = getState();
   const urlInput = document.getElementById('source-url');
