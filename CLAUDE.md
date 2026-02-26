@@ -23,6 +23,13 @@ Pure client-side scatter plot explorer: paste a CSV/Google Sheet URL → interac
 - OLS and Robust **must** return `residuals` array (used by diagnostic plots)
 - D3 v7: use `d3.Delaunay.from()` not `d3.geom.voronoi()`
 
+## HTML and CSS
+
+- Use semantic HTML structure
+- Don't put classes / ids on elements that don't need them
+- Structure main page sections filled with related content with `<section>`
+- CSS nesting is encouraged
+
 ## Statistical Methods
 
 | Mode | Key | Key Output | Covariates |
