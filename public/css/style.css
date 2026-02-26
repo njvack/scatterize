@@ -129,9 +129,15 @@ html, body {
   background: var(--color-surface);
   color: var(--color-text);
   border-color: var(--color-border-mid);
-  width: 100%;
 }
 .btn-secondary:hover { background: var(--color-border); }
+.btn-secondary:disabled,
+.btn-secondary:disabled:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--color-surface);
+  border-color: var(--color-border-mid);
+}
 
 /* ─── App Grid ──────────────────────────────────────────────────────────── */
 
@@ -228,12 +234,6 @@ html, body {
   font-size: 11px;
   color: var(--color-text-muted);
   font-style: italic;
-}
-
-.control-group--bottom {
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
 }
 
 /* ─── Plot Container ────────────────────────────────────────────────────── */
@@ -458,6 +458,105 @@ kbd {
   line-height: 1.4;
 }
 
+/* ─── Share Button ──────────────────────────────────────────────────────── */
+
+.share-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  z-index: 10;
+}
+.share-btn:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* ─── Share Modal ───────────────────────────────────────────────────────── */
+
+#share-modal {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0;
+  min-width: 360px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+
+#share-modal::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.share-section {
+  padding: 14px 18px;
+
+  & + .share-section {
+    border-top: 1px solid var(--color-border);
+  }
+
+  & h3 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin: 0 0 10px;
+  }
+}
+
+.share-download-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  & + .share-download-row {
+    margin-top: 6px;
+  }
+}
+
+.share-filename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: var(--color-surface);
+  }
+}
+
+.share-url-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 /* ─── Footer ────────────────────────────────────────────────────────────── */
 
 .site-footer {
@@ -613,9 +712,5 @@ kbd {
     padding-top: var(--panel-pad);
   }
 
-  /* Reset auto-margin trick that only works in a fixed-height flex column */
-  .control-group--bottom {
-    margin-top: 14px;
-  }
 }
 

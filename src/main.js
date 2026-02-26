@@ -412,7 +412,7 @@ function setupFileDrop() {
 }
 
 // ---------------------------------------------------------------------------
-// SVG / PNG export
+// SVG / PNG export helpers
 // ---------------------------------------------------------------------------
 
 // All visual styles are inlined on SVG elements at draw time, so cloneNode(true)
@@ -437,53 +437,38 @@ async function fetchFontBase64() {
   return _fontBase64;
 }
 
-function setupExport() {
-  document.getElementById('export-btn')?.addEventListener('click', () => {
-    const svgEl = document.getElementById('scatter-svg');
-    if (!svgEl) return;
+function downloadSVG(svgEl, filename) {
+  const clone = svgEl.cloneNode(true);
+  const blob = new Blob(
+    ['<?xml version="1.0" encoding="UTF-8"?>\n', new XMLSerializer().serializeToString(clone)],
+    { type: 'image/svg+xml' }
+  );
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
-    const clone = svgEl.cloneNode(true);
+async function downloadPNG(svgEl, filename) {
+  const scale = 2;
+  const width = svgEl.clientWidth;
+  const height = svgEl.clientHeight;
 
-    const defaultName = exportFilename('svg');
-    const filename = window.prompt('Save as:', defaultName);
-    if (filename == null) return;
+  // Embed the font so the canvas rasterizer renders text correctly.
+  const fontBase64 = await fetchFontBase64();
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute('width', width);
+  clone.setAttribute('height', height);
+  const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+  style.textContent = `@font-face { font-family: "League Spartan"; src: url("data:font/woff2;base64,${fontBase64}") format("woff2"); font-weight: 100 900; }`;
+  clone.insertBefore(style, clone.firstChild);
 
-    const blob = new Blob(
-      ['<?xml version="1.0" encoding="UTF-8"?>\n', new XMLSerializer().serializeToString(clone)],
-      { type: 'image/svg+xml' }
-    );
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename.endsWith('.svg') ? filename : `${filename}.svg`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
+  const svgStr = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(svgBlob);
 
-  document.getElementById('export-png-btn')?.addEventListener('click', async () => {
-    const svgEl = document.getElementById('scatter-svg');
-    if (!svgEl) return;
-
-    const defaultName = exportFilename('png');
-    const filename = window.prompt('Save as:', defaultName);
-    if (filename == null) return;
-
-    const scale = 2;
-    const width = svgEl.clientWidth;
-    const height = svgEl.clientHeight;
-
-    // Embed the font so the canvas rasterizer renders text correctly.
-    const fontBase64 = await fetchFontBase64();
-    const clone = svgEl.cloneNode(true);
-    clone.setAttribute('width', width);
-    clone.setAttribute('height', height);
-    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-    style.textContent = `@font-face { font-family: "League Spartan"; src: url("data:font/woff2;base64,${fontBase64}") format("woff2"); font-weight: 100 900; }`;
-    clone.insertBefore(style, clone.firstChild);
-
-    const svgStr = new XMLSerializer().serializeToString(clone);
-    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(svgBlob);
-
+  return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
@@ -499,12 +484,97 @@ function setupExport() {
       canvas.toBlob(blob => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = filename.endsWith('.png') ? filename : `${filename}.png`;
+        a.download = filename;
         a.click();
         URL.revokeObjectURL(a.href);
+        resolve();
       }, 'image/png');
     };
     img.src = url;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Share / Export modal
+// ---------------------------------------------------------------------------
+
+function setupShareModal() {
+  const shareBtn = document.getElementById('share-btn');
+  const modal    = document.getElementById('share-modal');
+  if (!shareBtn || !modal) return;
+
+  shareBtn.addEventListener('click', () => {
+    const state = getState();
+    const isParametric = state.m === 'ols' || state.m === 'robust';
+    const isLocal = state.src?.startsWith('local:');
+
+    // Populate filename inputs
+    document.getElementById('svg-filename').value      = exportFilename('svg');
+    document.getElementById('svg-diag-filename').value = exportFilename('svg').replace('.svg', '-diagnostics.svg');
+    document.getElementById('png-filename').value      = exportFilename('png');
+    document.getElementById('png-diag-filename').value = exportFilename('png').replace('.png', '-diagnostics.png');
+
+    // Show diagnostic rows only for OLS / Robust
+    document.getElementById('svg-diag-row').hidden = !isParametric;
+    document.getElementById('png-diag-row').hidden = !isParametric;
+
+    // Populate share URL
+    const urlInput  = document.getElementById('share-url');
+    const copyBtn   = document.getElementById('copy-url-btn');
+    const localNote = document.getElementById('local-note');
+    if (urlInput)  { urlInput.value = window.location.href; urlInput.disabled = isLocal; }
+    if (copyBtn)   copyBtn.disabled  = isLocal;
+    if (localNote) localNote.hidden  = !isLocal;
+
+    modal.showModal();
+  });
+
+  // Close on backdrop click
+  modal.addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.close();
+  });
+
+  // SVG scatter download
+  document.getElementById('svg-download-btn')?.addEventListener('click', () => {
+    const svgEl = document.getElementById('scatter-svg');
+    if (!svgEl) return;
+    const raw = document.getElementById('svg-filename')?.value || exportFilename('svg');
+    downloadSVG(svgEl, raw.endsWith('.svg') ? raw : `${raw}.svg`);
+  });
+
+  // SVG diagnostics download
+  document.getElementById('svg-diag-download-btn')?.addEventListener('click', () => {
+    const svgEl = document.getElementById('diag-combined');
+    if (!svgEl) return;
+    const raw = document.getElementById('svg-diag-filename')?.value
+      || exportFilename('svg').replace('.svg', '-diagnostics.svg');
+    downloadSVG(svgEl, raw.endsWith('.svg') ? raw : `${raw}.svg`);
+  });
+
+  // PNG scatter download
+  document.getElementById('png-download-btn')?.addEventListener('click', async () => {
+    const svgEl = document.getElementById('scatter-svg');
+    if (!svgEl) return;
+    const raw = document.getElementById('png-filename')?.value || exportFilename('png');
+    await downloadPNG(svgEl, raw.endsWith('.png') ? raw : `${raw}.png`);
+  });
+
+  // PNG diagnostics download
+  document.getElementById('png-diag-download-btn')?.addEventListener('click', async () => {
+    const svgEl = document.getElementById('diag-combined');
+    if (!svgEl) return;
+    const raw = document.getElementById('png-diag-filename')?.value
+      || exportFilename('png').replace('.png', '-diagnostics.png');
+    await downloadPNG(svgEl, raw.endsWith('.png') ? raw : `${raw}.png`);
+  });
+
+  // Copy URL
+  document.getElementById('copy-url-btn')?.addEventListener('click', () => {
+    const btn = document.getElementById('copy-url-btn');
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
   });
 }
 
@@ -528,7 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Wire controls and keyboard
   bindControls();
   setupKeyboard();
-  setupExport();
+  setupShareModal();
   setupFileDrop();
 
   // React to URL hash changes

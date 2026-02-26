@@ -56,10 +56,6 @@
         <option value="">None</option>
       </select>
     </div>
-    <div class="control-group control-group--bottom">
-      <button id="export-btn" class="btn btn-secondary">Export SVG</button>
-      <button id="export-png-btn" class="btn btn-secondary">Export PNG</button>
-    </div>
   </aside>
 
   <div class="plot-container" id="plot-container">
@@ -68,6 +64,13 @@
     <div class="loading-state hidden" id="loading-state">
       <p id="loading-message">Loading data…</p>
     </div>
+    <button id="share-btn" class="share-btn" aria-label="Share / Export">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+        <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+      </svg>
+      Share
+    </button>
     <div class="empty-state" id="empty-state">
       <div class="empty-state-inner">
         <h3>No data loaded</h3>
@@ -120,6 +123,39 @@
     <tr><td><kbd>?</kbd></td><td>Show / hide this help</td></tr>
   </table>
   <p class="help-modal-dismiss">Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>
+</dialog>
+
+<dialog id="share-modal">
+  <section class="share-section">
+    <h3>Export SVG</h3>
+    <div class="share-download-row">
+      <input id="svg-filename" type="text" class="share-filename-input">
+      <button id="svg-download-btn" class="btn btn-secondary">Download</button>
+    </div>
+    <div class="share-download-row" id="svg-diag-row" hidden>
+      <input id="svg-diag-filename" type="text" class="share-filename-input">
+      <button id="svg-diag-download-btn" class="btn btn-secondary">Download</button>
+    </div>
+  </section>
+  <section class="share-section">
+    <h3>Export PNG</h3>
+    <div class="share-download-row">
+      <input id="png-filename" type="text" class="share-filename-input">
+      <button id="png-download-btn" class="btn btn-secondary">Download</button>
+    </div>
+    <div class="share-download-row" id="png-diag-row" hidden>
+      <input id="png-diag-filename" type="text" class="share-filename-input">
+      <button id="png-diag-download-btn" class="btn btn-secondary">Download</button>
+    </div>
+  </section>
+  <section class="share-section">
+    <h3>Share URL</h3>
+    <div class="share-download-row">
+      <input id="share-url" type="text" class="share-filename-input" readonly>
+      <button id="copy-url-btn" class="btn btn-secondary">Copy</button>
+    </div>
+    <p class="share-url-note" id="local-note" hidden>Not available for local files.</p>
+  </section>
 </dialog>
 
 <div class="error-banner" id="error-banner" hidden>
