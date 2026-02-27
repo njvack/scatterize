@@ -391,10 +391,6 @@ html, body {
   position: relative;
 }
 
-#diag-overlay {
-  pointer-events: none;
-}
-
 .diag-svg {
   display: block;
   width: 100%;

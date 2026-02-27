@@ -1095,14 +1095,20 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   }
 
   // highlightPoint(index | null) — called externally (e.g. from QQ hover) to show
-  // the hover indicator on a specific point without triggering onPointHover callback.
+  // a locating indicator on a specific point without triggering onPointHover.
+  // Intentionally leaner than voronoi hover: larger circle only, no ring, no
+  // superticks — communicates location, not interactability.
   function highlightPoint(index) {
     currentHoverIdx = null;
     clearHover();
     if (index == null || !_plotState) return;
     const d = _plotState.allPoints.find(p => p.index === index);
     if (!d || d.censored) return;
-    showHover(d, _plotState.iH, _plotState.colorOf(d));
+    hoverG.append('circle')
+      .attr('cx', d.sx).attr('cy', d.sy)
+      .attr('r', _pointRHover)
+      .attr('fill', _plotState.colorOf(d))
+      .style('pointer-events', 'none');
   }
 
   return { update, clear, highlightPoint };

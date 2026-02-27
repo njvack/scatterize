@@ -594,7 +594,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const combinedSvg  = document.getElementById('diag-combined');
   const diagOverlay  = document.getElementById('diag-overlay');
   diagnostics = combinedSvg
-    ? createDiagnostics(combinedSvg, diagOverlay)
+    ? createDiagnostics(combinedSvg, diagOverlay, {
+        onQQHover: (index) => scatter.highlightPoint(index),
+      })
     : { update: () => {}, clear: () => {} };
 
   // Wire controls and keyboard
