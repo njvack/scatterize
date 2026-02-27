@@ -10844,9 +10844,11 @@ ${indentData}`);
     const yStripRect = overlayCanvas.append("rect").attr("class", "axis-strip axis-strip--y").attr("fill", palette.bg).style("pointer-events", "none");
     const axisLabelsG = overlayCanvas.append("g").attr("class", "axis-labels");
     const cornersOverlayG = overlayCanvas.append("g").attr("class", "corners-overlay").style("pointer-events", "none");
+    const groupHoverG = overlayCanvas.append("g").attr("class", "group-hover-layer").style("pointer-events", "none");
     const hoverG = overlayCanvas.append("g").attr("class", "hover-layer").style("pointer-events", "none");
     const legendLabelsG = overlayCanvas.append("g").attr("class", "legend-labels").style("pointer-events", "none");
     const legendHoverG = overlayCanvas.append("g").attr("class", "legend-hover").style("pointer-events", "none");
+    const legendInteractionG = overlayCanvas.append("g").attr("class", "legend-interaction");
     let prevState = /* @__PURE__ */ new Map();
     let currentHoverIdx = null;
     let lastMousePos = null;
@@ -10870,6 +10872,7 @@ ${indentData}`);
       }
     }) {
       clearHover();
+      groupHoverG.selectAll("*").remove();
       onPointHover(null);
       currentHoverIdx = null;
       const { width: W, height: H } = svgEl.getBoundingClientRect();
@@ -11003,7 +11006,7 @@ ${indentData}`);
         return { ...p, sx, sy, corner };
       });
       const newPointMap = new Map(allPoints.map((p) => [p.index, p]));
-      _plotState = { allPoints, iH, colorOf, xScale, yScale };
+      _plotState = { allPoints, iH, iW, colorOf, xScale, yScale };
       const circlePoints = allPoints.filter((p) => !p.censored || !p.corner);
       pointsG.selectAll(".point").data(circlePoints, (d) => d.index).join(
         (enter) => {
@@ -11114,6 +11117,7 @@ ${indentData}`);
         });
         if (lastMousePos) handleHover(...lastMousePos);
       }
+      legendInteractionG.raise();
       prevState = new Map(allPoints.map((p) => [p.index, {
         sx: p.sx,
         sy: p.sy,
@@ -11174,10 +11178,46 @@ ${indentData}`);
       cornersOverlayG.selectAll(".point--corner").style("display", null);
       legendLabelsG.selectAll(".tick-label--legend").style("display", null);
     }
+    function showGroupHover(groupName) {
+      groupHoverG.selectAll("*").remove();
+      if (groupName == null || !_plotState) return;
+      const { allPoints, iH, iW, colorOf } = _plotState;
+      const groupStr = String(groupName);
+      groupHoverG.append("rect").attr("x", 0).attr("y", 0).attr("width", iW).attr("height", iH).attr("fill", palette.bg).attr("opacity", 0.72);
+      for (const d of allPoints) {
+        if (d.censored || d.corner) continue;
+        if (String(d.group) !== groupStr) continue;
+        groupHoverG.append("circle").attr("cx", d.sx).attr("cy", d.sy).attr("r", _pointR).attr("fill", colorOf(d));
+      }
+      for (const el of [xKdeEl, yKdeEl, ciBandEl, regLineEl]) {
+        const node = el.node();
+        if (node && node.style.display !== "none") {
+          groupHoverG.node().appendChild(node.cloneNode(true));
+        }
+      }
+      const legendNode = legendG.node();
+      if (legendNode && _legendState?.type === "categorical") {
+        const clone = legendNode.cloneNode(true);
+        clone.style.pointerEvents = "none";
+        const si = _legendState.items.findIndex((it) => String(it.g) === groupStr);
+        if (si >= 0) {
+          const kids = clone.children;
+          _legendState.items.forEach((_, i) => {
+            if (i === si) return;
+            const circle = kids[2 + i * 2];
+            const text = kids[2 + i * 2 + 1];
+            if (circle) circle.style.opacity = "0.2";
+            if (text) text.style.opacity = "0.2";
+          });
+        }
+        groupHoverG.node().appendChild(clone);
+      }
+    }
     function drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, iH }) {
       legendG.selectAll("*").remove();
       legendLabelsG.selectAll("*").remove();
       legendHoverG.selectAll("*").remove();
+      legendInteractionG.selectAll("*").remove();
       _legendState = null;
       if (!groupLabel) return;
       const groupValues = active.map((p) => p.group).filter((g) => g != null);
@@ -11206,6 +11246,10 @@ ${indentData}`);
       const tx = lx - (bb2.x - PAD);
       const ty = ly - (bb2.y - PAD);
       legendG.attr("transform", `translate(${tx},${ty})`);
+      legendInteractionG.selectAll("*").remove();
+      groups.forEach((g, i) => {
+        legendInteractionG.append("rect").attr("x", tx + bb2.x - PAD).attr("y", ty + PAD + FS + 10 + i * ITEM_H).attr("width", bb2.width + 2 * PAD).attr("height", ITEM_H).style("fill", "none").style("pointer-events", "all").on("mouseenter", () => showGroupHover(g)).on("mouseleave", () => showGroupHover(null));
+      });
       _legendState = {
         type: "categorical",
         items: groups.map((g, i) => ({
@@ -11321,6 +11365,8 @@ ${indentData}`);
       legendG.selectAll("*").remove();
       _legendState = null;
       clearHover();
+      groupHoverG.selectAll("*").remove();
+      legendInteractionG.selectAll("*").remove();
       axisLabelsG.selectAll("*").remove();
       xAxisLabelsG.selectAll("*").remove();
       yAxisLabelsG.selectAll("*").remove();

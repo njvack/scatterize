@@ -89,6 +89,7 @@ export function createDiagnostics(container, overlayContainer, { onQQHover = nul
   let diagState = null;
   let lastResiduals     = null;
   let lastActiveIndices = null;
+  let _groupHoverSet    = null; // Set of original row indices for the hovered group
 
   function update({ residuals, activeIndices, hoveredIndex = null, pointColors = null }) {
     if (!residuals || residuals.length < 3) {
@@ -106,6 +107,7 @@ export function createDiagnostics(container, overlayContainer, { onQQHover = nul
       lastResiduals     = residuals;
       lastActiveIndices = activeIndices;
       if (diagState && onQQHover) setupQQInteraction(diagState, onQQHover);
+      applyGroupDim();
     }
 
     // Hover highlight: append/remove elements into overlay — no full redraw.
@@ -118,15 +120,52 @@ export function createDiagnostics(container, overlayContainer, { onQQHover = nul
     highlightDiag(diagState, lastActiveIndices, rowIndex);
   }
 
+  // setGroupHover(rowIndexSet | null) — dim QQ points outside the hovered group.
+  // rowIndexSet: Set of original row indices belonging to the hovered category.
+  function setGroupHover(rowIndexSet) {
+    _groupHoverSet = rowIndexSet;
+    applyGroupDim();
+  }
+
+  // Redraw the QQ group-dim layer to match the current _groupHoverSet.
+  function applyGroupDim() {
+    if (!diagState?.qqGroupDimG) return;
+    const { qqGroupDimG, qqHitPoints, qqPanelW, iH, sortedWithIdx, pointColors: pc } = diagState;
+
+    qqGroupDimG.selectAll('*').remove();
+    if (!_groupHoverSet) return;
+
+    // Dim rect over the QQ panel area.
+    qqGroupDimG.append('rect')
+      .attr('x', 0).attr('y', 0)
+      .attr('width', qqPanelW).attr('height', iH)
+      .attr('fill', palette.bg)
+      .attr('opacity', 0.72)
+      .style('pointer-events', 'none');
+
+    // Re-render group QQ points at full color on top of the dim.
+    qqHitPoints.forEach((p, si) => {
+      if (!_groupHoverSet.has(p.rowIndex)) return;
+      const color = pc ? pc[sortedWithIdx[si].i] : palette.point;
+      qqGroupDimG.append('circle')
+        .attr('cx', p.localX).attr('cy', p.localY)
+        .attr('r', 2.5)
+        .attr('fill', color)
+        .attr('opacity', 0.7)
+        .style('pointer-events', 'none');
+    });
+  }
+
   function clear() {
     svg.selectAll('*').remove();
     if (overlaySvg) overlaySvg.selectAll('*').remove();
     diagState = null;
     lastResiduals     = null;
     lastActiveIndices = null;
+    _groupHoverSet    = null;
   }
 
-  return { update, clear, setExternalHover };
+  return { update, clear, setExternalHover, setGroupHover };
 }
 
 // ---------------------------------------------------------------------------
@@ -210,11 +249,14 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palett
   // ── Overlay SVG structure (hover rendering) ───────────────────────────
   let overlayInnerG = null;
   let overlayQqG    = null;
+  let qqGroupDimG = null;
   if (overlaySvg) {
     overlaySvg.selectAll('*').remove();
     overlaySvg.attr('viewBox', `0 0 ${W} ${H}`);
     overlayInnerG = overlaySvg.append('g').attr('transform', `translate(0, ${m.top})`);
     overlayQqG    = overlayInnerG.append('g').attr('transform', `translate(${sharedAxisX}, 0)`);
+    // First child of overlayQqG — stays below the interaction rect added by setupQQInteraction.
+    qqGroupDimG   = overlayQqG.append('g').attr('class', 'qq-group-dim');
   }
 
   return {
@@ -224,6 +266,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palett
     qqG,
     overlayInnerG,
     overlayQqG,
+    qqGroupDimG,
     yScale,
     iH,
     m,
@@ -235,6 +278,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palett
     qqHitPoints,
     qqDelaunay,
     qqPanelW: panelW,
+    pointColors,
     palette,
     hasHover: false,
   };

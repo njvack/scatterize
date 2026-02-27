@@ -25,8 +25,10 @@ const MODELS = { ols, robust, spearman, theilsen: theilSen };
 
 let scatter     = null;
 let diagnostics = null;
-let hoveredIndex = null;       // currently hovered original row index
-let currentPointColors = null; // parallel to residuals, one color per active point
+let hoveredIndex = null;         // currently hovered original row index
+let currentPointColors = null;   // parallel to residuals, one color per active point
+let currentPoints = null;        // full points array from last render (for group hover)
+let currentActiveIndices = null; // active row indices from last render (for group hover)
 
 const LOAD_BLANK_DELAY = 250; // ms before showing loading message
 let loadingTimer = null;
@@ -225,6 +227,10 @@ function render() {
   const colorOf = buildColorOf(active, groupColorType, readPalette().point);
   currentPointColors = activeIndices.map(i => colorOf(points[i]));
 
+  // Store for group hover callbacks
+  currentPoints = points;
+  currentActiveIndices = activeIndices;
+
   // Update scatter plot
   scatter.update({
     points,
@@ -240,6 +246,17 @@ function render() {
     onPointHover: (index) => {
       hoveredIndex = index;
       updateDiagnostics(modelResult, activeIndices);
+    },
+    onGroupHover: (g) => {
+      if (g == null) {
+        diagnostics.setGroupHover(null);
+      } else {
+        const groupStr = String(g);
+        const rowIndexSet = new Set(
+          currentActiveIndices.filter(i => String(currentPoints[i]?.group) === groupStr)
+        );
+        diagnostics.setGroupHover(rowIndexSet);
+      }
     },
   });
 
@@ -600,7 +617,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           diagnostics.setExternalHover(index);
         },
       })
-    : { update: () => {}, clear: () => {}, setExternalHover: () => {} };
+    : { update: () => {}, clear: () => {}, setExternalHover: () => {}, setGroupHover: () => {} };
 
   // Wire controls and keyboard
   bindControls();
