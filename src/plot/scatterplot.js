@@ -217,18 +217,6 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   const clipRect = defs.append('clipPath').attr('id', clipId)
     .append('rect');
 
-  // Viridis gradient for continuous legend thermometer bar.
-  // y1=100% → y2=0% so the domain minimum colour is at the bottom.
-  const legendGradId = 'legend-grad-' + Math.random().toString(36).slice(2);
-  const legendGrad = defs.append('linearGradient')
-    .attr('id', legendGradId)
-    .attr('x1', '0%').attr('y1', '100%')
-    .attr('x2', '0%').attr('y2', '0%');
-  for (let i = 0; i <= 10; i++) {
-    legendGrad.append('stop')
-      .attr('offset', `${i * 10}%`)
-      .attr('stop-color', d3.interpolateViridis(i / 10));
-  }
 
   // Solid background for export (Illustrator needs a background rect).
   svg.append('rect').attr('class', 'plot-bg')
@@ -277,6 +265,9 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   const cornersOverlayG = overlayCanvas.append('g').attr('class', 'corners-overlay')
     .style('pointer-events', 'none');
   const hoverG          = overlayCanvas.append('g').attr('class', 'hover-layer')
+    .style('pointer-events', 'none');
+  // Legend labels mirrored in overlay so suppression never touches the export SVG.
+  const legendLabelsG   = overlayCanvas.append('g').attr('class', 'legend-labels')
     .style('pointer-events', 'none');
   // Legend hover ring/line rendered in overlay so it doesn't affect export.
   const legendHoverG    = overlayCanvas.append('g').attr('class', 'legend-hover')
@@ -777,15 +768,17 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   function clearHover() {
     hoverG.selectAll('*').remove();
     legendHoverG.selectAll('*').remove();
-    // Restore any axis labels or corner diamonds suppressed during hover.
+    // Restore any axis labels, corner diamonds, or legend ticks suppressed during hover.
     axisLabelsG.selectAll('.tick-label--x, .tick-label--y').style('display', null);
     cornersOverlayG.selectAll('.point--corner').style('display', null);
+    legendLabelsG.selectAll('.tick-label--legend').style('display', null);
   }
 
   // ── Legend rendering ──────────────────────────────────────────────────
 
   function drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, iH }) {
     legendG.selectAll('*').remove();
+    legendLabelsG.selectAll('*').remove();
     legendHoverG.selectAll('*').remove();
     _legendState = null;
     if (!groupLabel) return;
@@ -853,14 +846,15 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   }
 
   function drawContinuousLegend({ groupValues, groupLabel, colorOf, isLeft, iW }) {
-    const PAD = 8, FS = 10, BAR_W = 12, BAR_H = 100, TICK_LEN = 6, TICK_GAP = 4, OUTER_PAD = 12;
-    const sorted = groupValues.map(Number).filter(isFinite).sort(d3.ascending);
-    if (!sorted.length) return;
+    const PAD = 8, FS = 10, LINE_LEN = 12, BAR_H = 100, TICK_LEN = 6, TICK_GAP = 4, OUTER_PAD = 12;
+    const vals = groupValues.map(Number).filter(isFinite);
+    if (!vals.length) return;
+    const sorted = [...vals].sort(d3.ascending);
     const [lo, hi] = d3.extent(sorted);
     const thermoScale = d3.scaleLinear()
       .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi])
       .range([BAR_H - 1, 1]);  // 1px inset so extreme ticks stay inside bar bounds
-    const quartiles = fiveNum(sorted);
+    const Y0 = PAD + FS + 10;  // top of the spectrum area
 
     legendG.append('text')
       .style('font-family', palette.font).style('font-size', `${FS}px`)
@@ -868,21 +862,31 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .attr('x', PAD).attr('y', PAD + FS)
       .text(groupLabel);
 
-    legendG.append('rect')
-      .attr('x', PAD).attr('y', PAD + FS + 10)
-      .attr('width', BAR_W).attr('height', BAR_H)
-      .style('fill', `url(#${legendGradId})`);
+    // Thin spine
+    legendG.append('line')
+      .attr('x1', PAD).attr('y1', Y0)
+      .attr('x2', PAD).attr('y2', Y0 + BAR_H)
+      .style('stroke', palette.muted).style('stroke-width', '1');
 
-    for (const v of quartiles) {
-      const barY = PAD + FS + 10 + thermoScale(v);
+    // One colored line per data value — semi-transparent so density shows.
+    for (const v of vals) {
+      const y = Y0 + thermoScale(v);
       legendG.append('line')
-        .attr('x1', PAD + BAR_W).attr('y1', barY)
-        .attr('x2', PAD + BAR_W + TICK_LEN).attr('y2', barY)
-        .style('stroke', palette.muted).style('stroke-width', '1');
+        .attr('x1', PAD).attr('y1', y)
+        .attr('x2', PAD + LINE_LEN).attr('y2', y)
+        .style('stroke', colorOf({ group: v }))
+        .style('stroke-width', '1')
+        .style('opacity', '0.5');
+    }
+
+    // Quartile labels
+    for (const v of fiveNum(sorted)) {
+      const y = Y0 + thermoScale(v);
       legendG.append('text')
+        .classed('tick-label--legend', true)
         .style('font-family', palette.font).style('font-size', `${FS}px`)
         .style('fill', palette.text)
-        .attr('x', PAD + BAR_W + TICK_LEN + TICK_GAP).attr('y', barY)
+        .attr('x', PAD + LINE_LEN + TICK_GAP).attr('y', y)
         .attr('dominant-baseline', 'middle')
         .text(fmtNum(v));
     }
@@ -901,12 +905,34 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     const ty = ly - (bb.y - PAD);
     legendG.attr('transform', `translate(${tx},${ty})`);
 
+    // Mirror quartile labels into the overlay — suppression operates here only.
+    legendLabelsG.selectAll('*').remove();
+    legendLabelsG.attr('transform', `translate(${tx},${ty})`);
+    // Opaque rect hides the main SVG labels underneath so suppression leaves clean space.
+    legendLabelsG.append('rect')
+      .attr('x', PAD + LINE_LEN + TICK_GAP - 2)
+      .attr('y', Y0 - 7)
+      .attr('width', (bb.x + bb.width) - (PAD + LINE_LEN + TICK_GAP) + 4)
+      .attr('height', BAR_H + 14)
+      .style('fill', palette.bg);
+    for (const v of fiveNum(sorted)) {
+      const y = Y0 + thermoScale(v);
+      legendLabelsG.append('text')
+        .classed('tick-label--legend', true)
+        .style('font-family', palette.font).style('font-size', `${FS}px`)
+        .style('fill', palette.text)
+        .attr('x', PAD + LINE_LEN + TICK_GAP).attr('y', y)
+        .attr('dominant-baseline', 'middle')
+        .text(fmtNum(v));
+    }
+
     _legendState = {
       type: 'continuous',
       thermoScale,
-      thermoLocalX: PAD + BAR_W / 2,
-      thermoLocalY0: PAD + FS + 10,
-      BAR_W,
+      Y0,
+      spineLocalX: PAD,
+      LINE_LEN,
+      TICK_GAP,
       colorOf,
       tx,
       ty,
@@ -928,15 +954,29 @@ export function createScatterplot(svgEl, overlaySvgEl) {
         .style('stroke', palette.text)
         .style('stroke-width', '1.5px');
     } else {
-      const { thermoScale, thermoLocalX, thermoLocalY0, BAR_W, colorOf, tx, ty } = _legendState;
-      const localY = thermoLocalY0 + thermoScale(+groupVal);
+      const { thermoScale, Y0, spineLocalX, LINE_LEN, TICK_GAP, colorOf, tx, ty } = _legendState;
+      const localY = Y0 + thermoScale(+groupVal);
       const canvasY = ty + localY;
-      const canvasX = tx + thermoLocalX;
+      const canvasX0 = tx + spineLocalX;
       legendHoverG.append('line')
-        .attr('x1', canvasX - BAR_W).attr('y1', canvasY)
-        .attr('x2', canvasX + BAR_W).attr('y2', canvasY)
+        .attr('x1', canvasX0).attr('y1', canvasY)
+        .attr('x2', canvasX0 + LINE_LEN).attr('y2', canvasY)
         .style('stroke', colorOf({ group: +groupVal }))
-        .style('stroke-width', '1px');
+        .style('stroke-width', '2px')
+        .style('opacity', '1');
+      legendHoverG.append('text')
+        .style('fill', palette.text).style('font-size', '10px')
+        .style('font-family', palette.font).style('font-weight', '600')
+        .attr('x', canvasX0 + LINE_LEN + TICK_GAP).attr('y', canvasY)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'middle')
+        .text(fmtNum(+groupVal));
+
+      // Suppress quartile labels that would overlap the hover label.
+      legendLabelsG.selectAll('.tick-label--legend').each(function() {
+        const el = d3.select(this);
+        if (Math.abs(+el.attr('y') - localY) < 8) el.style('display', 'none');
+      });
     }
   }
 
