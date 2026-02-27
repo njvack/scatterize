@@ -44,8 +44,15 @@ const MARGIN_MOBILE  = { top: 16, right: 16, bottom: 52, left: 56 };
 const TICK_LEN = 5;         // px: per-point tick marks on axis
 const SUPERTICK_LEN = 14;   // px: hover supertick
 const CORNER_R = 5;         // px: out-of-range corner marker radius
-const POINT_R = 4.5;        // px: default point radius
-const POINT_R_HOVER = 6.5;  // px: hovered point radius
+const POINT_R = 4.5;        // px: default point radius (small n)
+const POINT_R_MIN = 1.5;    // px: minimum point radius (large n)
+const POINT_R_HOVER_DELTA = 2; // px: hover radius = point radius + this
+
+// Scale point radius down for large datasets: r ∝ n^(-0.25) with a floor.
+// At n≤50: 4.5px; n=200: ~3.2px; n=500: ~2.5px; n=2000: ~1.8px.
+function scaledPointR(n) {
+  return Math.max(POINT_R_MIN, POINT_R * Math.pow(Math.min(1, 50 / n), 0.25));
+}
 const SNAP_PX = 2;           // px: grid cell size for Delaunay deduplication
 const JITTER  = 0.15;       // px: random offset added to deduplicated coords to
                              //     prevent degenerate triangles from coincident pts
@@ -221,6 +228,8 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
   let lastMousePos = null;    // [mx, my] in overlay coords; null when mouse is outside
   let _plotState = null;      // { allPoints, iH, colorOf, xScale, yScale } — for highlightPoint
+  let _pointR = POINT_R;         // current render's scaled point radius
+  let _pointRHover = POINT_R + POINT_R_HOVER_DELTA; // current render's hover radius
 
   function update({
     points,
@@ -269,6 +278,9 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     // Scales from uncensored points only.
     const active = points.filter(p => !p.censored);
     if (!active.length) return;
+
+    _pointR = scaledPointR(active.length);
+    _pointRHover = _pointR + POINT_R_HOVER_DELTA;
 
     const xExt = d3.extent(active, p => p.displayX);
     const yExt = d3.extent(active, p => p.displayY);
@@ -376,7 +388,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .join(
         enter => {
           const nodes = enter.append('circle').attr('class', 'point')
-            .attr('r', POINT_R)
+            .attr('r', _pointR)
             // If this circle was previously a corner diamond, start it there
             // so it animates inward to its actual position.
             .attr('cx', d => { const p = prevState.get(d.index); return p?.isCorner ? p.cornerX : d.sx; })
@@ -404,7 +416,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
           });
         }
       )
-      .attr('r', POINT_R)
+      .attr('r', _pointR)
       .classed('point--active',   d => !d.censored)
       .classed('point--censored', d => d.censored)
       .style('fill',         d => d.censored ? 'none' : colorOf(d))
@@ -594,7 +606,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
 
     hoverG.append('circle')
       .attr('cx', d.sx).attr('cy', d.sy)
-      .attr('r', POINT_R_HOVER)
+      .attr('r', _pointRHover)
       .attr('fill', color)
       .attr('stroke', palette.text)
       .attr('stroke-width', 1.5)
@@ -619,7 +631,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     } else {
       hoverG.append('circle')
         .attr('cx', cx).attr('cy', cy)
-        .attr('r', POINT_R_HOVER)
+        .attr('r', _pointRHover)
         .attr('fill', 'none')
         .attr('stroke', palette.censored)
         .attr('stroke-width', 2)
