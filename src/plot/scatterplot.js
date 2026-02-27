@@ -47,6 +47,8 @@ const CORNER_R = 5;         // px: out-of-range corner marker radius
 const POINT_R = 4.5;        // px: default point radius (small n)
 const POINT_R_MIN = 1.5;    // px: minimum point radius (large n)
 const POINT_R_HOVER_DELTA = 2; // px: hover radius = point radius + this
+const KDE_MAX_PX = 20;      // px: peak height/width of axis KDE strip
+const KDE_GRID_N = 120;     // evaluation grid points for KDE
 
 // Scale point radius down for large datasets: r ∝ n^(-0.25) with a floor.
 // At n≤50: 4.5px; n=200: ~3.2px; n=500: ~2.5px; n=2000: ~1.8px.
@@ -78,6 +80,38 @@ function fmtNum(v) {
   }
   const s = v.toPrecision(4);
   return String(parseFloat(s));
+}
+
+// ---------------------------------------------------------------------------
+// KDE helpers
+// ---------------------------------------------------------------------------
+
+// Silverman's rule of thumb bandwidth selector.
+function silvermanBandwidth(vals) {
+  const n = vals.length;
+  if (n < 2) return 1;
+  const sorted = [...vals].sort((a, b) => a - b);
+  const mean = vals.reduce((s, v) => s + v, 0) / n;
+  const std = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / (n - 1));
+  const q1 = sorted[Math.floor(0.25 * (n - 1))];
+  const q3 = sorted[Math.floor(0.75 * (n - 1))];
+  const s = Math.min(std, (q3 - q1) / 1.34) || std;
+  if (!s) return 1;
+  return 1.06 * s * Math.pow(n, -0.2);
+}
+
+// Evaluate Gaussian KDE over a uniform grid spanning [domainMin, domainMax].
+// Returns [{ v, density }, ...] with KDE_GRID_N points.
+function computeKDE(vals, domainMin, domainMax) {
+  const bw = silvermanBandwidth(vals);
+  const n = vals.length;
+  const twoBwSq = 2 * bw * bw;
+  const norm = n * bw * Math.sqrt(2 * Math.PI);
+  return Array.from({ length: KDE_GRID_N }, (_, i) => {
+    const v = domainMin + i * (domainMax - domainMin) / (KDE_GRID_N - 1);
+    const density = vals.reduce((s, vi) => s + Math.exp(-((v - vi) * (v - vi)) / twoBwSq), 0) / norm;
+    return { v, density };
+  });
 }
 
 // Given a point's (displayX, displayY) in data coords, determine if it's
@@ -197,6 +231,12 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   const yAxisLabelsG = canvas.append('g').attr('class', 'y-axis-labels');
   const plotArea = canvas.append('g').attr('class', 'plot-area')
     .attr('clip-path', `url(#${clipId})`);
+  const xKdeEl = plotArea.append('path').attr('class', 'kde--x')
+    .style('fill', '#aaa').style('fill-opacity', '0.35')
+    .style('stroke', 'none').style('pointer-events', 'none');
+  const yKdeEl = plotArea.append('path').attr('class', 'kde--y')
+    .style('fill', '#aaa').style('fill-opacity', '0.35')
+    .style('stroke', 'none').style('pointer-events', 'none');
   const ciBandEl   = plotArea.append('path').attr('class', 'ci-band')
     .style('fill', palette.regline).style('fill-opacity', '0.12')
     .style('stroke', 'none').style('pointer-events', 'none');
@@ -319,6 +359,45 @@ export function createScatterplot(svgEl, overlaySvgEl) {
                    xLabel, customXTicks, MARGIN);
     drawAxisLabels(axisLabelsG, active.map(p => p.displayY), yScale, iH, iW, 'y',
                    yLabel, customYTicks, MARGIN);
+
+    // ── Axis KDE strips ───────────────────────────────────────────────────
+    // Shallow Gaussian KDE shown on the inside of each axis spine, giving a
+    // visual sense of data density (especially useful for discrete/clumped X).
+
+    const xVals = active.map(p => p.displayX).filter(Number.isFinite);
+    const yVals = active.map(p => p.displayY).filter(Number.isFinite);
+
+    function drawKdeStrip(el, vals, scale, orient) {
+      const kdeData = computeKDE(vals, scale.domain()[0], scale.domain()[1]);
+      const maxD = d3.max(kdeData, d => d.density);
+      if (!maxD) { el.style('display', 'none'); return; }
+
+      let areaGen;
+      if (orient === 'x') {
+        areaGen = d3.area()
+          .x(d => scale(d.v))
+          .y0(iH)
+          .y1(d => iH - (d.density / maxD) * KDE_MAX_PX)
+          .curve(d3.curveBasis);
+      } else {
+        areaGen = d3.area()
+          .y(d => scale(d.v))
+          .x0(0)
+          .x1(d => (d.density / maxD) * KDE_MAX_PX)
+          .curve(d3.curveBasis);
+      }
+
+      const isNew = !el.attr('d');
+      el.style('display', null).datum(kdeData);
+      if (isNew) {
+        el.attr('d', areaGen);
+      } else {
+        el.transition(d3.transition().duration(200).ease(d3.easeExpOut)).attr('d', areaGen);
+      }
+    }
+
+    drawKdeStrip(xKdeEl, xVals, xScale, 'x');
+    drawKdeStrip(yKdeEl, yVals, yScale, 'y');
 
     // ── Transition ────────────────────────────────────────────────────────
 
@@ -788,6 +867,8 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     yAxisG.selectAll('*').remove();
     regLineEl.style('display', 'none');
     ciBandEl.style('display', 'none');
+    xKdeEl.style('display', 'none');
+    yKdeEl.style('display', 'none');
   }
 
   // highlightPoint(index | null) — called externally (e.g. from QQ hover) to show
