@@ -692,16 +692,18 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     suppressOverlappingItems(false, yPos);
   }
 
-  function showHover(d, iH, color) {
+  // outline: true  → ring + pointer cursor (interactable voronoi hover)
+  //          false → circle only, no ring (locating hover e.g. from QQ)
+  function showHover(d, iH, color, { outline = true } = {}) {
     hoverG.selectAll('*').remove();
 
-    hoverG.append('circle')
+    const circle = hoverG.append('circle')
       .attr('cx', d.sx).attr('cy', d.sy)
       .attr('r', _pointRHover)
       .attr('fill', color)
-      .attr('stroke', palette.text)
-      .attr('stroke-width', 1.5)
       .style('pointer-events', 'none');
+
+    if (outline) circle.attr('stroke', palette.text).attr('stroke-width', 1.5);
 
     drawHoverSuperticks(d.sx, d.displayX, d.sy, d.displayY, iH);
     if (_legendState && d.group != null) updateLegendHover(d.group);
@@ -1095,20 +1097,15 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   }
 
   // highlightPoint(index | null) — called externally (e.g. from QQ hover) to show
-  // a locating indicator on a specific point without triggering onPointHover.
-  // Intentionally leaner than voronoi hover: larger circle only, no ring, no
-  // superticks — communicates location, not interactability.
+  // the full hover treatment (superticks, legend highlight) without triggering
+  // onPointHover. No ring and no cursor change — signals location, not clickability.
   function highlightPoint(index) {
     currentHoverIdx = null;
     clearHover();
     if (index == null || !_plotState) return;
     const d = _plotState.allPoints.find(p => p.index === index);
     if (!d || d.censored) return;
-    hoverG.append('circle')
-      .attr('cx', d.sx).attr('cy', d.sy)
-      .attr('r', _pointRHover)
-      .attr('fill', _plotState.colorOf(d))
-      .style('pointer-events', 'none');
+    showHover(d, _plotState.iH, _plotState.colorOf(d), { outline: false });
   }
 
   return { update, clear, highlightPoint };

@@ -595,9 +595,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const diagOverlay  = document.getElementById('diag-overlay');
   diagnostics = combinedSvg
     ? createDiagnostics(combinedSvg, diagOverlay, {
-        onQQHover: (index) => scatter.highlightPoint(index),
+        onQQHover: (index) => {
+          scatter.highlightPoint(index);
+          diagnostics.setExternalHover(index);
+        },
       })
-    : { update: () => {}, clear: () => {} };
+    : { update: () => {}, clear: () => {}, setExternalHover: () => {} };
 
   // Wire controls and keyboard
   bindControls();

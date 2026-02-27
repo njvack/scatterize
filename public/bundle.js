@@ -11130,9 +11130,10 @@ ${indentData}`);
       suppressOverlappingItems(true, xPos);
       suppressOverlappingItems(false, yPos);
     }
-    function showHover(d, iH, color2) {
+    function showHover(d, iH, color2, { outline = true } = {}) {
       hoverG.selectAll("*").remove();
-      hoverG.append("circle").attr("cx", d.sx).attr("cy", d.sy).attr("r", _pointRHover).attr("fill", color2).attr("stroke", palette.text).attr("stroke-width", 1.5).style("pointer-events", "none");
+      const circle = hoverG.append("circle").attr("cx", d.sx).attr("cy", d.sy).attr("r", _pointRHover).attr("fill", color2).style("pointer-events", "none");
+      if (outline) circle.attr("stroke", palette.text).attr("stroke-width", 1.5);
       drawHoverSuperticks(d.sx, d.displayX, d.sy, d.displayY, iH);
       if (_legendState && d.group != null) updateLegendHover(d.group);
     }
@@ -11337,7 +11338,7 @@ ${indentData}`);
       if (index == null || !_plotState) return;
       const d = _plotState.allPoints.find((p) => p.index === index);
       if (!d || d.censored) return;
-      hoverG.append("circle").attr("cx", d.sx).attr("cy", d.sy).attr("r", _pointRHover).attr("fill", _plotState.colorOf(d)).style("pointer-events", "none");
+      showHover(d, _plotState.iH, _plotState.colorOf(d), { outline: false });
     }
     return { update, clear, highlightPoint };
   }
@@ -11429,6 +11430,9 @@ ${indentData}`);
       }
       highlightDiag(diagState, activeIndices, hoveredIndex2);
     }
+    function setExternalHover(rowIndex) {
+      highlightDiag(diagState, lastActiveIndices, rowIndex);
+    }
     function clear() {
       svg.selectAll("*").remove();
       if (overlaySvg) overlaySvg.selectAll("*").remove();
@@ -11436,7 +11440,7 @@ ${indentData}`);
       lastResiduals = null;
       lastActiveIndices = null;
     }
-    return { update, clear };
+    return { update, clear, setExternalHover };
   }
   function fullDraw(svg, overlaySvg, residuals2, activeIndices, pointColors, palette) {
     const { width: W, height: H } = svg.node().getBoundingClientRect();
@@ -11578,13 +11582,6 @@ ${indentData}`);
     if (!state.overlayQqG) return;
     const { overlayQqG, qqHitPoints, qqDelaunay, qqPanelW, iH } = state;
     let lastSi = null;
-    function showQQPointHover(si) {
-      overlayQqG.selectAll(".diag-point--qq-hovered").remove();
-      overlayQqG.append("circle").classed("diag-point--qq-hovered", true).style("fill", state.palette.regline).style("opacity", "1").style("pointer-events", "none").attr("cx", state.qqXScale(state.theoretical[si])).attr("cy", state.yScale(state.sortedWithIdx[si].r)).attr("r", 4);
-    }
-    function clearQQPointHover() {
-      overlayQqG.selectAll(".diag-point--qq-hovered").remove();
-    }
     overlayQqG.append("rect").attr("x", 0).attr("y", 0).attr("width", qqPanelW).attr("height", iH).style("fill", "none").style("pointer-events", "all").on("mousemove", (event) => {
       const [mx, my] = pointer_default(event);
       const si = qqDelaunay.find(mx, my);
@@ -11592,18 +11589,15 @@ ${indentData}`);
       if (!p || Math.hypot(mx - p.localX, my - p.localY) > MAX_QQ_HOVER_DIST) {
         if (lastSi !== null) {
           lastSi = null;
-          clearQQPointHover();
           onQQHover(null);
         }
         return;
       }
       if (si === lastSi) return;
       lastSi = si;
-      showQQPointHover(si);
       onQQHover(p.rowIndex);
     }).on("mouseleave", () => {
       lastSi = null;
-      clearQQPointHover();
       onQQHover(null);
     });
   }
@@ -12518,9 +12512,13 @@ ${indentData}`);
     const combinedSvg = document.getElementById("diag-combined");
     const diagOverlay = document.getElementById("diag-overlay");
     diagnostics = combinedSvg ? createDiagnostics(combinedSvg, diagOverlay, {
-      onQQHover: (index) => scatter.highlightPoint(index)
+      onQQHover: (index) => {
+        scatter.highlightPoint(index);
+        diagnostics.setExternalHover(index);
+      }
     }) : { update: () => {
     }, clear: () => {
+    }, setExternalHover: () => {
     } };
     bindControls();
     setupKeyboard();
