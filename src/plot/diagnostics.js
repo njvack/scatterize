@@ -384,6 +384,21 @@ function setupQQInteraction(state, onQQHover) {
 
   let lastSi = null;
 
+  function showQQPointHover(si) {
+    overlayQqG.selectAll('.diag-point--qq-hovered').remove();
+    overlayQqG.append('circle')
+      .classed('diag-point--qq-hovered', true)
+      .style('fill', state.palette.regline).style('opacity', '1')
+      .style('pointer-events', 'none')
+      .attr('cx', state.qqXScale(state.theoretical[si]))
+      .attr('cy', state.yScale(state.sortedWithIdx[si].r))
+      .attr('r', 4);
+  }
+
+  function clearQQPointHover() {
+    overlayQqG.selectAll('.diag-point--qq-hovered').remove();
+  }
+
   // Transparent rect captures mouse events over the entire QQ panel.
   overlayQqG.append('rect')
     .attr('x', 0).attr('y', 0)
@@ -395,14 +410,15 @@ function setupQQInteraction(state, onQQHover) {
       const si = qqDelaunay.find(mx, my);
       const p  = qqHitPoints[si];
       if (!p || Math.hypot(mx - p.localX, my - p.localY) > MAX_QQ_HOVER_DIST) {
-        if (lastSi !== null) { lastSi = null; onQQHover(null); }
+        if (lastSi !== null) { lastSi = null; clearQQPointHover(); onQQHover(null); }
         return;
       }
       if (si === lastSi) return;
       lastSi = si;
+      showQQPointHover(si);
       onQQHover(p.rowIndex);
     })
-    .on('mouseleave', () => { lastSi = null; onQQHover(null); });
+    .on('mouseleave', () => { lastSi = null; clearQQPointHover(); onQQHover(null); });
 }
 
 // ---------------------------------------------------------------------------
