@@ -217,6 +217,19 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   const clipRect = defs.append('clipPath').attr('id', clipId)
     .append('rect');
 
+  // Viridis gradient for continuous legend thermometer bar.
+  // y1=100% → y2=0% so the domain minimum colour is at the bottom.
+  const legendGradId = 'legend-grad-' + Math.random().toString(36).slice(2);
+  const legendGrad = defs.append('linearGradient')
+    .attr('id', legendGradId)
+    .attr('x1', '0%').attr('y1', '100%')
+    .attr('x2', '0%').attr('y2', '0%');
+  for (let i = 0; i <= 10; i++) {
+    legendGrad.append('stop')
+      .attr('offset', `${i * 10}%`)
+      .attr('stop-color', d3.interpolateViridis(i / 10));
+  }
+
   // Solid background for export (Illustrator needs a background rect).
   svg.append('rect').attr('class', 'plot-bg')
     .attr('fill', palette.bg)
@@ -245,6 +258,8 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     .style('fill', 'none');
   const pointsG    = plotArea.append('g').attr('class', 'points');
   const cornersG   = canvas.append('g').attr('class', 'corners'); // outside clip
+  // Legend group lives in the main SVG so it's captured by SVG/PNG export.
+  const legendG    = canvas.append('g').attr('class', 'legend');
 
   // ── Overlay SVG structure (hover rendering + mouse interaction) ─────────
   // xStripRect / yStripRect: opaque background rects that cover the main SVG
@@ -263,6 +278,9 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     .style('pointer-events', 'none');
   const hoverG          = overlayCanvas.append('g').attr('class', 'hover-layer')
     .style('pointer-events', 'none');
+  // Legend hover ring/line rendered in overlay so it doesn't affect export.
+  const legendHoverG    = overlayCanvas.append('g').attr('class', 'legend-hover')
+    .style('pointer-events', 'none');
 
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
   let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
@@ -270,6 +288,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
   let _plotState = null;      // { allPoints, iH, colorOf, xScale, yScale } — for highlightPoint
   let _pointR = POINT_R;         // current render's scaled point radius
   let _pointRHover = POINT_R + POINT_R_HOVER_DELTA; // current render's hover radius
+  let _legendState = null;   // categorical or continuous legend state for hover
 
   function update({
     points,
@@ -278,6 +297,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     yLabel = 'y',
     modelKey = 'ols',
     groupColorType = 'categorical',
+    groupLabel = null,
     customXTicks = null,
     customYTicks = null,
     onPointClick = () => {},
@@ -445,6 +465,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     // ── Group color scale ─────────────────────────────────────────────────
 
     const colorOf = buildColorOf(active, groupColorType, palette.point);
+    drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, iH });
 
     // ── Points ────────────────────────────────────────────────────────────
 
@@ -692,6 +713,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
       .style('pointer-events', 'none');
 
     drawHoverSuperticks(d.sx, d.displayX, d.sy, d.displayY, iH);
+    if (_legendState && d.group != null) updateLegendHover(d.group);
   }
 
   function showCensorHover(d, xScale, yScale, iH, iW) {
@@ -754,9 +776,168 @@ export function createScatterplot(svgEl, overlaySvgEl) {
 
   function clearHover() {
     hoverG.selectAll('*').remove();
+    legendHoverG.selectAll('*').remove();
     // Restore any axis labels or corner diamonds suppressed during hover.
     axisLabelsG.selectAll('.tick-label--x, .tick-label--y').style('display', null);
     cornersOverlayG.selectAll('.point--corner').style('display', null);
+  }
+
+  // ── Legend rendering ──────────────────────────────────────────────────
+
+  function drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, iH }) {
+    legendG.selectAll('*').remove();
+    legendHoverG.selectAll('*').remove();
+    _legendState = null;
+    if (!groupLabel) return;
+    const groupValues = active.map(p => p.group).filter(g => g != null);
+    if (!groupValues.length) return;
+    // Place legend in the corner the regression line points away from, so they
+    // don't overlap: positive slope → upper-left clear, negative → upper-right.
+    const isLeft = (modelResult?.slope ?? 0) >= 0;
+    if (groupColorType === 'continuous') {
+      drawContinuousLegend({ groupValues, groupLabel, colorOf, isLeft, iW });
+    } else {
+      drawCategoricalLegend({ groupValues, groupLabel, colorOf, isLeft, iW });
+    }
+  }
+
+  function drawCategoricalLegend({ groupValues, groupLabel, colorOf, isLeft, iW }) {
+    const PAD = 8, ITEM_H = 18, CR = 5, FS = 10, ITEM_TEXT_X = CR * 2 + 6, OUTER_PAD = 12;
+    const groups = [...new Set(groupValues.map(String))].sort().slice(0, 10);
+
+    legendG.append('text')
+      .style('font-family', palette.font).style('font-size', `${FS}px`)
+      .style('font-weight', '700').style('fill', palette.text)
+      .attr('x', PAD).attr('y', PAD + FS)
+      .text(groupLabel);
+
+    groups.forEach((g, i) => {
+      const localCy = PAD + FS + 10 + i * ITEM_H + CR;
+      const localCx = PAD + CR;
+      legendG.append('circle')
+        .attr('cx', localCx).attr('cy', localCy)
+        .attr('r', CR)
+        .style('fill', colorOf({ group: g }))
+        .style('stroke', 'none');
+      legendG.append('text')
+        .style('font-family', palette.font).style('font-size', `${FS}px`)
+        .style('fill', palette.text)
+        .attr('x', PAD + ITEM_TEXT_X).attr('y', localCy)
+        .attr('dominant-baseline', 'middle')
+        .text(g);
+    });
+
+    const bb = legendG.node().getBBox();
+    legendG.insert('rect', ':first-child')
+      .attr('x', bb.x - PAD).attr('y', bb.y - PAD)
+      .attr('width', bb.width + 2 * PAD).attr('height', bb.height + 2 * PAD)
+      .attr('rx', 4)
+      .style('fill', palette.bg).style('fill-opacity', '0.88')
+      .style('stroke', palette.muted).style('stroke-width', '0.5');
+
+    const lx = isLeft ? OUTER_PAD : iW - (bb.width + 2 * PAD) - OUTER_PAD;
+    const ly = OUTER_PAD;
+    const tx = lx - (bb.x - PAD);
+    const ty = ly - (bb.y - PAD);
+    legendG.attr('transform', `translate(${tx},${ty})`);
+
+    _legendState = {
+      type: 'categorical',
+      items: groups.map((g, i) => ({
+        g,
+        canvasCx: tx + PAD + CR,
+        canvasCy: ty + PAD + FS + 10 + i * ITEM_H + CR,
+      })),
+      CR,
+    };
+  }
+
+  function drawContinuousLegend({ groupValues, groupLabel, colorOf, isLeft, iW }) {
+    const PAD = 8, FS = 10, BAR_W = 12, BAR_H = 100, TICK_LEN = 6, TICK_GAP = 4, OUTER_PAD = 12;
+    const sorted = groupValues.map(Number).filter(isFinite).sort(d3.ascending);
+    if (!sorted.length) return;
+    const [lo, hi] = d3.extent(sorted);
+    const thermoScale = d3.scaleLinear()
+      .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi])
+      .range([BAR_H - 1, 1]);  // 1px inset so extreme ticks stay inside bar bounds
+    const quartiles = fiveNum(sorted);
+
+    legendG.append('text')
+      .style('font-family', palette.font).style('font-size', `${FS}px`)
+      .style('font-weight', '700').style('fill', palette.text)
+      .attr('x', PAD).attr('y', PAD + FS)
+      .text(groupLabel);
+
+    legendG.append('rect')
+      .attr('x', PAD).attr('y', PAD + FS + 10)
+      .attr('width', BAR_W).attr('height', BAR_H)
+      .style('fill', `url(#${legendGradId})`);
+
+    for (const v of quartiles) {
+      const barY = PAD + FS + 10 + thermoScale(v);
+      legendG.append('line')
+        .attr('x1', PAD + BAR_W).attr('y1', barY)
+        .attr('x2', PAD + BAR_W + TICK_LEN).attr('y2', barY)
+        .style('stroke', palette.muted).style('stroke-width', '1');
+      legendG.append('text')
+        .style('font-family', palette.font).style('font-size', `${FS}px`)
+        .style('fill', palette.text)
+        .attr('x', PAD + BAR_W + TICK_LEN + TICK_GAP).attr('y', barY)
+        .attr('dominant-baseline', 'middle')
+        .text(fmtNum(v));
+    }
+
+    const bb = legendG.node().getBBox();
+    legendG.insert('rect', ':first-child')
+      .attr('x', bb.x - PAD).attr('y', bb.y - PAD)
+      .attr('width', bb.width + 2 * PAD).attr('height', bb.height + 2 * PAD)
+      .attr('rx', 4)
+      .style('fill', palette.bg).style('fill-opacity', '0.88')
+      .style('stroke', palette.muted).style('stroke-width', '0.5');
+
+    const lx = isLeft ? OUTER_PAD : iW - (bb.width + 2 * PAD) - OUTER_PAD;
+    const ly = OUTER_PAD;
+    const tx = lx - (bb.x - PAD);
+    const ty = ly - (bb.y - PAD);
+    legendG.attr('transform', `translate(${tx},${ty})`);
+
+    _legendState = {
+      type: 'continuous',
+      thermoScale,
+      thermoLocalX: PAD + BAR_W / 2,
+      thermoLocalY0: PAD + FS + 10,
+      BAR_W,
+      colorOf,
+      tx,
+      ty,
+    };
+  }
+
+  function updateLegendHover(groupVal) {
+    legendHoverG.selectAll('*').remove();
+    if (!_legendState) return;
+
+    if (_legendState.type === 'categorical') {
+      const key = String(groupVal);
+      const item = _legendState.items.find(it => it.g === key);
+      if (!item) return;
+      legendHoverG.append('circle')
+        .attr('cx', item.canvasCx).attr('cy', item.canvasCy)
+        .attr('r', _legendState.CR + 2)
+        .style('fill', 'none')
+        .style('stroke', palette.text)
+        .style('stroke-width', '1.5px');
+    } else {
+      const { thermoScale, thermoLocalX, thermoLocalY0, BAR_W, colorOf, tx, ty } = _legendState;
+      const localY = thermoLocalY0 + thermoScale(+groupVal);
+      const canvasY = ty + localY;
+      const canvasX = tx + thermoLocalX;
+      legendHoverG.append('line')
+        .attr('x1', canvasX - BAR_W).attr('y1', canvasY)
+        .attr('x2', canvasX + BAR_W).attr('y2', canvasY)
+        .style('stroke', colorOf({ group: +groupVal }))
+        .style('stroke-width', '1px');
+    }
   }
 
   // ── Axis drawing helpers ──────────────────────────────────────────────
@@ -858,7 +1039,9 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     pointsG.selectAll('*').remove();
     cornersG.selectAll('*').remove();
     cornersOverlayG.selectAll('*').remove();
-    clearHover();                                      // clears hoverG + restores axisLabelsG visibility
+    legendG.selectAll('*').remove();
+    _legendState = null;
+    clearHover();                                      // clears hoverG + legendHoverG + restores axisLabelsG visibility
     axisLabelsG.selectAll('*').remove();
     xAxisLabelsG.selectAll('*').remove();
     yAxisLabelsG.selectAll('*').remove();

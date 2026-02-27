@@ -233,6 +233,7 @@ function render() {
     yLabel: isResidualized ? `Residualized ${yColName}` : yColName,
     modelKey: state.m,
     groupColorType,
+    groupLabel: hColName,
     customXTicks: state.xl,
     customYTicks: state.yl,
     onPointClick: (index) => toggleCensor(index),
