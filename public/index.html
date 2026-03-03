@@ -59,8 +59,10 @@
   </aside>
 
   <div class="plot-container" id="plot-container">
-    <svg id="scatter-svg" class="scatter-svg"></svg>
-    <svg id="overlay-svg" class="overlay-svg"></svg>
+    <svg id="scatter-back" class="scatter-layer"></svg>
+    <canvas id="gl-canvas" class="scatter-layer" style="pointer-events:none"></canvas>
+    <svg id="scatter-front" class="scatter-layer"></svg>
+    <svg id="overlay-svg" class="scatter-layer overlay-svg"></svg>
     <div class="loading-state hidden" id="loading-state">
       <p id="loading-message">Loading data…</p>
     </div>
@@ -96,6 +98,7 @@
       <h3>Diagnostics</h3>
       <div class="diag-svg-container">
         <svg id="diag-combined" class="diag-svg" style="height:150px"></svg>
+        <canvas id="diag-gl-canvas" class="overlay-svg" style="pointer-events:none"></canvas>
         <svg id="diag-overlay" class="overlay-svg"></svg>
       </div>
     </div>

@@ -9,6 +9,7 @@
 //
 import * as d3 from 'd3';
 import { Z95 } from '../stats/common.js';
+import { createWebGLRenderer } from './webgl-renderer.js';
 
 // ColorBrewer Paired palette for group coloring (via D3).
 const PAIRED = d3.schemePaired;
@@ -80,6 +81,13 @@ function fmtNum(v) {
   }
   const s = v.toPrecision(4);
   return String(parseFloat(s));
+}
+
+// Convert a CSS color string + alpha to a WebGL straight RGBA array [0-1].
+// D3's color() handles hex, rgb(), named colors, etc.
+function cssToGL(str, alpha = 1) {
+  const c = d3.color(str);
+  return c ? [c.r / 255, c.g / 255, c.b / 255, alpha] : [0, 0, 0, alpha];
 }
 
 // ---------------------------------------------------------------------------
@@ -206,48 +214,72 @@ export function buildColorOf(points, groupColorType, fallbackColor = 'currentCol
 //   customXTicks, customYTicks: number[] | null
 //   onPointClick(index): called when a point is clicked
 //   onPointHover(index | null): called on hover change
-export function createScatterplot(svgEl, overlaySvgEl) {
+// createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanvas })
+//
+// Layer order (bottom → top):
+//   backSvgEl  — background rect, KDE strips, CI band, regression line
+//   glCanvas   — WebGL: scatter points + fringe tick lines (transparent bg)
+//   frontSvgEl — axis spines/labels, legend, corner markers
+//   overlaySvgEl — hover, superticks, mouse interaction (unchanged)
+//
+// When glCanvas is null or WebGL unavailable, falls back to SVG point rendering
+// in frontSvg with D3 joins (same as before, just split across two SVGs).
+export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanvas = null } = {}) {
   const palette    = readPalette();
-  const svg        = d3.select(svgEl);
+  const backSvg    = d3.select(backSvgEl);
+  const frontSvg   = d3.select(frontSvgEl);
   const overlaySvg = d3.select(overlaySvgEl);
 
-  // ── Main SVG structure (static between data changes) ───────────────────
-  const defs = svg.append('defs');
-  const clipId = 'plot-clip-' + Math.random().toString(36).slice(2);
-  const clipRect = defs.append('clipPath').attr('id', clipId)
-    .append('rect');
+  // ── WebGL renderer (null → SVG fallback) ───────────────────────────────
+  const glRenderer = glCanvas ? createWebGLRenderer(glCanvas) : null;
+  const dpr = window.devicePixelRatio || 1;
 
+  // ── Back SVG structure (static; rendered below WebGL canvas) ───────────
+  // Contains: background rect, axis KDE strips, CI band, regression line.
+  const backDefs    = backSvg.append('defs');
+  const backClipId  = 'plot-clip-back-' + Math.random().toString(36).slice(2);
+  const backClipRect = backDefs.append('clipPath').attr('id', backClipId).append('rect');
 
   // Solid background for export (Illustrator needs a background rect).
-  svg.append('rect').attr('class', 'plot-bg')
+  backSvg.append('rect').attr('class', 'plot-bg')
     .attr('fill', palette.bg)
     .attr('width', '100%').attr('height', '100%');
 
-  const canvas = svg.append('g').attr('class', 'canvas');
-  const xAxisG  = canvas.append('g').attr('class', 'x-axis');
-  const yAxisG  = canvas.append('g').attr('class', 'y-axis');
-  // Axis label text lives in both the main SVG (for export) and the overlay
-  // (for interactive hover suppression).  These groups use canvas coordinates.
-  const xAxisLabelsG = canvas.append('g').attr('class', 'x-axis-labels');
-  const yAxisLabelsG = canvas.append('g').attr('class', 'y-axis-labels');
-  const plotArea = canvas.append('g').attr('class', 'plot-area')
-    .attr('clip-path', `url(#${clipId})`);
-  const xKdeEl = plotArea.append('path').attr('class', 'kde--x')
+  const backCanvas   = backSvg.append('g').attr('class', 'canvas');
+  const backPlotArea = backCanvas.append('g').attr('class', 'plot-area')
+    .attr('clip-path', `url(#${backClipId})`);
+  const xKdeEl = backPlotArea.append('path').attr('class', 'kde--x')
     .style('fill', '#aaa').style('fill-opacity', '0.35')
     .style('stroke', 'none').style('pointer-events', 'none');
-  const yKdeEl = plotArea.append('path').attr('class', 'kde--y')
+  const yKdeEl = backPlotArea.append('path').attr('class', 'kde--y')
     .style('fill', '#aaa').style('fill-opacity', '0.35')
     .style('stroke', 'none').style('pointer-events', 'none');
-  const ciBandEl   = plotArea.append('path').attr('class', 'ci-band')
+  const ciBandEl  = backPlotArea.append('path').attr('class', 'ci-band')
     .style('fill', palette.regline).style('fill-opacity', '0.12')
     .style('stroke', 'none').style('pointer-events', 'none');
-  const regLineEl  = plotArea.append('line').attr('class', 'regression-line')
+  const regLineEl = backPlotArea.append('line').attr('class', 'regression-line')
     .style('stroke', palette.regline).style('stroke-width', '1.75')
     .style('fill', 'none');
-  const pointsG    = plotArea.append('g').attr('class', 'points');
-  const cornersG   = canvas.append('g').attr('class', 'corners'); // outside clip
-  // Legend group lives in the main SVG so it's captured by SVG/PNG export.
-  const legendG    = canvas.append('g').attr('class', 'legend');
+
+  // ── Front SVG structure (static; rendered above WebGL canvas) ──────────
+  // Contains: axis spines/labels, points (SVG fallback), corners, legend.
+  const frontDefs   = frontSvg.append('defs');
+  const frontClipId = 'plot-clip-front-' + Math.random().toString(36).slice(2);
+  const frontClipRect = frontDefs.append('clipPath').attr('id', frontClipId).append('rect');
+
+  const frontCanvas  = frontSvg.append('g').attr('class', 'canvas');
+  const xAxisG       = frontCanvas.append('g').attr('class', 'x-axis');
+  const yAxisG       = frontCanvas.append('g').attr('class', 'y-axis');
+  // Axis label text: in front SVG for export, and mirrored in overlay for
+  // interactive hover suppression.  Both use canvas (margin-translated) coords.
+  const xAxisLabelsG = frontCanvas.append('g').attr('class', 'x-axis-labels');
+  const yAxisLabelsG = frontCanvas.append('g').attr('class', 'y-axis-labels');
+  const frontPlotArea = frontCanvas.append('g').attr('class', 'plot-area')
+    .attr('clip-path', `url(#${frontClipId})`);
+  const pointsG  = frontPlotArea.append('g').attr('class', 'points');
+  const cornersG = frontCanvas.append('g').attr('class', 'corners'); // outside clip
+  // Legend lives in front SVG so it's above the WebGL canvas and captured by export.
+  const legendG  = frontCanvas.append('g').attr('class', 'legend');
 
   // ── Overlay SVG structure (hover rendering + mouse interaction) ─────────
   // xStripRect / yStripRect: opaque background rects that cover the main SVG
@@ -311,20 +343,28 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     onPointHover(null);
     currentHoverIdx = null;
 
-    const { width: W, height: H } = svgEl.getBoundingClientRect();
+    const { width: W, height: H } = backSvgEl.getBoundingClientRect();
     if (W === 0 || H === 0) return;
     const MARGIN = W < 420 ? MARGIN_MOBILE : MARGIN_DESKTOP;
     const iW = W - MARGIN.left - MARGIN.right;
     const iH = H - MARGIN.top - MARGIN.bottom;
 
-    // Sync main SVG dimensions.
-    svg.attr('viewBox', `0 0 ${W} ${H}`);
-    canvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
-    clipRect.attr('width', iW).attr('height', iH);
+    // Sync all SVG layers to the same coordinate system.
+    backSvg.attr('viewBox', `0 0 ${W} ${H}`);
+    backCanvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
+    backClipRect.attr('width', iW).attr('height', iH);
 
-    // Sync overlay SVG to same coordinate system.
+    frontSvg.attr('viewBox', `0 0 ${W} ${H}`);
+    frontCanvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
+    frontClipRect.attr('width', iW).attr('height', iH);
+
     overlaySvg.attr('viewBox', `0 0 ${W} ${H}`);
     overlayCanvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
+
+    // Resize WebGL canvas to physical pixels.
+    if (glRenderer) {
+      glRenderer.resize(Math.round(W * dpr), Math.round(H * dpr));
+    }
 
     // Size axis strip rects.  These cover the main SVG axis label strips so
     // the overlay labels render over a clean background.  The fringe tick
@@ -365,10 +405,17 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     xAxisG.attr('transform', `translate(0,${iH})`);
     yAxisG.attr('transform', `translate(0,0)`);
 
-    drawAxis(xAxisG, active.map(p => p.displayX), xScale, iH, iW, 'x');
-    drawAxis(yAxisG, active.map(p => p.displayY), yScale, iH, iW, 'y');
+    if (glRenderer) {
+      // WebGL mode: SVG draws spine only; fringe ticks go to the GL line buffer.
+      drawAxisSpine(xAxisG, iW, 'x');
+      drawAxisSpine(yAxisG, iH, 'y');
+    } else {
+      // SVG fallback: draw spine + per-point fringe ticks in SVG.
+      drawAxis(xAxisG, active.map(p => p.displayX), xScale, iH, iW, 'x');
+      drawAxis(yAxisG, active.map(p => p.displayY), yScale, iH, iW, 'y');
+    }
 
-    // Main SVG labels (captured by export).
+    // Front SVG labels (captured by export).
     xAxisLabelsG.selectAll('*').remove();
     drawAxisLabels(xAxisLabelsG, active.map(p => p.displayX), xScale, iH, iW, 'x',
                    xLabel, customXTicks, MARGIN);
@@ -483,54 +530,97 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     // Store state for highlightPoint() called from outside (e.g. QQ hover → main scatter).
     _plotState = { allPoints, iH, iW, colorOf, xScale, yScale };
 
-    // Active + in-range censored: drawn as circles in the plot area
-    const circlePoints = allPoints.filter(p => !p.censored || !p.corner);
+    if (glRenderer) {
+      // ── WebGL rendering path ─────────────────────────────────────────────
+      // Clear SVG point layer (WebGL replaces it).
+      pointsG.selectAll('*').remove();
 
-    pointsG.selectAll('.point')
-      .data(circlePoints, d => d.index)
-      .join(
-        enter => {
-          const nodes = enter.append('circle').attr('class', 'point')
-            .attr('r', _pointR)
-            // If this circle was previously a corner diamond, start it there
-            // so it animates inward to its actual position.
-            .attr('cx', d => { const p = prevState.get(d.index); return p?.isCorner ? p.cornerX : d.sx; })
-            .attr('cy', d => { const p = prevState.get(d.index); return p?.isCorner ? p.cornerY : d.sy; });
-          nodes.transition(T).attr('cx', d => d.sx).attr('cy', d => d.sy);
-          return nodes;
-        },
-        update => update.call(sel =>
-          sel.transition(T).attr('cx', d => d.sx).attr('cy', d => d.sy)
-        ),
-        exit => {
-          // If the exiting circle is becoming a corner diamond, animate it
-          // flying out to the corner position before removing.
-          exit.each(function(d) {
-            const next = newPointMap.get(d.index);
-            if (next?.corner) {
-              d3.select(this).raise()
-                .transition(T)
-                .attr('cx', next.corner.x)
-                .attr('cy', next.corner.y)
-                .remove();
-            } else {
-              d3.select(this).remove();
-            }
-          });
+      // Build point data for the GPU: CSS pixel coords in plot-container space.
+      const STROKE_W = 1.25;
+      const glPoints = [];
+      for (const p of allPoints) {
+        if (p.corner) continue; // out-of-range censored → SVG corner diamond below
+        const fullX = MARGIN.left + p.sx;
+        const fullY = MARGIN.top  + p.sy;
+        const alpha = p.censored ? 0.7 : (p.weight != null ? 0.15 + 0.7 * p.weight : 0.85);
+        if (p.censored) {
+          const innerR = Math.max(0, 0.5 * (_pointR - STROKE_W) / _pointR);
+          glPoints.push({ x: fullX, y: fullY, r: _pointR,
+            color: cssToGL(palette.censored, alpha), innerRadius: innerR });
+        } else {
+          glPoints.push({ x: fullX, y: fullY, r: _pointR,
+            color: cssToGL(colorOf(p), alpha), innerRadius: 0 });
         }
-      )
-      .attr('r', _pointR)
-      .classed('point--active',   d => !d.censored)
-      .classed('point--censored', d => d.censored)
-      .style('fill',         d => d.censored ? 'none' : colorOf(d))
-      .style('stroke',       d => d.censored ? palette.censored : 'none')
-      .style('stroke-width', d => d.censored ? '1.25px' : null)
-      .style('opacity',      d => {
-        if (d.censored) return 0.7;
-        return d.weight != null ? 0.15 + 0.7 * d.weight : 0.85;
-      })
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => { event.stopPropagation(); onPointClick(d.index); });
+      }
+
+      // Build fringe tick line data: CSS pixel coords in plot-container space.
+      const fringeColor = cssToGL(palette.muted, 0.3);
+      const xVals = active.map(p => p.displayX).filter(Number.isFinite);
+      const yVals = active.map(p => p.displayY).filter(Number.isFinite);
+      const glLines = [];
+      for (const v of xVals) {
+        if (v < xScale.domain()[0] || v > xScale.domain()[1]) continue;
+        const sx = MARGIN.left + xScale(v);
+        glLines.push({ x1: sx, y1: MARGIN.top + iH,
+                       x2: sx, y2: MARGIN.top + iH + TICK_LEN, color: fringeColor });
+      }
+      for (const v of yVals) {
+        if (v < yScale.domain()[0] || v > yScale.domain()[1]) continue;
+        const sy = MARGIN.top + yScale(v);
+        glLines.push({ x1: MARGIN.left,            y1: sy,
+                       x2: MARGIN.left - TICK_LEN, y2: sy, color: fringeColor });
+      }
+
+      glRenderer.updatePoints(glPoints, dpr);
+      glRenderer.updateLines(glLines, dpr);
+      glRenderer.render();
+
+    } else {
+      // ── SVG rendering path (fallback) ────────────────────────────────────
+      const circlePoints = allPoints.filter(p => !p.censored || !p.corner);
+
+      pointsG.selectAll('.point')
+        .data(circlePoints, d => d.index)
+        .join(
+          enter => {
+            const nodes = enter.append('circle').attr('class', 'point')
+              .attr('r', _pointR)
+              .attr('cx', d => { const p = prevState.get(d.index); return p?.isCorner ? p.cornerX : d.sx; })
+              .attr('cy', d => { const p = prevState.get(d.index); return p?.isCorner ? p.cornerY : d.sy; });
+            nodes.transition(T).attr('cx', d => d.sx).attr('cy', d => d.sy);
+            return nodes;
+          },
+          update => update.call(sel =>
+            sel.transition(T).attr('cx', d => d.sx).attr('cy', d => d.sy)
+          ),
+          exit => {
+            exit.each(function(d) {
+              const next = newPointMap.get(d.index);
+              if (next?.corner) {
+                d3.select(this).raise()
+                  .transition(T)
+                  .attr('cx', next.corner.x)
+                  .attr('cy', next.corner.y)
+                  .remove();
+              } else {
+                d3.select(this).remove();
+              }
+            });
+          }
+        )
+        .attr('r', _pointR)
+        .classed('point--active',   d => !d.censored)
+        .classed('point--censored', d => d.censored)
+        .style('fill',         d => d.censored ? 'none' : colorOf(d))
+        .style('stroke',       d => d.censored ? palette.censored : 'none')
+        .style('stroke-width', d => d.censored ? '1.25px' : null)
+        .style('opacity',      d => {
+          if (d.censored) return 0.7;
+          return d.weight != null ? 0.15 + 0.7 * d.weight : 0.85;
+        })
+        .style('cursor', 'pointer')
+        .on('click', (event, d) => { event.stopPropagation(); onPointClick(d.index); });
+    }
 
     // Out-of-range censored: corner diamonds drawn outside clip
     const cornerPoints = allPoints.filter(p => p.corner);
@@ -1084,6 +1174,17 @@ export function createScatterplot(svgEl, overlaySvgEl) {
 
   // ── Axis drawing helpers ──────────────────────────────────────────────
 
+  // Draw only the axis spine (WebGL mode — fringe ticks go to the GL line buffer).
+  function drawAxisSpine(g, len, orient) {
+    g.selectAll('*').remove();
+    const isX = orient === 'x';
+    g.append('line').classed('axis-line', true)
+      .style('stroke', '#555').style('stroke-width', '1')
+      .attr('x1', 0).attr('y1', 0)
+      .attr('x2', isX ? len : 0)
+      .attr('y2', isX ? 0 : len);
+  }
+
   // Draw axis spine + per-point tick mark lines only (no text).
   // Text is drawn separately by drawAxisLabels() into the overlay SVG.
   function drawAxis(g, vals, scale, iH, iW, orient) {
@@ -1183,7 +1284,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     cornersOverlayG.selectAll('*').remove();
     legendG.selectAll('*').remove();
     _legendState = null;
-    clearHover();                                      // clears hoverG + legendHoverG + restores axisLabelsG visibility
+    clearHover();
     groupHoverG.selectAll('*').remove();
     legendInteractionG.selectAll('*').remove();
     axisLabelsG.selectAll('*').remove();
@@ -1196,6 +1297,7 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     ciBandEl.style('display', 'none');
     xKdeEl.style('display', 'none');
     yKdeEl.style('display', 'none');
+    if (glRenderer) glRenderer.clear();
   }
 
   // highlightPoint(index | null) — called externally (e.g. from QQ hover) to show
@@ -1210,5 +1312,27 @@ export function createScatterplot(svgEl, overlaySvgEl) {
     showHover(d, _plotState.iH, _plotState.colorOf(d), { outline: false });
   }
 
-  return { update, clear, highlightPoint };
+  // getExportSVG() — returns a combined SVG element containing:
+  //   back SVG content (bg, KDE, CI, regline)
+  //   WebGL-generated SVG elements (fringe ticks + points, if WebGL active)
+  //   front SVG content (axes, labels, legend, corners)
+  // The returned element is not attached to the DOM; caller serializes it.
+  function getExportSVG() {
+    const W = backSvgEl.clientWidth;
+    const H = backSvgEl.clientHeight;
+    const ns   = 'http://www.w3.org/2000/svg';
+    const root = document.createElementNS(ns, 'svg');
+    root.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    root.setAttribute('width',  W);
+    root.setAttribute('height', H);
+    root.setAttribute('xmlns',  ns);
+
+    for (const child of backSvgEl.children)  root.appendChild(child.cloneNode(true));
+    if (glRenderer) root.appendChild(glRenderer.toSVGGroup(backClipId));
+    for (const child of frontSvgEl.children) root.appendChild(child.cloneNode(true));
+
+    return root;
+  }
+
+  return { update, clear, highlightPoint, getExportSVG };
 }

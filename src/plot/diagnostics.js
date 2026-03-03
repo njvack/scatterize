@@ -4,6 +4,13 @@
 
 import * as d3 from 'd3';
 import { mean, stdev } from '../stats/common.js';
+import { createWebGLRenderer } from './webgl-renderer.js';
+
+// Convert a CSS color string + alpha to a WebGL straight RGBA array [0-1].
+function cssToGL(str, alpha = 1) {
+  const c = d3.color(str);
+  return c ? [c.r / 255, c.g / 255, c.b / 255, alpha] : [0, 0, 0, alpha];
+}
 
 // Read CSS custom properties once at init — same as scatterplot.js readPalette.
 function readPalette() {
@@ -81,10 +88,12 @@ const DIAG_MARGIN = { top: 8, right: 8, bottom: 20, left: 8 };
 //   pointColors: string[] | null   parallel to residuals, one color per active point
 //
 // onQQHover: (originalRowIndex | null) => void — called when a QQ point is hovered
-export function createDiagnostics(container, overlayContainer, { onQQHover = null } = {}) {
+export function createDiagnostics(container, overlayContainer, { glCanvas = null, onQQHover = null } = {}) {
   const palette    = readPalette();
   const svg        = d3.select(container);
   const overlaySvg = overlayContainer ? d3.select(overlayContainer) : null;
+  const glRenderer = glCanvas ? createWebGLRenderer(glCanvas) : null;
+  const dpr        = window.devicePixelRatio || 1;
 
   let diagState = null;
   let lastResiduals     = null;
@@ -95,6 +104,7 @@ export function createDiagnostics(container, overlayContainer, { onQQHover = nul
     if (!residuals || residuals.length < 3) {
       svg.selectAll('*').remove();
       if (overlaySvg) overlaySvg.selectAll('*').remove();
+      if (glRenderer) glRenderer.clear();
       diagState = null;
       lastResiduals     = null;
       lastActiveIndices = null;
@@ -103,7 +113,34 @@ export function createDiagnostics(container, overlayContainer, { onQQHover = nul
 
     // Full redraw only when underlying data changes, not on every hover.
     if (residuals !== lastResiduals || activeIndices !== lastActiveIndices) {
-      diagState = fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palette);
+      const useGL = !!glRenderer;
+      diagState = fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palette, useGL);
+
+      if (glRenderer && diagState) {
+        const { width: W, height: H } = container.getBoundingClientRect();
+        glRenderer.resize(Math.round(W * dpr), Math.round(H * dpr));
+
+        // Fringe tick lines on shared axis.
+        const glLines = residuals.map(r => ({
+          x1: diagState.sharedAxisX - 4, y1: diagState.m.top + diagState.yScale(r),
+          x2: diagState.sharedAxisX,     y2: diagState.m.top + diagState.yScale(r),
+          color: cssToGL(palette.muted, 0.4),
+        }));
+
+        // QQ points.
+        const glPoints = diagState.sortedWithIdx.map(({ r, i }, si) => ({
+          x: diagState.sharedAxisX + diagState.qqXScale(diagState.theoretical[si]),
+          y: diagState.m.top + diagState.yScale(r),
+          r: 2.5,
+          color: cssToGL(pointColors ? pointColors[i] : palette.point, 0.7),
+          innerRadius: 0,
+        }));
+
+        glRenderer.updateLines(glLines, dpr);
+        glRenderer.updatePoints(glPoints, dpr);
+        glRenderer.render();
+      }
+
       lastResiduals     = residuals;
       lastActiveIndices = activeIndices;
       if (diagState && onQQHover) setupQQInteraction(diagState, onQQHover);
@@ -159,6 +196,7 @@ export function createDiagnostics(container, overlayContainer, { onQQHover = nul
   function clear() {
     svg.selectAll('*').remove();
     if (overlaySvg) overlaySvg.selectAll('*').remove();
+    if (glRenderer) glRenderer.clear();
     diagState = null;
     lastResiduals     = null;
     lastActiveIndices = null;
@@ -172,7 +210,7 @@ export function createDiagnostics(container, overlayContainer, { onQQHover = nul
 // Full draw — single SVG with joined distplot (left) and QQ (right)
 // ---------------------------------------------------------------------------
 
-function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palette) {
+function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palette, useGL = false) {
   const { width: W, height: H } = svg.node().getBoundingClientRect();
   if (W === 0 || H === 0) return null;
 
@@ -223,19 +261,22 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palett
 
   // ── Fringe (rug) on shared axis ───────────────────────────────────────
   // Drawn after distplot so it renders on top of bars/KDE fill. Not hoverable.
+  // When WebGL is active these are rendered by glRenderer instead.
   const fringeG = innerG.append('g').attr('class', 'diag-fringe-group');
-  for (const r of residuals) {
-    fringeG.append('line').classed('diag-fringe', true)
-      .style('stroke', palette.muted).style('stroke-width', '0.75').style('opacity', '0.4')
-      .attr('x1', sharedAxisX - 4).attr('y1', yScale(r))
-      .attr('x2', sharedAxisX).attr('y2', yScale(r));
+  if (!useGL) {
+    for (const r of residuals) {
+      fringeG.append('line').classed('diag-fringe', true)
+        .style('stroke', palette.muted).style('stroke-width', '0.75').style('opacity', '0.4')
+        .attr('x1', sharedAxisX - 4).attr('y1', yScale(r))
+        .attr('x2', sharedAxisX).attr('y2', yScale(r));
+    }
   }
 
   // ── QQ panel ─────────────────────────────────────────────────────────
   // Origin at (sharedAxisX, 0) within innerG.
   const qqG = innerG.append('g').attr('transform', `translate(${sharedAxisX}, 0)`);
   const { sortedWithIdx, theoretical, xScale: qqXScale } =
-    drawQQ(qqG, residuals, n, iH, yScale, panelW, pointColors, palette);
+    drawQQ(qqG, residuals, n, iH, yScale, panelW, pointColors, palette, useGL);
 
   // QQ hover hit data — positions in QQ-group local coordinates.
   // sortedWithIdx[si].i is an index into residuals (and activeIndices).
@@ -385,7 +426,7 @@ function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale, palette) {
 // QQ plot: theoretical (X) vs sample Y (shared yScale)
 // ---------------------------------------------------------------------------
 
-function drawQQ(g, residuals, n, iH, yScale, panelW, pointColors, palette) {
+function drawQQ(g, residuals, n, iH, yScale, panelW, pointColors, palette, useGL = false) {
   const sortedWithIdx = residuals.map((r, i) => ({ r, i })).sort((a, b) => a.r - b.r);
   const theoretical = sortedWithIdx.map((_, i) => normalQuantile((i + 0.5) / n));
 
@@ -408,16 +449,19 @@ function drawQQ(g, residuals, n, iH, yScale, panelW, pointColors, palette) {
     .attr('x2', xScale(xd[1])).attr('y2', yScale(intercept + slope * xd[1]));
 
   // QQ points colored by group.
-  const pointsLayer = g.append('g').attr('class', 'qq-points');
-  sortedWithIdx.forEach(({ r, i }, si) => {
-    const color = pointColors ? pointColors[i] : palette.point;
-    pointsLayer.append('circle').classed('diag-point', true)
-      .style('opacity', '0.7')
-      .attr('cx', xScale(theoretical[si]))
-      .attr('cy', yScale(r))
-      .attr('r', 2.5)
-      .attr('fill', color);
-  });
+  // When WebGL is active these are rendered by glRenderer instead.
+  if (!useGL) {
+    const pointsLayer = g.append('g').attr('class', 'qq-points');
+    sortedWithIdx.forEach(({ r, i }, si) => {
+      const color = pointColors ? pointColors[i] : palette.point;
+      pointsLayer.append('circle').classed('diag-point', true)
+        .style('opacity', '0.7')
+        .attr('cx', xScale(theoretical[si]))
+        .attr('cy', yScale(r))
+        .attr('r', 2.5)
+        .attr('fill', color);
+    });
+  }
 
   return { sortedWithIdx, theoretical, xScale };
 }

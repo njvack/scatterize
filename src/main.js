@@ -470,8 +470,9 @@ function downloadSVG(svgEl, filename) {
 
 async function downloadPNG(svgEl, filename) {
   const scale = 2;
-  const width = svgEl.clientWidth;
-  const height = svgEl.clientHeight;
+  // clientWidth/Height are 0 for detached elements (from getExportSVG); fall back to attributes.
+  const width  = svgEl.clientWidth  || +svgEl.getAttribute('width');
+  const height = svgEl.clientHeight || +svgEl.getAttribute('height');
 
   // Embed the font so the canvas rasterizer renders text correctly.
   const fontBase64 = await fetchFontBase64();
@@ -555,10 +556,9 @@ function setupShareModal() {
 
   // SVG scatter download
   document.getElementById('svg-download-btn')?.addEventListener('click', () => {
-    const svgEl = document.getElementById('scatter-svg');
-    if (!svgEl) return;
+    if (!scatter) return;
     const raw = document.getElementById('svg-filename')?.value || exportFilename('svg');
-    downloadSVG(svgEl, raw.endsWith('.svg') ? raw : `${raw}.svg`);
+    downloadSVG(scatter.getExportSVG(), raw.endsWith('.svg') ? raw : `${raw}.svg`);
   });
 
   // SVG diagnostics download
@@ -572,10 +572,9 @@ function setupShareModal() {
 
   // PNG scatter download
   document.getElementById('png-download-btn')?.addEventListener('click', async () => {
-    const svgEl = document.getElementById('scatter-svg');
-    if (!svgEl) return;
+    if (!scatter) return;
     const raw = document.getElementById('png-filename')?.value || exportFilename('png');
-    await downloadPNG(svgEl, raw.endsWith('.png') ? raw : `${raw}.png`);
+    await downloadPNG(scatter.getExportSVG(), raw.endsWith('.png') ? raw : `${raw}.png`);
   });
 
   // PNG diagnostics download
@@ -604,14 +603,18 @@ function setupShareModal() {
 document.addEventListener('DOMContentLoaded', async () => {
   // Set up plot components
   scatter = createScatterplot(
-    document.getElementById('scatter-svg'),
-    document.getElementById('overlay-svg')
+    document.getElementById('scatter-back'),
+    document.getElementById('scatter-front'),
+    document.getElementById('overlay-svg'),
+    { glCanvas: document.getElementById('gl-canvas') }
   );
 
   const combinedSvg  = document.getElementById('diag-combined');
   const diagOverlay  = document.getElementById('diag-overlay');
+  const diagGlCanvas = document.getElementById('diag-gl-canvas');
   diagnostics = combinedSvg
     ? createDiagnostics(combinedSvg, diagOverlay, {
+        glCanvas: diagGlCanvas,
         onQQHover: (index) => {
           scatter.highlightPoint(index);
           diagnostics.setExternalHover(index);
