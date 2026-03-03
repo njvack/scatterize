@@ -44,7 +44,7 @@ const MARGIN_DESKTOP = { top: 24, right: 24, bottom: 68, left: 88 };
 const MARGIN_MOBILE  = { top: 16, right: 16, bottom: 52, left: 56 };
 const TICK_LEN = 5;         // px: per-point tick marks on axis
 const SUPERTICK_LEN = 14;   // px: hover supertick
-const CORNER_R = 5;         // px: out-of-range corner marker radius
+const CORNER_R = 7;         // px: out-of-range corner marker half-height
 const POINT_R = 4.5;        // px: default point radius (small n)
 const POINT_R_MIN = 1.5;    // px: minimum point radius (large n)
 const POINT_R_HOVER_DELTA = 2; // px: hover radius = point radius + this
@@ -282,18 +282,10 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   const legendG  = frontCanvas.append('g').attr('class', 'legend');
 
   // ── Overlay SVG structure (hover rendering + mouse interaction) ─────────
-  // xStripRect / yStripRect: opaque background rects that cover the main SVG
-  //   axis label strips so the overlay labels render over a clean background.
-  //   Sized once per layout in update(); never redrawn between data changes.
-  // axisLabelsG: mirror of main SVG labels — suppressed near hover supertick
   // hoverG: hover indicator + supertick lines — cleared/drawn on hover change
   // interaction rect: appended to overlayCanvas per update() call
+  // cornersOverlayG: invisible paths carrying data-cx/data-cy for hover suppression
   const overlayCanvas = overlaySvg.append('g').attr('class', 'overlay-canvas');
-  const xStripRect = overlayCanvas.append('rect').attr('class', 'axis-strip axis-strip--x')
-    .attr('fill', palette.bg).style('pointer-events', 'none');
-  const yStripRect = overlayCanvas.append('rect').attr('class', 'axis-strip axis-strip--y')
-    .attr('fill', palette.bg).style('pointer-events', 'none');
-  const axisLabelsG     = overlayCanvas.append('g').attr('class', 'axis-labels');
   const cornersOverlayG = overlayCanvas.append('g').attr('class', 'corners-overlay')
     .style('pointer-events', 'none');
   // Group hover layer: dim rect + re-rendered group points.  Must be below hoverG
@@ -320,6 +312,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   let _pointRHover = POINT_R + POINT_R_HOVER_DELTA; // current render's hover radius
   let _legendState = null;   // categorical or continuous legend state for hover
   let _onGroupHover = () => {};  // called with groupName | null from showGroupHover
+  let _lastPhysW = 0, _lastPhysH = 0;  // detect canvas resize for WebGL snap
 
   function update({
     points,
@@ -362,21 +355,13 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     overlayCanvas.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
 
     // Resize WebGL canvas to physical pixels.
+    let _glResized = false;
     if (glRenderer) {
-      glRenderer.resize(Math.round(W * dpr), Math.round(H * dpr));
+      const physW = Math.round(W * dpr), physH = Math.round(H * dpr);
+      _glResized = physW !== _lastPhysW || physH !== _lastPhysH;
+      _lastPhysW = physW;  _lastPhysH = physH;
+      glRenderer.resize(physW, physH);
     }
-
-    // Size axis strip rects.  These cover the main SVG axis label strips so
-    // the overlay labels render over a clean background.  The fringe tick
-    // marks (TICK_LEN px beyond the spine) remain visible above the rects.
-    xStripRect
-      .attr('x', -MARGIN.left).attr('y', iH + TICK_LEN)
-      .attr('width', iW + MARGIN.left + MARGIN.right)
-      .attr('height', MARGIN.bottom - TICK_LEN);
-    yStripRect
-      .attr('x', -MARGIN.left).attr('y', -MARGIN.top)
-      .attr('width', MARGIN.left - TICK_LEN)
-      .attr('height', iH + MARGIN.top + MARGIN.bottom);
 
     // Scales from uncensored points only.
     const active = points.filter(p => !p.censored);
@@ -421,13 +406,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
                    xLabel, customXTicks, MARGIN);
     yAxisLabelsG.selectAll('*').remove();
     drawAxisLabels(yAxisLabelsG, active.map(p => p.displayY), yScale, iH, iW, 'y',
-                   yLabel, customYTicks, MARGIN);
-
-    // Overlay labels (covered by strip rects; suppressed near hover supertick).
-    axisLabelsG.selectAll('*').remove();
-    drawAxisLabels(axisLabelsG, active.map(p => p.displayX), xScale, iH, iW, 'x',
-                   xLabel, customXTicks, MARGIN);
-    drawAxisLabels(axisLabelsG, active.map(p => p.displayY), yScale, iH, iW, 'y',
                    yLabel, customYTicks, MARGIN);
 
     // ── Axis KDE strips ───────────────────────────────────────────────────
@@ -536,20 +514,34 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       pointsG.selectAll('*').remove();
 
       // Build point data for the GPU: CSS pixel coords in plot-container space.
-      const STROKE_W = 1.25;
+      // All points included: in-range censored = hollow circle; out-of-range
+      // censored = hollow diamond at their corner position in the margin strip.
+      const STROKE_W        = 1.25;
+      const CORNER_STROKE_W = 1.5;
+      const cornerInnerR    = Math.max(0, 0.5 * (CORNER_R - CORNER_STROKE_W) / CORNER_R);
       const glPoints = [];
       for (const p of allPoints) {
-        if (p.corner) continue; // out-of-range censored → SVG corner diamond below
-        const fullX = MARGIN.left + p.sx;
-        const fullY = MARGIN.top  + p.sy;
         const alpha = p.censored ? 0.7 : (p.weight != null ? 0.15 + 0.7 * p.weight : 0.85);
-        if (p.censored) {
-          const innerR = Math.max(0, 0.5 * (_pointR - STROKE_W) / _pointR);
-          glPoints.push({ x: fullX, y: fullY, r: _pointR,
-            color: cssToGL(palette.censored, alpha), innerRadius: innerR });
+        if (p.corner) {
+          glPoints.push({
+            x: MARGIN.left + p.corner.x,
+            y: MARGIN.top  + p.corner.y,
+            r: CORNER_R,
+            color: cssToGL(palette.censored, 0.8),
+            innerRadius: cornerInnerR,
+            shape: 1,
+          });
         } else {
-          glPoints.push({ x: fullX, y: fullY, r: _pointR,
-            color: cssToGL(colorOf(p), alpha), innerRadius: 0 });
+          const fullX = MARGIN.left + p.sx;
+          const fullY = MARGIN.top  + p.sy;
+          if (p.censored) {
+            const innerR = Math.max(0, 0.5 * (_pointR - STROKE_W) / _pointR);
+            glPoints.push({ x: fullX, y: fullY, r: _pointR,
+              color: cssToGL(palette.censored, alpha), innerRadius: innerR, shape: 0 });
+          } else {
+            glPoints.push({ x: fullX, y: fullY, r: _pointR,
+              color: cssToGL(colorOf(p), alpha), innerRadius: 0, shape: 0 });
+          }
         }
       }
 
@@ -571,9 +563,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
                        x2: MARGIN.left - TICK_LEN, y2: sy, color: fringeColor });
       }
 
-      glRenderer.updatePoints(glPoints, dpr);
-      glRenderer.updateLines(glLines, dpr);
-      glRenderer.render();
+      glRenderer.transitionTo(glPoints, glLines, dpr, !_glResized);
 
     } else {
       // ── SVG rendering path (fallback) ────────────────────────────────────
@@ -622,27 +612,32 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
         .on('click', (event, d) => { event.stopPropagation(); onPointClick(d.index); });
     }
 
-    // Out-of-range censored: corner diamonds drawn outside clip
+    // Out-of-range censored: corner diamonds.
+    // WebGL mode: rendered by the GPU at their corner positions (shape: 1 above).
+    // SVG fallback: drawn as SVG paths with a D3 transition.
+    // cornersOverlayG is always updated for data-cx/data-cy (hover suppression)
+    // but kept invisible (stroke: none) — it's a data-attribute carrier only.
     const cornerPoints = allPoints.filter(p => p.corner);
 
-    cornersG.selectAll('.point--corner')
-      .data(cornerPoints, d => d.index)
-      .join(
-        enter => enter.append('path').attr('class', 'point--corner')
-          .attr('transform', d => `translate(${d.corner.x},${d.corner.y})`)
-          .on('click', (event, d) => { event.stopPropagation(); onPointClick(d.index); }),
-        update => update.call(sel =>
-          sel.transition(T).attr('transform', d => `translate(${d.corner.x},${d.corner.y})`)
-        ),
-        exit => exit.remove()
-      )
-      .attr('d', d3.symbol().type(d3.symbolDiamond).size(60))
-      .style('fill', 'none').style('stroke', palette.censored)
-      .style('stroke-width', '1.5').style('opacity', '0.8').style('cursor', 'pointer');
+    if (!glRenderer) {
+      cornersG.selectAll('.point--corner')
+        .data(cornerPoints, d => d.index)
+        .join(
+          enter => enter.append('path').attr('class', 'point--corner')
+            .attr('transform', d => `translate(${d.corner.x},${d.corner.y})`)
+            .on('click', (event, d) => { event.stopPropagation(); onPointClick(d.index); }),
+          update => update.call(sel =>
+            sel.transition(T).attr('transform', d => `translate(${d.corner.x},${d.corner.y})`)
+          ),
+          exit => exit.remove()
+        )
+        .attr('d', d3.symbol().type(d3.symbolDiamond).size(60))
+        .style('fill', 'none').style('stroke', palette.censored)
+        .style('stroke-width', '1.5').style('opacity', '0.8').style('cursor', 'pointer');
+    } else {
+      cornersG.selectAll('*').remove();
+    }
 
-    // Overlay corner diamonds — rendered after strip rects so they're visible.
-    // No click handler (interaction delegated to interaction rect + Delaunay).
-    // data-cx set for outB diamonds (X-axis suppression); data-cy for outL (Y-axis).
     cornersOverlayG.selectAll('.point--corner')
       .data(cornerPoints, d => d.index)
       .join(
@@ -654,8 +649,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       .attr('d', d3.symbol().type(d3.symbolDiamond).size(60))
       .attr('data-cx', d => d.corner.outB ? d.corner.x : null)
       .attr('data-cy', d => d.corner.outL ? d.corner.y : null)
-      .style('fill', 'none').style('stroke', palette.censored)
-      .style('stroke-width', '1.5').style('opacity', '0.8');
+      .style('fill', 'none').style('stroke', 'none');
 
     // ── Hit detection: interaction rect in overlay + delaunay.find() ──────
     // Mouse events live entirely in the overlay SVG.  The main SVG has zero
@@ -852,8 +846,9 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   // Restored by clearHover().
   function suppressOverlappingItems(isX, hoverPos) {
     // Suppress axis tick labels whose bounding box overlaps the supertick.
-    const selector = isX ? 'text.tick-label--x' : 'text.tick-label--y';
-    axisLabelsG.selectAll(selector).each(function() {
+    const selector  = isX ? 'text.tick-label--x' : 'text.tick-label--y';
+    const labelsEl  = isX ? xAxisLabelsG : yAxisLabelsG;
+    labelsEl.selectAll(selector).each(function() {
       const el  = d3.select(this);
       const pos = +(isX ? el.attr('x') : el.attr('y'));
       const box = this.getBBox();
@@ -876,9 +871,9 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   function clearHover() {
     hoverG.selectAll('*').remove();
     legendHoverG.selectAll('*').remove();
-    // Restore any axis labels, corner diamonds, or legend ticks suppressed during hover.
-    axisLabelsG.selectAll('.tick-label--x, .tick-label--y').style('display', null);
-    cornersOverlayG.selectAll('.point--corner').style('display', null);
+    // Restore axis labels and legend ticks suppressed during hover.
+    xAxisLabelsG.selectAll('.tick-label--x').style('display', null);
+    yAxisLabelsG.selectAll('.tick-label--y').style('display', null);
     legendLabelsG.selectAll('.tick-label--legend').style('display', null);
   }
 
@@ -1287,7 +1282,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     clearHover();
     groupHoverG.selectAll('*').remove();
     legendInteractionG.selectAll('*').remove();
-    axisLabelsG.selectAll('*').remove();
     xAxisLabelsG.selectAll('*').remove();
     yAxisLabelsG.selectAll('*').remove();
     overlayCanvas.selectAll('rect.interaction-rect').remove();
