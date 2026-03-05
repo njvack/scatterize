@@ -25,6 +25,7 @@ const MODELS = { ols, robust, spearman, theilsen: theilSen };
 
 let scatter     = null;
 let diagnostics = null;
+let _cachedUpdateArgs = null;  // last args passed to scatter.update(); reused on resize
 let hoveredIndex = null;         // currently hovered original row index
 let currentPointColors = null;   // parallel to residuals, one color per active point
 let currentPoints = null;        // full points array from last render (for group hover)
@@ -232,7 +233,7 @@ function render() {
   currentActiveIndices = activeIndices;
 
   // Update scatter plot
-  scatter.update({
+  _cachedUpdateArgs = {
     points,
     modelResult,
     xLabel: xColName,
@@ -258,7 +259,8 @@ function render() {
         diagnostics.setGroupHover(rowIndexSet);
       }
     },
-  });
+  };
+  scatter.update(_cachedUpdateArgs);
 
   // Update stats panel
   updateStats({
@@ -282,6 +284,12 @@ function render() {
   
   // Keep form controls in sync (keyboard nav changes state without touching the DOM)
   syncControls(state);
+}
+
+// Resize-only redraw: re-layout with cached data, no model or KDE recomputation.
+function redraw() {
+  if (!_cachedUpdateArgs) return;
+  scatter.update({ ..._cachedUpdateArgs, animate: false });
 }
 
 function updateDiagnostics(modelResult, activeIndices) {
@@ -664,7 +672,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     _resizeBusy = true;
-    render();
+    redraw();
     _resizeBusy = false;
     if (_resizePending) {
       _resizePending = false;

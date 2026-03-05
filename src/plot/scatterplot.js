@@ -313,6 +313,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   let _legendState = null;   // categorical or continuous legend state for hover
   let _onGroupHover = () => {};  // called with groupName | null from showGroupHover
   let _lastPhysW = 0, _lastPhysH = 0;  // detect canvas resize for WebGL snap
+  let _kdeCache = null;  // { pointsRef, xKdeData, yKdeData } — invalidated when points changes
+  let _animatingUntil = 0;  // suppress hover while points are in flight
 
   function update({
     points,
@@ -327,8 +329,11 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     onPointClick = () => {},
     onPointHover = () => {},
     onGroupHover = () => {},
+    animate = true,
   }) {
     _onGroupHover = onGroupHover;
+    if (animate) _animatingUntil = performance.now() + 220;  // 200ms anim + buffer
+
     // Clear any stuck hover overlay immediately when data changes.
     clearHover();
     groupHoverG.selectAll('*').remove();
@@ -415,8 +420,17 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     const xVals = active.map(p => p.displayX).filter(Number.isFinite);
     const yVals = active.map(p => p.displayY).filter(Number.isFinite);
 
-    function drawKdeStrip(el, vals, scale, orient) {
-      const kdeData = computeKDE(vals, scale.domain()[0], scale.domain()[1]);
+    // KDE is data-space math; cache it per points reference so resize skips recompute.
+    // The area generator re-applies the (possibly new) scale on every call — cheap.
+    if (points !== _kdeCache?.pointsRef) {
+      _kdeCache = {
+        pointsRef: points,
+        xKdeData:  computeKDE(xVals, xScale.domain()[0], xScale.domain()[1]),
+        yKdeData:  computeKDE(yVals, yScale.domain()[0], yScale.domain()[1]),
+      };
+    }
+
+    function drawKdeStrip(el, kdeData, scale, orient) {
       const maxD = d3.max(kdeData, d => d.density);
       if (!maxD) { el.style('display', 'none'); return; }
 
@@ -437,19 +451,19 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
       const isNew = !el.attr('d');
       el.style('display', null).datum(kdeData);
-      if (isNew) {
+      if (isNew || !animate) {
         el.attr('d', areaGen);
       } else {
         el.transition(d3.transition().duration(200).ease(d3.easeExpOut)).attr('d', areaGen);
       }
     }
 
-    drawKdeStrip(xKdeEl, xVals, xScale, 'x');
-    drawKdeStrip(yKdeEl, yVals, yScale, 'y');
+    drawKdeStrip(xKdeEl, _kdeCache.xKdeData, xScale, 'x');
+    drawKdeStrip(yKdeEl, _kdeCache.yKdeData, yScale, 'y');
 
     // ── Transition ────────────────────────────────────────────────────────
 
-    const T = d3.transition().duration(200).ease(d3.easeExpOut);
+    const T = d3.transition().duration(animate ? 200 : 0).ease(d3.easeExpOut);
 
     // ── Regression line ───────────────────────────────────────────────────
 
@@ -463,8 +477,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       const ly1 = yScale(modelResult.intercept + modelResult.slope * x1);
       const isNew = !regLineEl.attr('x1');
       regLineEl.style('display', null);
-      if (isNew) {
-        // First render: place directly to avoid animating from SVG origin.
+      if (isNew || !animate) {
         regLineEl
           .attr('x1', xScale(x0)).attr('y1', ly0)
           .attr('x2', xScale(x1)).attr('y2', ly1);
@@ -547,8 +560,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
       // Build fringe tick line data: CSS pixel coords in plot-container space.
       const fringeColor = cssToGL(palette.muted, 0.3);
-      const xVals = active.map(p => p.displayX).filter(Number.isFinite);
-      const yVals = active.map(p => p.displayY).filter(Number.isFinite);
       const glLines = [];
       for (const v of xVals) {
         if (v < xScale.domain()[0] || v > xScale.domain()[1]) continue;
@@ -563,7 +574,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
                        x2: MARGIN.left - TICK_LEN, y2: sy, color: fringeColor });
       }
 
-      glRenderer.transitionTo(glPoints, glLines, dpr, !_glResized);
+      glRenderer.transitionTo(glPoints, glLines, dpr, animate && !_glResized);
 
     } else {
       // ── SVG rendering path (fallback) ────────────────────────────────────
@@ -690,6 +701,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
         .style('cursor', 'default');
 
       function handleHover(mx, my) {
+        if (performance.now() < _animatingUntil) return;
         const i = delaunay.find(mx, my);
         const d = voronoiPoints[i];
         const px = d.corner ? d.corner.x : d.sx;
