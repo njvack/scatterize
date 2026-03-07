@@ -9,6 +9,16 @@
   font-display: swap;
 }
 
+/* ─── Links ─────────────────────────────────────────────────────────────── */
+
+a {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-link) 40%, transparent);
+}
+a:visited { color: var(--color-link-visited); }
+a:hover   { text-decoration-color: var(--color-link); }
+
 /* ─── Reset & Base ─────────────────────────────────────────────────────── */
 
 /* Ensure [hidden] is respected even when author styles set display. */
@@ -28,6 +38,8 @@
   --color-text-muted: #6c757d;
   --color-accent:     #2780e3;
   --color-accent-dk:  #1a6bbf;
+  --color-link:       var(--color-accent-dk);
+  --color-link-visited: #5a4a8a;
 
   /* Plot colors */
   --color-point:      #4e79a7;
@@ -362,8 +374,6 @@ html, body {
   font-size: 13px;
   color: var(--color-text-muted);
   margin: 0;
-
-  & a { color: var(--color-accent); }
 }
 
 /* ─── Stats Panel ───────────────────────────────────────────────────────── */
