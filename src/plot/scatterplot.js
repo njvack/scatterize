@@ -8,11 +8,20 @@
 // browser can cache the main SVG rasterization independently.
 //
 import * as d3 from 'd3';
-import { Z95 } from '../stats/common.js';
 import { createWebGLRenderer } from './webgl-renderer.js';
+import {
+  buildPlotModel, buildColorOf,
+  fiveNum, fmtNum,
+  POINT_R, TICK_LEN, CORNER_R, KDE_MAX_PX,
+  CORNER_BOT_STRIP_Y, CORNER_LEFT_STRIP_X,
+} from './plot-model.js';
 
-// ColorBrewer Paired palette for group coloring (via D3).
-const PAIRED = d3.schemePaired;
+export { buildColorOf } from './plot-model.js';
+
+const SUPERTICK_LEN       = 14;   // px: hover supertick
+const POINT_R_HOVER_DELTA = 2;    // px: hover radius = point radius + this
+const JITTER              = 0.15; // px: jitter to prevent degenerate Delaunay triangles
+const MAX_HOVER_DIST      = 40;   // px: beyond this from nearest point, no hover
 
 // Read CSS custom properties once at init — used to apply all visual styles
 // inline so SVG export works without a stylesheet.
@@ -30,59 +39,6 @@ export function readPalette() {
   };
 }
 
-// Approximate t_{0.975, df} via Cornish-Fisher expansion (4 terms).
-// Error < 0.01 for df >= 5; used for 95% CI bands on OLS.
-function tQ95(df) {
-  const z = Z95, z2 = z * z;
-  return z
-    + (z2 * z + z) / (4 * df)
-    + (5 * z2 * z2 * z + 16 * z2 * z + 3 * z) / (96 * df * df)
-    + (3 * z2 * z2 * z2 * z + 19 * z2 * z2 * z + 17 * z2 * z - 15 * z) / (384 * df * df * df);
-}
-
-const MARGIN_DESKTOP = { top: 24, right: 24, bottom: 68, left: 88 };
-const MARGIN_MOBILE  = { top: 16, right: 16, bottom: 52, left: 56 };
-const TICK_LEN = 5;         // px: per-point tick marks on axis
-const SUPERTICK_LEN = 14;   // px: hover supertick
-const CORNER_R = 7;         // px: out-of-range corner marker half-height
-const POINT_R = 4.5;        // px: default point radius (small n)
-const POINT_R_MIN = 1.5;    // px: minimum point radius (large n)
-const POINT_R_HOVER_DELTA = 2; // px: hover radius = point radius + this
-const KDE_MAX_PX = 20;      // px: peak height/width of axis KDE strip
-const KDE_GRID_N = 120;     // evaluation grid points for KDE
-
-// Scale point radius down for large datasets: r ∝ n^(-0.25) with a floor.
-// At n≤50: 4.5px; n=200: ~3.2px; n=500: ~2.5px; n=2000: ~1.8px.
-function scaledPointR(n) {
-  return Math.max(POINT_R_MIN, POINT_R * Math.pow(Math.min(1, 50 / n), 0.25));
-}
-const SNAP_PX = 2;           // px: grid cell size for Delaunay deduplication
-const JITTER  = 0.15;       // px: random offset added to deduplicated coords to
-                             //     prevent degenerate triangles from coincident pts
-const MAX_HOVER_DIST = 40;  // px: beyond this from nearest representative, no hover
-const CORNER_BOT_STRIP_Y  = 28;  // px below plot spine for outB corner diamonds
-const CORNER_LEFT_STRIP_X = 60;  // px left  of plot spine for outL corner diamonds
-
-// Compute 5-number summary (min, q1, median, q3, max) for axis labeling.
-// Snaps to the nearest actual data value rather than interpolating, so labels
-// always correspond to values that exist in the data.
-function fiveNum(arr) {
-  const s = [...arr].sort((a, b) => a - b);
-  const n = s.length;
-  const q = p => s[Math.round(p * (n - 1))];
-  return [s[0], q(0.25), q(0.5), q(0.75), s[n - 1]];
-}
-
-// Format a number for axis labels: drop trailing zeros, limit precision.
-function fmtNum(v) {
-  if (v == null || !Number.isFinite(v)) return '';
-  if (Math.abs(v) >= 10000 || (Math.abs(v) < 0.001 && v !== 0)) {
-    return v.toExponential(2);
-  }
-  const s = v.toPrecision(4);
-  return String(parseFloat(s));
-}
-
 // Convert a CSS color string + alpha to a WebGL straight RGBA array [0-1].
 // D3's color() handles hex, rgb(), named colors, etc.
 function cssToGL(str, alpha = 1) {
@@ -90,139 +46,6 @@ function cssToGL(str, alpha = 1) {
   return c ? [c.r / 255, c.g / 255, c.b / 255, alpha] : [0, 0, 0, alpha];
 }
 
-// ---------------------------------------------------------------------------
-// KDE helpers
-// ---------------------------------------------------------------------------
-
-// Silverman's rule of thumb bandwidth selector.
-function silvermanBandwidth(vals) {
-  const n = vals.length;
-  if (n < 2) return 1;
-  const sorted = [...vals].sort((a, b) => a - b);
-  const mean = vals.reduce((s, v) => s + v, 0) / n;
-  const std = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / (n - 1));
-  const q1 = sorted[Math.floor(0.25 * (n - 1))];
-  const q3 = sorted[Math.floor(0.75 * (n - 1))];
-  const s = Math.min(std, (q3 - q1) / 1.34) || std;
-  if (!s) return 1;
-  return 1.06 * s * Math.pow(n, -0.2);
-}
-
-// Evaluate Gaussian KDE over a uniform grid spanning [domainMin, domainMax].
-// Returns [{ v, density }, ...] with KDE_GRID_N points.
-function computeKDE(vals, domainMin, domainMax) {
-  const bw = silvermanBandwidth(vals);
-  const n = vals.length;
-  const twoBwSq = 2 * bw * bw;
-  const norm = n * bw * Math.sqrt(2 * Math.PI);
-  return Array.from({ length: KDE_GRID_N }, (_, i) => {
-    const v = domainMin + i * (domainMax - domainMin) / (KDE_GRID_N - 1);
-    const density = vals.reduce((s, vi) => s + Math.exp(-((v - vi) * (v - vi)) / twoBwSq), 0) / norm;
-    return { v, density };
-  });
-}
-
-// Given a point's (displayX, displayY) in data coords, determine if it's
-// out of range of the given domain, and return the clamped SVG position
-// for a corner marker (or null if in range).
-function cornerMarkerPos(px, py, xScale, yScale, innerW, innerH) {
-  const sx = xScale(px);
-  const sy = yScale(py);
-  const outL = sx < 0, outR = sx > innerW;
-  const outT = sy < 0, outB = sy > innerH;
-  if (!outL && !outR && !outT && !outB) return null;
-  const PAD = CORNER_R + 2;
-  const mx = outL ? -CORNER_LEFT_STRIP_X : outR ? innerW + PAD : Math.max(0, Math.min(innerW, sx));
-  const my = outT ? -PAD : outB ? innerH + CORNER_BOT_STRIP_Y : Math.max(0, Math.min(innerH, sy));
-  return { x: mx, y: my, outL, outB };
-}
-
-// ---------------------------------------------------------------------------
-// CI band computation
-// ---------------------------------------------------------------------------
-
-// Returns array of { x, lo, hi } for the 95% confidence band, or null if
-// insufficient parameters.  nPts controls smoothness (irrelevant for Theil-Sen
-// which is always linear, but we use the same number for consistency).
-function computeBand(r, key, [x0, x1], nPts) {
-  if (!r) return null;
-  const xs = Array.from({ length: nPts }, (_, i) => x0 + i * (x1 - x0) / (nPts - 1));
-
-  if (key === 'ols' && r.sigma != null && r.xMean != null && r.sxx != null) {
-    const t = tQ95(r.dfResidual);
-    return xs.map(xv => {
-      const fit = r.intercept + r.slope * xv;
-      const hw  = t * r.sigma * Math.sqrt(1 / r.n + (xv - r.xMean) ** 2 / r.sxx);
-      return { x: xv, lo: fit - hw, hi: fit + hw };
-    });
-  }
-
-  if (key === 'robust' && r.covIntSlope != null) {
-    return xs.map(xv => {
-      const fit    = r.intercept + r.slope * xv;
-      const varFit = r.seIntercept ** 2 + 2 * xv * r.covIntSlope + xv ** 2 * r.seSlope ** 2;
-      const hw     = Z95 * Math.sqrt(Math.max(0, varFit));
-      return { x: xv, lo: fit - hw, hi: fit + hw };
-    });
-  }
-
-  if (key === 'theilsen' && r.slopeCILow != null) {
-    // Two straight lines — only need the domain endpoints, but use nPts for
-    // a consistent path length so d3.area transition doesn't produce artifacts.
-    return xs.map(xv => {
-      const yA = r.interceptCILow  + r.slopeCILow  * xv;
-      const yB = r.interceptCIHigh + r.slopeCIHigh * xv;
-      return { x: xv, lo: Math.min(yA, yB), hi: Math.max(yA, yB) };
-    });
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Color scale builder — exported for use by diagnostics and main.js
-// ---------------------------------------------------------------------------
-
-// buildColorOf(points, groupColorType) → (point) => color string
-// `points` should be the active (uncensored) subset used to determine the scale range/groups.
-export function buildColorOf(points, groupColorType, fallbackColor = 'currentColor') {
-  const groupValues = points.map(p => p.group).filter(g => g != null);
-  if (groupColorType === 'continuous' && groupValues.length) {
-    const [lo, hi] = d3.extent(groupValues);
-    const colorScale = d3.scaleSequential(d3.interpolateViridis)
-      .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]);
-    return p => p.group == null ? fallbackColor : colorScale(p.group);
-  }
-  const groups = [...new Set(groupValues.map(String))].sort();
-  return p => {
-    if (p.group == null || groups.length === 0) return fallbackColor;
-    return PAIRED[groups.indexOf(String(p.group)) % PAIRED.length];
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-// createScatterplot(svgEl, overlaySvgEl) → { update(opts), clear(), highlightPoint(index | null) }
-//
-// opts shape:
-//   points: [{ index, displayX, displayY, originalX, originalY, group, censored }]
-//   modelResult: { slope, intercept, ... } | null
-//   xLabel, yLabel: strings
-//   modelKey: 'ols' | 'robust' | 'spearman' | 'theilsen'
-//   customXTicks, customYTicks: number[] | null
-//   onPointClick(index): called when a point is clicked
-//   onPointHover(index | null): called on hover change
-// createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanvas })
-//
-// Layer order (bottom → top):
-//   backSvgEl  — background rect, KDE strips, CI band, regression line
-//   glCanvas   — WebGL: scatter points + fringe tick lines (transparent bg)
-//   frontSvgEl — axis spines/labels, legend, corner markers
-//   overlaySvgEl — hover, superticks, mouse interaction (unchanged)
-//
-// When glCanvas is null or WebGL unavailable, falls back to SVG point rendering
 // in frontSvg with D3 joins (same as before, just split across two SVGs).
 export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanvas = null } = {}) {
   const palette    = readPalette();
@@ -313,7 +136,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   let _legendState = null;   // categorical or continuous legend state for hover
   let _onGroupHover = () => {};  // called with groupName | null from showGroupHover
   let _lastPhysW = 0, _lastPhysH = 0;  // detect canvas resize for WebGL snap
-  let _kdeCache = null;  // { pointsRef, xKdeData, yKdeData } — invalidated when points changes
   let _animatingUntil = 0;  // suppress hover while points are in flight
 
   function update({
@@ -343,9 +165,13 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
     const { width: W, height: H } = backSvgEl.getBoundingClientRect();
     if (W === 0 || H === 0) return;
-    const MARGIN = W < 420 ? MARGIN_MOBILE : MARGIN_DESKTOP;
-    const iW = W - MARGIN.left - MARGIN.right;
-    const iH = H - MARGIN.top - MARGIN.bottom;
+    const model = buildPlotModel(points, modelResult, { W, H, modelKey, groupColorType, palette });
+    if (!model) return;
+    const { iW, iH, margin: MARGIN, xScale, yScale, active,
+            allPoints, xVals, yVals, colorOf, voronoiPoints, cornerPoints,
+            xKdeData, yKdeData, bandData, hasLine, pointR } = model;
+    _pointR = pointR;
+    _pointRHover = pointR + POINT_R_HOVER_DELTA;
 
     // Sync all SVG layers to the same coordinate system.
     backSvg.attr('viewBox', `0 0 ${W} ${H}`);
@@ -368,25 +194,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       glRenderer.resize(physW, physH);
     }
 
-    // Scales from uncensored points only.
-    const active = points.filter(p => !p.censored);
-    if (!active.length) return;
-
-    _pointR = scaledPointR(active.length);
-    _pointRHover = _pointR + POINT_R_HOVER_DELTA;
-
-    const xExt = d3.extent(active, p => p.displayX);
-    const yExt = d3.extent(active, p => p.displayY);
-    const xPad = (xExt[1] - xExt[0]) * 0.06 || 1;
-    const yPad = (yExt[1] - yExt[0]) * 0.06 || 1;
-
-    const xScale = d3.scaleLinear()
-      .domain([xExt[0] - xPad, xExt[1] + xPad])
-      .range([0, iW]);
-    const yScale = d3.scaleLinear()
-      .domain([yExt[0] - yPad, yExt[1] + yPad])
-      .range([iH, 0]);
-
     // ── Axes ──────────────────────────────────────────────────────────────
     // Spines + fringe tick marks in the axis groups; labels in separate groups
     // so they sit above the data layer without being clipped.  Labels are also
@@ -401,34 +208,19 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       drawAxisSpine(yAxisG, iH, 'y');
     } else {
       // SVG fallback: draw spine + per-point fringe ticks in SVG.
-      drawAxis(xAxisG, active.map(p => p.displayX), xScale, iH, iW, 'x');
-      drawAxis(yAxisG, active.map(p => p.displayY), yScale, iH, iW, 'y');
+      drawAxis(xAxisG, xVals, xScale, iH, iW, 'x');
+      drawAxis(yAxisG, yVals, yScale, iH, iW, 'y');
     }
 
     // Front SVG labels (captured by export).
     xAxisLabelsG.selectAll('*').remove();
-    drawAxisLabels(xAxisLabelsG, active.map(p => p.displayX), xScale, iH, iW, 'x',
-                   xLabel, customXTicks, MARGIN);
+    drawAxisLabels(xAxisLabelsG, xVals, xScale, iH, iW, 'x', xLabel, customXTicks, MARGIN);
     yAxisLabelsG.selectAll('*').remove();
-    drawAxisLabels(yAxisLabelsG, active.map(p => p.displayY), yScale, iH, iW, 'y',
-                   yLabel, customYTicks, MARGIN);
+    drawAxisLabels(yAxisLabelsG, yVals, yScale, iH, iW, 'y', yLabel, customYTicks, MARGIN);
 
     // ── Axis KDE strips ───────────────────────────────────────────────────
     // Shallow Gaussian KDE shown on the inside of each axis spine, giving a
     // visual sense of data density (especially useful for discrete/clumped X).
-
-    const xVals = active.map(p => p.displayX).filter(Number.isFinite);
-    const yVals = active.map(p => p.displayY).filter(Number.isFinite);
-
-    // KDE is data-space math; cache it per points reference so resize skips recompute.
-    // The area generator re-applies the (possibly new) scale on every call — cheap.
-    if (points !== _kdeCache?.pointsRef) {
-      _kdeCache = {
-        pointsRef: points,
-        xKdeData:  computeKDE(xVals, xScale.domain()[0], xScale.domain()[1]),
-        yKdeData:  computeKDE(yVals, yScale.domain()[0], yScale.domain()[1]),
-      };
-    }
 
     function drawKdeStrip(el, kdeData, scale, orient) {
       const maxD = d3.max(kdeData, d => d.density);
@@ -458,17 +250,14 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       }
     }
 
-    drawKdeStrip(xKdeEl, _kdeCache.xKdeData, xScale, 'x');
-    drawKdeStrip(yKdeEl, _kdeCache.yKdeData, yScale, 'y');
+    drawKdeStrip(xKdeEl, xKdeData, xScale, 'x');
+    drawKdeStrip(yKdeEl, yKdeData, yScale, 'y');
 
     // ── Transition ────────────────────────────────────────────────────────
 
     const T = d3.transition().duration(animate ? 200 : 0).ease(d3.easeExpOut);
 
     // ── Regression line ───────────────────────────────────────────────────
-
-    const hasLine = modelResult && modelResult.slope != null
-      && modelResult.intercept != null;
 
     if (hasLine) {
       const x0 = xScale.domain()[0];
@@ -492,7 +281,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
     // ── CI band ───────────────────────────────────────────────────────────
 
-    const bandData = computeBand(modelResult, modelKey, xScale.domain(), 60);
     if (bandData) {
       const areaGen = d3.area()
         .x(d => xScale(d.x))
@@ -505,17 +293,10 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
     // ── Group color scale ─────────────────────────────────────────────────
 
-    const colorOf = buildColorOf(active, groupColorType, palette.point);
     drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, iH });
 
     // ── Points ────────────────────────────────────────────────────────────
 
-    const allPoints = points.map(p => {
-      const sx = xScale(p.displayX);
-      const sy = yScale(p.displayY);
-      const corner = p.censored ? cornerMarkerPos(p.displayX, p.displayY, xScale, yScale, iW, iH) : null;
-      return { ...p, sx, sy, corner };
-    });
     const newPointMap = new Map(allPoints.map(p => [p.index, p]));
 
     // Store state for highlightPoint() called from outside (e.g. QQ hover → main scatter).
@@ -628,8 +409,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     // SVG fallback: drawn as SVG paths with a D3 transition.
     // cornersOverlayG is always updated for data-cx/data-cy (hover suppression)
     // but kept invisible (stroke: none) — it's a data-attribute carrier only.
-    const cornerPoints = allPoints.filter(p => p.corner);
-
     if (!glRenderer) {
       cornersG.selectAll('.point--corner')
         .data(cornerPoints, d => d.index)
@@ -667,18 +446,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     // event handlers and never mutates during user interaction, so the browser
     // can cache its rasterized texture across hover frames.
 
-    // Collapse coincident/sub-pixel screen positions before triangulating.
-    // At 2px the grid shape is invisible; it just prevents degenerate cells.
     // A tiny random jitter breaks collinearity without affecting hover feel.
-    const gridMap = new Map();
-    for (const p of allPoints) {
-      const px = p.corner ? p.corner.x : p.sx;
-      const py = p.corner ? p.corner.y : p.sy;
-      const key = `${Math.round(px / SNAP_PX)},${Math.round(py / SNAP_PX)}`;
-      if (!gridMap.has(key)) gridMap.set(key, p);
-    }
-    const voronoiPoints = [...gridMap.values()];
-
     overlayCanvas.selectAll('rect.interaction-rect').remove();
 
     if (voronoiPoints.length >= 2) {

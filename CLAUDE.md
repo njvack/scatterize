@@ -86,6 +86,10 @@ When adding a new stat: write R reference first (`tests/r/`), confirm output, im
 
 R references: OLS=`lm()`, Robust=`MASS::rlm(psi=psi.bisquare)` (M-estimation, **not** MM), Spearman=`cor.test(method="spearman")`, Theil-Sen=`mblm::mblm()` + `cor.test(method="kendall")` for p-value.
 
+## Examining UI behavior
+
+Use `uvx rodney` to drive a local, headless Chrome, take screenshots, and such. `uvx rodney --help` will list commands.
+
 ## Key Behavioral Constraints
 
 - **Censoring:** Exclude censored rows from fit. Axis limits from uncensored points only.
