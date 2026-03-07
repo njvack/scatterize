@@ -45,6 +45,7 @@ a:hover   { text-decoration-color: var(--color-link); }
   --color-point:      #4e79a7;
   --color-regline:    #b5541a;
   --color-censored:   #aaaaaa;
+  --color-smoother:   #59a14f;
 
   --header-height: 52px;
   --footer-height: 32px;
@@ -269,6 +270,22 @@ html, body {
   font-size: 11px;
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+#smoother-window-group {
+  margin-top: 6px;
+}
+
+.smoother-window-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+#smoother-window {
+  width: 100%;
 }
 
 /* ─── Plot Container ────────────────────────────────────────────────────── */

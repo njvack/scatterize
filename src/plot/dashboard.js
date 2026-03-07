@@ -123,6 +123,68 @@ export function syncControls(state) {
   if (gSel) gSel.value = state.h != null ? String(state.h) : '';
 }
 
+// Log-scale mapping between slider position (0–100) and window percent.
+// pctMin: minimum percent (determined by n, so window always ≥ 7 points).
+function sliderPosToPct(pos, pctMin) {
+  const logMin = Math.log(Math.max(pctMin, 1));
+  const logMax = Math.log(100);
+  if (logMax <= logMin) return 100;
+  return Math.round(Math.exp(logMin + (pos / 100) * (logMax - logMin)));
+}
+
+function pctToSliderPos(pct, pctMin) {
+  const logMin = Math.log(Math.max(pctMin, 1));
+  const logMax = Math.log(100);
+  if (logMax <= logMin) return 100;
+  return Math.round((Math.log(Math.max(pct, pctMin)) - logMin) / (logMax - logMin) * 100);
+}
+
+export function bindSmootherControls() {
+  const sel       = document.getElementById('smoother-select');
+  const slider    = document.getElementById('smoother-window');
+  const pctLabel  = document.getElementById('smoother-window-pct');
+
+  sel?.addEventListener('change', () => {
+    setState({ sm: sel.value || null });
+  });
+
+  slider?.addEventListener('input', () => {
+    const pctMin = +(slider.dataset.pctMin ?? 1);
+    const n = +(slider.dataset.n ?? 0);
+    const pct = sliderPosToPct(+slider.value, pctMin);
+    const windowN = n > 0 ? Math.max(7, Math.round(pct / 100 * n)) : '';
+    if (pctLabel) pctLabel.textContent = n > 0 ? `${pct}% (n=${windowN})` : `${pct}%`;
+    setState({ sw: pct });
+  });
+}
+
+// Sync smoother controls to current state. n = number of active points.
+export function syncSmootherControls(state, n) {
+  const sel         = document.getElementById('smoother-select');
+  const windowGroup = document.getElementById('smoother-window-group');
+  const slider      = document.getElementById('smoother-window');
+  const pctLabel    = document.getElementById('smoother-window-pct');
+
+  if (sel) sel.value = state.sm ?? '';
+
+  const hasSmooth = !!state.sm;
+  if (windowGroup) windowGroup.hidden = !hasSmooth;
+
+  if (slider && pctLabel) {
+    const pctMin = n > 0 ? Math.max(1, Math.ceil(700 / n)) : 100;
+    const sw = Math.max(state.sw ?? 10, pctMin);
+    slider.dataset.pctMin = String(pctMin);
+    slider.dataset.n = String(n);
+    slider.disabled = pctMin >= 100;
+    slider.value = String(pctToSliderPos(sw, pctMin));
+    const windowN = Math.max(7, Math.round(sw / 100 * n));
+    pctLabel.textContent = `${sw}% (n=${windowN})`;
+
+    const windowLabel = document.getElementById('smoother-window-label');
+    if (windowLabel) windowLabel.textContent = state.sm === 'lowess' ? 'Bandwidth' : 'Window';
+  }
+}
+
 // Bind all control change events. Called once after initial render.
 export function bindControls() {
   const xSel = document.getElementById('x-select');

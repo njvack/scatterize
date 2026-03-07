@@ -37,6 +37,7 @@ export function readPalette() {
     text:     v('--color-text'),
     muted:    v('--color-text-muted'),
     font:     v('--font-sans'),
+    smoother: v('--color-smoother'),
   };
 }
 
@@ -84,6 +85,12 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   const regLineEl = backPlotArea.append('line').attr('class', 'regression-line')
     .style('stroke', palette.regline).style('stroke-width', '1.75')
     .style('fill', 'none');
+  const smootherBandEl = backPlotArea.append('path').attr('class', 'smoother-band')
+    .style('fill', palette.smoother).style('fill-opacity', '0.18')
+    .style('stroke', 'none').style('pointer-events', 'none');
+  const smootherLineEl = backPlotArea.append('path').attr('class', 'smoother-line')
+    .style('stroke', palette.smoother).style('stroke-width', '1.5')
+    .style('fill', 'none').style('pointer-events', 'none');
 
   // ── Front SVG structure (static; rendered above WebGL canvas) ──────────
   // Contains: axis spines/labels, points (SVG fallback), corners, legend.
@@ -155,6 +162,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     onPointClick = () => {},
     onPointHover = () => {},
     onGroupHover = () => {},
+    smootherData = null,
     animate = true,
   }) {
     _onGroupHover = onGroupHover;
@@ -295,6 +303,35 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       }
     } else {
       ciBandEl.style('display', 'none');
+    }
+
+    // ── Smoother (running median + IQR band) ──────────────────────────────
+
+    if (smootherData) {
+      const lineGen = d3.line()
+        .x(d => xScale(d.x))
+        .y(d => yScale(d.y))
+        .curve(d3.curveBasis);
+      const isNew = !smootherLineEl.attr('d');
+      smootherLineEl.style('display', null).datum(smootherData.line);
+      if (isNew || !animate) { smootherLineEl.attr('d', lineGen); }
+      else                   { smootherLineEl.transition(T).attr('d', lineGen); }
+
+      if (smootherData.band) {
+        const bandGen = d3.area()
+          .x(d => xScale(d.x))
+          .y0(d => yScale(d.y0))
+          .y1(d => yScale(d.y1))
+          .curve(d3.curveBasis);
+        smootherBandEl.style('display', null).datum(smootherData.band);
+        if (isNew || !animate) { smootherBandEl.attr('d', bandGen); }
+        else                   { smootherBandEl.transition(T).attr('d', bandGen); }
+      } else {
+        smootherBandEl.interrupt().style('display', 'none');
+      }
+    } else {
+      smootherBandEl.interrupt().style('display', 'none');
+      smootherLineEl.interrupt().style('display', 'none');
     }
 
     // ── Group color scale ─────────────────────────────────────────────────
@@ -726,7 +763,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     // Clone KDE strips, CI band, and regression line above the dim so they
     // remain visible (they live in plotArea in the main SVG; no clip-path needed
     // here since they're computed within the scale domain).
-    for (const el of [xKdeEl, yKdeEl, ciBandEl, regLineEl]) {
+    for (const el of [xKdeEl, yKdeEl, ciBandEl, regLineEl, smootherBandEl, smootherLineEl]) {
       const node = el.node();
       if (node && node.style.display !== 'none') {
         groupHoverG.node().appendChild(node.cloneNode(true));
@@ -756,6 +793,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     yAxisG.selectAll('*').remove();
     regLineEl.interrupt().style('display', 'none').attr('x1', null);
     ciBandEl.interrupt().style('display', 'none').attr('d', null);
+    smootherBandEl.interrupt().style('display', 'none').attr('d', null);
+    smootherLineEl.interrupt().style('display', 'none').attr('d', null);
     xKdeEl.style('display', 'none');
     yKdeEl.style('display', 'none');
     if (glRenderer) glRenderer.clear();

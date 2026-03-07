@@ -12,6 +12,8 @@ export const DEFAULTS = {
   h: null,
   xl: null,
   yl: null,
+  sm: null,   // smoother type: null | 'median'
+  sw: 10,     // smoother window percent (1–100)
 };
 
 function parseIntList(s) {
@@ -44,6 +46,8 @@ export function parseState(hashStr) {
     h:   parseIntOrNull(raw.get('h')),
     xl:  raw.has('xl') ? parseFloatList(raw.get('xl')) : DEFAULTS.xl,
     yl:  raw.has('yl') ? parseFloatList(raw.get('yl')) : DEFAULTS.yl,
+    sm:  raw.get('sm') ?? DEFAULTS.sm,
+    sw:  raw.has('sw') ? parseInt(raw.get('sw'), 10) : DEFAULTS.sw,
   };
 }
 
@@ -57,7 +61,9 @@ export function serializeState(state) {
     params.set('y', String(state.y ?? DEFAULTS.y));
     params.set('m', state.m ?? DEFAULTS.m);
   }
-  if (state.h != null) params.set('h', String(state.h));
+  if (state.h  != null) params.set('h',  String(state.h));
+  if (state.sm != null) params.set('sm', state.sm);
+  if (state.sm != null && state.sw !== DEFAULTS.sw) params.set('sw', String(state.sw));
   for (const key of ['n', 'c', 'xl', 'yl']) {
     if (state[key]?.length) params.set(key, state[key].join(','));
   }

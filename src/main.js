@@ -6,7 +6,9 @@ import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
 import { createScatterplot, buildColorOf, readPalette } from './plot/scatterplot.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
-import { populateControls, bindControls, syncControls, updateStats } from './plot/dashboard.js';
+import { populateControls, bindControls, syncControls, updateStats,
+         bindSmootherControls, syncSmootherControls } from './plot/dashboard.js';
+import { runningMedianIQR, lowess } from './plot/smoother.js';
 import { ols }      from './stats/ols.js';
 import { robust }   from './stats/robust.js';
 import { spearman } from './stats/spearman.js';
@@ -232,6 +234,17 @@ function render() {
   currentPoints = points;
   currentActiveIndices = activeIndices;
 
+  // Compute smoother data
+  let smootherData = null;
+  if (state.sm && activeIndices.length >= 7) {
+    const pctMin = Math.max(1, Math.ceil(700 / activeIndices.length));
+    const sw = Math.max(state.sw ?? 10, pctMin);
+    const activeXY = activeIndices.map((_, ai) => ({ x: displayX[ai], y: displayY[ai] }));
+    if (state.sm === 'median') smootherData = runningMedianIQR(activeXY, sw / 100);
+    else if (state.sm === 'lowess') smootherData = lowess(activeXY, sw / 100);
+  }
+  syncSmootherControls(state, activeIndices.length);
+
   // Update scatter plot
   _cachedUpdateArgs = {
     points,
@@ -243,6 +256,7 @@ function render() {
     groupLabel: hColName,
     customXTicks: state.xl,
     customYTicks: state.yl,
+    smootherData,
     onPointClick: (index) => toggleCensor(index),
     onPointHover: (index) => {
       hoveredIndex = index;
@@ -632,6 +646,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Wire controls and keyboard
   bindControls();
+  bindSmootherControls();
   setupKeyboard();
   setupShareModal();
   setupFileDrop();

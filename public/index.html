@@ -36,6 +36,20 @@
         <option value="theilsen">Theil-Sen</option>
       </select>
     </div>
+    <div class="control-group">
+      <label for="smoother-select">Smoother</label>
+      <select id="smoother-select" class="form-select">
+        <option value="">None</option>
+        <option value="median">Running median</option>
+        <option value="lowess">LOWESS</option>
+      </select>
+      <div id="smoother-window-group" hidden>
+        <div class="smoother-window-header">
+          <span id="smoother-window-label">Window</span><span id="smoother-window-pct">10%</span>
+        </div>
+        <input type="range" id="smoother-window" min="0" max="100" step="1">
+      </div>
+    </div>
     <div class="control-group" id="nuisance-group">
       <label>Nuisance covariates</label>
       <div id="nuisance-list" class="checkbox-list"></div>
