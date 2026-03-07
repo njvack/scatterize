@@ -122,7 +122,7 @@ export function computeBand(r, key, [x0, x1], nPts) {
     const t = tQ95(r.n - 2);
     return xs.map(x => {
       const yhat = r.intercept + r.slope * x;
-      const se = Math.sqrt(r.covIntSlope[0][0] + 2 * x * r.covIntSlope[0][1] + x * x * r.covIntSlope[1][1]);
+      const se = Math.sqrt(r.seIntercept ** 2 + 2 * x * r.covIntSlope + x * x * r.seSlope ** 2);
       return { x, lo: yhat - t * se, hi: yhat + t * se };
     });
   }

@@ -339,7 +339,7 @@ function setLoading(on, url) {
   const btn = document.getElementById('load-btn');
   if (btn) {
     btn.disabled = on;
-    btn.textContent = on ? 'Loading…' : 'Load';
+    btn.textContent = on ? 'Loading…' : 'Open link';
   }
   if (on) {
     showEmptyState(false);
@@ -638,12 +638,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // React to URL hash changes
   onStateChange(async (state) => {
-    // Sync URL input field (back/forward navigation changes hash without touching the input)
-    const urlInput = document.getElementById('source-url');
-    if (urlInput) {
-      urlInput.value = state.src
-        ? (state.src.startsWith('local:') ? localFileName(state.src) : state.src)
-        : '';
+    // Update header data source indicator
+    const sourceEl   = document.getElementById('data-source');
+    const sourceNameEl = document.getElementById('data-source-name');
+    if (sourceEl) sourceEl.hidden = !state.src;
+    if (sourceNameEl && state.src) {
+      sourceNameEl.textContent = state.src.startsWith('local:')
+        ? localFileName(state.src)
+        : state.src;
     }
 
     // If src changed from what we have loaded, reload data
@@ -684,12 +686,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initial load
   const state = getState();
-  const urlInput = document.getElementById('source-url');
-  if (urlInput && state.src) {
-    urlInput.value = state.src.startsWith('local:') ? localFileName(state.src) : state.src;
-  }
 
   if (state.src) {
+    const sourceEl     = document.getElementById('data-source');
+    const sourceNameEl = document.getElementById('data-source-name');
+    if (sourceEl) sourceEl.hidden = false;
+    if (sourceNameEl) sourceNameEl.textContent = state.src.startsWith('local:')
+      ? localFileName(state.src)
+      : state.src;
+
     const ok = await loadData(state.src);
     if (ok) {
       window._loadedSrc = state.src;
@@ -699,17 +704,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   render();
 
-  // Load button
+  // Load URL button
   document.getElementById('load-btn')?.addEventListener('click', () => {
     const url = document.getElementById('source-url')?.value?.trim();
     if (!url) return;
-    // Reset variable/model state when loading a new URL
     setState({ src: url, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
   });
 
-  // Allow Enter key in URL input
+  // Enter key in URL input
   document.getElementById('source-url')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('load-btn')?.click();
+  });
+
+  // Browse files button — trigger a hidden file input
+  const openFileBtn = document.getElementById('open-file-btn');
+  if (openFileBtn) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv,.tsv,.txt';
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      fileInput.value = '';
+      let key;
+      try {
+        key = await storeLocalFile(file);
+      } catch (err) {
+        showError(err.message);
+        return;
+      }
+      setState({ src: key, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
+    });
+    openFileBtn.addEventListener('click', () => fileInput.click());
+  }
+
+  // Clear data source
+  document.getElementById('clear-data-btn')?.addEventListener('click', () => {
+    setState({ src: '', x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
   });
 
   // Error dismiss

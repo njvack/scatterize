@@ -10,16 +10,9 @@
 
 <header class="site-header">
   <h1 class="site-title"><a href="./" class="site-title-link">Scatterize 3</a></h1>
-  <div class="url-bar">
-    <input
-      type="text"
-      id="source-url"
-      class="url-input"
-      placeholder="Paste a CSV or Google Sheets URL — or drop a file on the page"
-      autocomplete="off"
-      spellcheck="false"
-    >
-    <button id="load-btn" class="btn btn-primary">Load</button>
+  <div class="data-source" id="data-source" hidden>
+    <span class="data-source-name" id="data-source-name"></span>
+    <button class="data-source-clear" id="clear-data-btn" aria-label="Clear data">×</button>
   </div>
 </header>
 
@@ -75,17 +68,27 @@
     </button>
     <div class="empty-state" id="empty-state">
       <div class="empty-state-inner">
-        <h3>No data loaded</h3>
-        <p>Paste a link to a Google Sheet or CSV file in the bar above and click Load.</p>
-        <p>Also accepts GitHub file and Gist URLs.</p>
-        <p>Or drop a CSV file anywhere on the page.</p>
-        <p>Everything runs in your browser; no data is sent to our server.</p>
-        <p>Don't believe us? <a href="https://github.com/njvack/scatterize/releases">Download a copy</a> and run it on your computer.</p>
-        <p>Just want to see some data? Check out:
-          <ul>
-            <li><a href="https://njvack.github.io/scatterize/#src=https%3A%2F%2Fgist.github.com%2Fnjvack%2Fb7817275dcca4bca02bff5429ef29a3c&x=0&y=1&m=ols">Anscombe's Quartet</a></li>
-            <li><a href="https://njvack.github.io/scatterize/#src=https%3A%2F%2Fgist.github.com%2Fnjvack%2Fcd9cb7c71542b056afa859eea36d7850&x=3&y=0&m=ols">The mtcars database</a></li>
-          </ul>
+        <h3>Open a dataset</h3>
+        <div class="open-data-row">
+          <button id="open-file-btn" class="btn btn-secondary">Browse files…</button>
+          <span class="open-data-or">or</span>
+          <div class="open-data-url">
+            <input
+              type="text"
+              id="source-url"
+              class="url-input"
+              placeholder="Paste a Google Sheets or CSV URL"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <button id="load-btn" class="btn btn-primary">Load</button>
+          </div>
+        </div>
+        <p class="open-data-note">Drop a CSV anywhere on the page · Data never leaves your browser</p>
+        <p class="open-data-examples">
+          Examples:
+          <a href="https://njvack.github.io/scatterize/#src=https%3A%2F%2Fgist.github.com%2Fnjvack%2Fb7817275dcca4bca02bff5429ef29a3c&x=0&y=1&m=ols">Anscombe's Quartet</a> ·
+          <a href="https://njvack.github.io/scatterize/#src=https%3A%2F%2Fgist.github.com%2Fnjvack%2Fcd9cb7c71542b056afa859eea36d7850&x=3&y=0&m=ols">mtcars</a>
         </p>
       </div>
     </div>
@@ -116,7 +119,7 @@
   <a href="https://www.theleagueofmoveabletype.com/league-spartan" class="footer-link">League Spartan</a>
 </footer>
 
-<dialog id="help-modal">
+<dialog id="help-modal" class="modal">
   <p class="help-modal-title">Keyboard shortcuts</p>
   <table class="help-table">
     <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous Y variable</td></tr>
@@ -128,7 +131,7 @@
   <p class="help-modal-dismiss">Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>
 </dialog>
 
-<dialog id="share-modal">
+<dialog id="share-modal" class="modal">
   <section class="share-section">
     <h3>Export SVG</h3>
     <div class="share-download-row">
