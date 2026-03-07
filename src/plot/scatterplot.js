@@ -11,10 +11,12 @@ import * as d3 from 'd3';
 import { createWebGLRenderer } from './webgl-renderer.js';
 import {
   buildPlotModel, buildColorOf,
-  fiveNum, fmtNum,
+  fmtNum,
   POINT_R, TICK_LEN, CORNER_R, KDE_MAX_PX,
   CORNER_BOT_STRIP_Y, CORNER_LEFT_STRIP_X,
 } from './plot-model.js';
+import { drawAxisSpine, drawAxis, drawAxisLabels } from './axes.js';
+import { createLegendRenderer } from './legend.js';
 
 export { buildColorOf } from './plot-model.js';
 
@@ -127,13 +129,16 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   // voronoi interactionRect each update() so it captures mouseenter before Voronoi.
   const legendInteractionG = overlayCanvas.append('g').attr('class', 'legend-interaction');
 
+  const legendRenderer = createLegendRenderer(
+    legendG, legendLabelsG, legendHoverG, legendInteractionG, palette,
+  );
+
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
   let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
   let lastMousePos = null;    // [mx, my] in overlay coords; null when mouse is outside
   let _plotState = null;      // { allPoints, iH, colorOf, xScale, yScale } — for highlightPoint
   let _pointR = POINT_R;         // current render's scaled point radius
   let _pointRHover = POINT_R + POINT_R_HOVER_DELTA; // current render's hover radius
-  let _legendState = null;   // categorical or continuous legend state for hover
   let _onGroupHover = () => {};  // called with groupName | null from showGroupHover
   let _lastPhysW = 0, _lastPhysH = 0;  // detect canvas resize for WebGL snap
   let _animatingUntil = 0;  // suppress hover while points are in flight
@@ -194,10 +199,12 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       glRenderer.resize(physW, physH);
     }
 
+    // ── Shared transition — created first so all animated elements use the same one.
+    const T = d3.transition().duration(animate ? 200 : 0).ease(d3.easeExpOut);
+
     // ── Axes ──────────────────────────────────────────────────────────────
     // Spines + fringe tick marks in the axis groups; labels in separate groups
-    // so they sit above the data layer without being clipped.  Labels are also
-    // mirrored into the overlay for interactive suppression during hover.
+    // so they sit above the data layer without being clipped.
 
     xAxisG.attr('transform', `translate(0,${iH})`);
     yAxisG.attr('transform', `translate(0,0)`);
@@ -212,11 +219,9 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       drawAxis(yAxisG, yVals, yScale, iH, iW, 'y');
     }
 
-    // Front SVG labels (captured by export).
-    xAxisLabelsG.selectAll('*').remove();
-    drawAxisLabels(xAxisLabelsG, xVals, xScale, iH, iW, 'x', xLabel, customXTicks, MARGIN);
-    yAxisLabelsG.selectAll('*').remove();
-    drawAxisLabels(yAxisLabelsG, yVals, yScale, iH, iW, 'y', yLabel, customYTicks, MARGIN);
+    // Front SVG labels — D3 join inside drawAxisLabels; pass T so they animate.
+    drawAxisLabels(xAxisLabelsG, xVals, xScale, iH, iW, 'x', xLabel, customXTicks, MARGIN, palette, T);
+    drawAxisLabels(yAxisLabelsG, yVals, yScale, iH, iW, 'y', yLabel, customYTicks, MARGIN, palette, T);
 
     // ── Axis KDE strips ───────────────────────────────────────────────────
     // Shallow Gaussian KDE shown on the inside of each axis spine, giving a
@@ -246,16 +251,12 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       if (isNew || !animate) {
         el.attr('d', areaGen);
       } else {
-        el.transition(d3.transition().duration(200).ease(d3.easeExpOut)).attr('d', areaGen);
+        el.transition(T).attr('d', areaGen);
       }
     }
 
     drawKdeStrip(xKdeEl, xKdeData, xScale, 'x');
     drawKdeStrip(yKdeEl, yKdeData, yScale, 'y');
-
-    // ── Transition ────────────────────────────────────────────────────────
-
-    const T = d3.transition().duration(animate ? 200 : 0).ease(d3.easeExpOut);
 
     // ── Regression line ───────────────────────────────────────────────────
 
@@ -286,14 +287,20 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
         .x(d => xScale(d.x))
         .y0(d => yScale(d.lo))
         .y1(d => yScale(d.hi));
-      ciBandEl.style('display', null).datum(bandData).attr('d', areaGen);
+      const isNew = !ciBandEl.attr('d');
+      ciBandEl.style('display', null).datum(bandData);
+      if (isNew || !animate) {
+        ciBandEl.attr('d', areaGen);
+      } else {
+        ciBandEl.transition(T).attr('d', areaGen);
+      }
     } else {
       ciBandEl.style('display', 'none');
     }
 
     // ── Group color scale ─────────────────────────────────────────────────
 
-    drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, iH });
+    legendRenderer.drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, onGroupHover: showGroupHover });
 
     // ── Points ────────────────────────────────────────────────────────────
 
@@ -340,19 +347,20 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       }
 
       // Build fringe tick line data: CSS pixel coords in plot-container space.
-      const fringeColor = cssToGL(palette.muted, 0.3);
+      // Every point gets two entries (x tick + y tick) regardless of censored status,
+      // so the array length stays constant at 2*n across censoring changes — a
+      // necessary condition for the WebGL renderer to interpolate rather than snap.
+      // Censored and corner points get alpha=0 (invisible but still present).
       const glLines = [];
-      for (const v of xVals) {
-        if (v < xScale.domain()[0] || v > xScale.domain()[1]) continue;
-        const sx = MARGIN.left + xScale(v);
-        glLines.push({ x1: sx, y1: MARGIN.top + iH,
-                       x2: sx, y2: MARGIN.top + iH + TICK_LEN, color: fringeColor });
-      }
-      for (const v of yVals) {
-        if (v < yScale.domain()[0] || v > yScale.domain()[1]) continue;
-        const sy = MARGIN.top + yScale(v);
-        glLines.push({ x1: MARGIN.left,            y1: sy,
-                       x2: MARGIN.left - TICK_LEN, y2: sy, color: fringeColor });
+      for (const p of allPoints) {
+        const alpha = (p.censored || p.corner) ? 0 : 0.3;
+        const color = cssToGL(palette.muted, alpha);
+        glLines.push(
+          { x1: MARGIN.left + p.sx, y1: MARGIN.top + iH,
+            x2: MARGIN.left + p.sx, y2: MARGIN.top + iH + TICK_LEN, color },
+          { x1: MARGIN.left,            y1: MARGIN.top + p.sy,
+            x2: MARGIN.left - TICK_LEN, y2: MARGIN.top + p.sy, color },
+        );
       }
 
       glRenderer.transitionTo(glPoints, glLines, dpr, animate && !_glResized);
@@ -586,7 +594,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     if (outline) circle.attr('stroke', palette.text).attr('stroke-width', 1.5);
 
     drawHoverSuperticks(d.sx, d.displayX, d.sy, d.displayY, iH);
-    if (_legendState && d.group != null) updateLegendHover(d.group);
+    if (legendRenderer.getLegendState() && d.group != null) legendRenderer.updateLegendHover(d.group);
   }
 
   function showCensorHover(d, xScale, yScale, iH, iW) {
@@ -701,354 +709,10 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       }
     }
 
-    // Clone the legend above the dim.  Dim all non-hovered items in the clone
-    // so the hovered group is the only one that stays fully opaque.
-    // Legend DOM structure: [bg rect, label, circle₀, text₀, circle₁, text₁, …]
-    const legendNode = legendG.node();
-    if (legendNode && _legendState?.type === 'categorical') {
-      const clone = legendNode.cloneNode(true);
-      clone.style.pointerEvents = 'none';
-      const si = _legendState.items.findIndex(it => String(it.g) === groupStr);
-      if (si >= 0) {
-        const kids = clone.children;
-        _legendState.items.forEach((_, i) => {
-          if (i === si) return;
-          const circle = kids[2 + i * 2];
-          const text   = kids[2 + i * 2 + 1];
-          if (circle) circle.style.opacity = '0.2';
-          if (text)   text.style.opacity   = '0.2';
-        });
-      }
-      groupHoverG.node().appendChild(clone);
-    }
+    // Clone the legend above the dim with non-hovered items dimmed.
+    legendRenderer.appendGroupHoverClone(groupHoverG, groupStr);
 
     _onGroupHover(groupName);
-  }
-
-  // ── Legend rendering ──────────────────────────────────────────────────
-
-  function drawLegend({ active, groupColorType, groupLabel, colorOf, modelResult, iW, iH }) {
-    legendG.selectAll('*').remove();
-    legendLabelsG.selectAll('*').remove();
-    legendHoverG.selectAll('*').remove();
-    legendInteractionG.selectAll('*').remove();
-    _legendState = null;
-    if (!groupLabel) return;
-    const groupValues = active.map(p => p.group).filter(g => g != null);
-    if (!groupValues.length) return;
-    // Place legend in the corner the regression line points away from, so they
-    // don't overlap: positive slope → upper-left clear, negative → upper-right.
-    const isLeft = (modelResult?.slope ?? 0) >= 0;
-    if (groupColorType === 'continuous') {
-      drawContinuousLegend({ groupValues, groupLabel, colorOf, isLeft, iW });
-    } else {
-      drawCategoricalLegend({ groupValues, groupLabel, colorOf, isLeft, iW });
-    }
-  }
-
-  function drawCategoricalLegend({ groupValues, groupLabel, colorOf, isLeft, iW }) {
-    const PAD = 8, ITEM_H = 18, CR = 5, FS = 10, ITEM_TEXT_X = CR * 2 + 6, OUTER_PAD = 12;
-    const groups = [...new Set(groupValues.map(String))].sort().slice(0, 10);
-
-    legendG.append('text')
-      .style('font-family', palette.font).style('font-size', `${FS}px`)
-      .style('font-weight', '700').style('fill', palette.text)
-      .attr('x', PAD).attr('y', PAD + FS)
-      .text(groupLabel);
-
-    groups.forEach((g, i) => {
-      const localCy = PAD + FS + 10 + i * ITEM_H + CR;
-      const localCx = PAD + CR;
-      legendG.append('circle')
-        .attr('cx', localCx).attr('cy', localCy)
-        .attr('r', CR)
-        .style('fill', colorOf({ group: g }))
-        .style('stroke', 'none');
-      legendG.append('text')
-        .style('font-family', palette.font).style('font-size', `${FS}px`)
-        .style('fill', palette.text)
-        .attr('x', PAD + ITEM_TEXT_X).attr('y', localCy)
-        .attr('dominant-baseline', 'middle')
-        .text(g);
-    });
-
-    const bb = legendG.node().getBBox();
-    legendG.insert('rect', ':first-child')
-      .attr('x', bb.x - PAD).attr('y', bb.y - PAD)
-      .attr('width', bb.width + 2 * PAD).attr('height', bb.height + 2 * PAD)
-      .attr('rx', 4)
-      .style('fill', palette.bg).style('fill-opacity', '0.88')
-      .style('stroke', palette.muted).style('stroke-width', '0.5');
-
-    const lx = isLeft ? OUTER_PAD : iW - (bb.width + 2 * PAD) - OUTER_PAD;
-    const ly = OUTER_PAD;
-    const tx = lx - (bb.x - PAD);
-    const ty = ly - (bb.y - PAD);
-    legendG.attr('transform', `translate(${tx},${ty})`);
-
-    // Hit rects in the overlay so they can be raised above interactionRect.
-    // Coordinates are in overlayCanvas space (same transform as legendG).
-    legendInteractionG.selectAll('*').remove();
-    groups.forEach((g, i) => {
-      legendInteractionG.append('rect')
-        .attr('x', tx + bb.x - PAD)
-        .attr('y', ty + PAD + FS + 10 + i * ITEM_H)
-        .attr('width', bb.width + 2 * PAD)
-        .attr('height', ITEM_H)
-        .style('fill', 'none')
-        .style('pointer-events', 'all')
-        .on('mouseenter', () => showGroupHover(g))
-        .on('mouseleave', () => showGroupHover(null));
-    });
-
-    _legendState = {
-      type: 'categorical',
-      items: groups.map((g, i) => ({
-        g,
-        canvasCx: tx + PAD + CR,
-        canvasCy: ty + PAD + FS + 10 + i * ITEM_H + CR,
-      })),
-      CR,
-    };
-  }
-
-  function drawContinuousLegend({ groupValues, groupLabel, colorOf, isLeft, iW }) {
-    const PAD = 8, FS = 10, LINE_LEN = 12, BAR_H = 100, TICK_LEN = 6, TICK_GAP = 4, OUTER_PAD = 12;
-    const vals = groupValues.map(Number).filter(isFinite);
-    if (!vals.length) return;
-    const sorted = [...vals].sort(d3.ascending);
-    const [lo, hi] = d3.extent(sorted);
-    const thermoScale = d3.scaleLinear()
-      .domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi])
-      .range([BAR_H - 1, 1]);  // 1px inset so extreme ticks stay inside bar bounds
-    const Y0 = PAD + FS + 10;  // top of the spectrum area
-
-    legendG.append('text')
-      .style('font-family', palette.font).style('font-size', `${FS}px`)
-      .style('font-weight', '700').style('fill', palette.text)
-      .attr('x', PAD).attr('y', PAD + FS)
-      .text(groupLabel);
-
-    // Thin spine
-    legendG.append('line')
-      .attr('x1', PAD).attr('y1', Y0)
-      .attr('x2', PAD).attr('y2', Y0 + BAR_H)
-      .style('stroke', palette.muted).style('stroke-width', '1');
-
-    // One colored line per data value — semi-transparent so density shows.
-    for (const v of vals) {
-      const y = Y0 + thermoScale(v);
-      legendG.append('line')
-        .attr('x1', PAD).attr('y1', y)
-        .attr('x2', PAD + LINE_LEN).attr('y2', y)
-        .style('stroke', colorOf({ group: v }))
-        .style('stroke-width', '1')
-        .style('opacity', '0.5');
-    }
-
-    // Quartile labels
-    for (const v of fiveNum(sorted)) {
-      const y = Y0 + thermoScale(v);
-      legendG.append('text')
-        .classed('tick-label--legend', true)
-        .style('font-family', palette.font).style('font-size', `${FS}px`)
-        .style('fill', palette.text)
-        .attr('x', PAD + LINE_LEN + TICK_GAP).attr('y', y)
-        .attr('dominant-baseline', 'middle')
-        .text(fmtNum(v));
-    }
-
-    const bb = legendG.node().getBBox();
-    legendG.insert('rect', ':first-child')
-      .attr('x', bb.x - PAD).attr('y', bb.y - PAD)
-      .attr('width', bb.width + 2 * PAD).attr('height', bb.height + 2 * PAD)
-      .attr('rx', 4)
-      .style('fill', palette.bg).style('fill-opacity', '0.88')
-      .style('stroke', palette.muted).style('stroke-width', '0.5');
-
-    const lx = isLeft ? OUTER_PAD : iW - (bb.width + 2 * PAD) - OUTER_PAD;
-    const ly = OUTER_PAD;
-    const tx = lx - (bb.x - PAD);
-    const ty = ly - (bb.y - PAD);
-    legendG.attr('transform', `translate(${tx},${ty})`);
-
-    // Mirror quartile labels into the overlay — suppression operates here only.
-    legendLabelsG.selectAll('*').remove();
-    legendLabelsG.attr('transform', `translate(${tx},${ty})`);
-    // Opaque rect hides the main SVG labels underneath so suppression leaves clean space.
-    legendLabelsG.append('rect')
-      .attr('x', PAD + LINE_LEN + TICK_GAP - 2)
-      .attr('y', Y0 - 7)
-      .attr('width', (bb.x + bb.width) - (PAD + LINE_LEN + TICK_GAP) + 4)
-      .attr('height', BAR_H + 14)
-      .style('fill', palette.bg);
-    for (const v of fiveNum(sorted)) {
-      const y = Y0 + thermoScale(v);
-      legendLabelsG.append('text')
-        .classed('tick-label--legend', true)
-        .style('font-family', palette.font).style('font-size', `${FS}px`)
-        .style('fill', palette.text)
-        .attr('x', PAD + LINE_LEN + TICK_GAP).attr('y', y)
-        .attr('dominant-baseline', 'middle')
-        .text(fmtNum(v));
-    }
-
-    _legendState = {
-      type: 'continuous',
-      thermoScale,
-      Y0,
-      spineLocalX: PAD,
-      LINE_LEN,
-      TICK_GAP,
-      colorOf,
-      tx,
-      ty,
-    };
-  }
-
-  function updateLegendHover(groupVal) {
-    legendHoverG.selectAll('*').remove();
-    if (!_legendState) return;
-
-    if (_legendState.type === 'categorical') {
-      const key = String(groupVal);
-      const item = _legendState.items.find(it => it.g === key);
-      if (!item) return;
-      legendHoverG.append('circle')
-        .attr('cx', item.canvasCx).attr('cy', item.canvasCy)
-        .attr('r', _legendState.CR + 2)
-        .style('fill', 'none')
-        .style('stroke', palette.text)
-        .style('stroke-width', '1.5px');
-    } else {
-      const { thermoScale, Y0, spineLocalX, LINE_LEN, TICK_GAP, colorOf, tx, ty } = _legendState;
-      const localY = Y0 + thermoScale(+groupVal);
-      const canvasY = ty + localY;
-      const canvasX0 = tx + spineLocalX;
-      legendHoverG.append('line')
-        .attr('x1', canvasX0).attr('y1', canvasY)
-        .attr('x2', canvasX0 + LINE_LEN).attr('y2', canvasY)
-        .style('stroke', colorOf({ group: +groupVal }))
-        .style('stroke-width', '2px')
-        .style('opacity', '1');
-      legendHoverG.append('text')
-        .style('fill', palette.text).style('font-size', '10px')
-        .style('font-family', palette.font).style('font-weight', '600')
-        .attr('x', canvasX0 + LINE_LEN + TICK_GAP).attr('y', canvasY)
-        .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'middle')
-        .text(fmtNum(+groupVal));
-
-      // Suppress quartile labels that would overlap the hover label.
-      legendLabelsG.selectAll('.tick-label--legend').each(function() {
-        const el = d3.select(this);
-        if (Math.abs(+el.attr('y') - localY) < 8) el.style('display', 'none');
-      });
-    }
-  }
-
-  // ── Axis drawing helpers ──────────────────────────────────────────────
-
-  // Draw only the axis spine (WebGL mode — fringe ticks go to the GL line buffer).
-  function drawAxisSpine(g, len, orient) {
-    g.selectAll('*').remove();
-    const isX = orient === 'x';
-    g.append('line').classed('axis-line', true)
-      .style('stroke', '#555').style('stroke-width', '1')
-      .attr('x1', 0).attr('y1', 0)
-      .attr('x2', isX ? len : 0)
-      .attr('y2', isX ? 0 : len);
-  }
-
-  // Draw axis spine + per-point tick mark lines only (no text).
-  // Text is drawn separately by drawAxisLabels() into the overlay SVG.
-  function drawAxis(g, vals, scale, iH, iW, orient) {
-    g.selectAll('*').remove();
-
-    const isX = orient === 'x';
-
-    // Axis spine
-    g.append('line')
-      .classed('axis-line', true)
-      .style('stroke', '#555').style('stroke-width', '1')
-      .attr('x1', 0).attr('y1', 0)
-      .attr('x2', isX ? iW : 0)
-      .attr('y2', isX ? 0 : iH);
-
-    // Per-point tick marks
-    const finiteVals = vals.filter(Number.isFinite);
-    const inRange = finiteVals.filter(v => v >= scale.domain()[0] && v <= scale.domain()[1]);
-    for (const v of inRange) {
-      const pos = scale(v);
-      g.append('line')
-        .classed('tick-mark', true)
-        .style('stroke', '#333').style('stroke-width', '0.75').style('opacity', '0.3')
-        .attr('x1', isX ? pos : 0)
-        .attr('y1', isX ? 0 : pos)
-        .attr('x2', isX ? pos : -TICK_LEN)
-        .attr('y2', isX ? TICK_LEN : pos);
-    }
-  }
-
-  // Draw axis tick label text and axis title into the overlay group g.
-  // Uses absolute coordinates matching overlayCanvas (same origin as canvas).
-  // Labels get tick-label--x / tick-label--y classes for targeted suppression.
-  function drawAxisLabels(g, vals, scale, iH, iW, orient, label, customTicks, margin) {
-    const isX        = orient === 'x';
-    const len        = isX ? iW : iH;
-    const labelClass = isX ? 'tick-label--x' : 'tick-label--y';
-
-    const finiteVals = vals.filter(Number.isFinite);
-    const labels = customTicks ?? fiveNum(finiteVals);
-
-    for (const v of labels) {
-      const pos = scale(v);
-      if (pos < -2 || pos > len + 2) continue; // skip if outside visible range
-      const fmt = fmtNum(v);
-      if (isX) {
-        g.append('text')
-          .classed('tick-label', true)
-          .classed(labelClass, true)
-          .style('fill', palette.muted).style('font-size', '13px').style('font-family', palette.font)
-          .attr('x', pos)
-          .attr('y', iH + TICK_LEN + 3)
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'hanging')
-          .text(fmt);
-      } else {
-        g.append('text')
-          .classed('tick-label', true)
-          .classed(labelClass, true)
-          .style('fill', palette.muted).style('font-size', '13px').style('font-family', palette.font)
-          .attr('x', -TICK_LEN - 3)
-          .attr('y', pos)
-          .attr('text-anchor', 'end')
-          .attr('dominant-baseline', 'middle')
-          .text(fmt);
-      }
-    }
-
-    // Axis title
-    if (isX) {
-      g.append('text')
-        .classed('axis-label', true)
-        .style('fill', palette.text).style('font-size', '14px')
-        .style('font-family', palette.font).style('font-weight', '500')
-        .attr('x', iW / 2)
-        .attr('y', iH + TICK_LEN + 42)
-        .attr('text-anchor', 'middle')
-        .text(label);
-    } else {
-      g.append('text')
-        .classed('axis-label', true)
-        .style('fill', palette.text).style('font-size', '14px')
-        .style('font-family', palette.font).style('font-weight', '500')
-        .attr('transform', `rotate(-90)`)
-        .attr('x', -iH / 2)
-        .attr('y', -(margin.left - 15))
-        .attr('text-anchor', 'middle')
-        .text(label);
-    }
   }
 
   function clear() {
@@ -1058,7 +722,6 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     cornersG.selectAll('*').remove();
     cornersOverlayG.selectAll('*').remove();
     legendG.selectAll('*').remove();
-    _legendState = null;
     clearHover();
     groupHoverG.selectAll('*').remove();
     legendInteractionG.selectAll('*').remove();
@@ -1067,8 +730,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     overlayCanvas.selectAll('rect.interaction-rect').remove();
     xAxisG.selectAll('*').remove();
     yAxisG.selectAll('*').remove();
-    regLineEl.style('display', 'none');
-    ciBandEl.style('display', 'none');
+    regLineEl.interrupt().style('display', 'none').attr('x1', null);
+    ciBandEl.interrupt().style('display', 'none').attr('d', null);
     xKdeEl.style('display', 'none');
     yKdeEl.style('display', 'none');
     if (glRenderer) glRenderer.clear();

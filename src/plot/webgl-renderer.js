@@ -18,8 +18,8 @@
 
 const ANIM_DUR = 200; // ms for animated transitions
 
-function easeCubicInOut(t) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function easeExpOut(t) {
+  return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }
 
 function compileShader(gl, type, src) {
@@ -305,7 +305,7 @@ export function createWebGLRenderer(canvas) {
 
   function _tick(now) {
     const t  = Math.min(1, (now - _animStart) / ANIM_DUR);
-    const te = easeCubicInOut(t);
+    const te = easeExpOut(t);
 
     // Interpolate if counts match; snap if they differ (e.g. new dataset loaded).
     const pts = _fromPts.length === _targetPts.length
