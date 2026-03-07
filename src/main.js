@@ -249,8 +249,8 @@ function render() {
   _cachedUpdateArgs = {
     points,
     modelResult,
-    xLabel: xColName,
-    yLabel: isResidualized ? `Residualized ${yColName}` : yColName,
+    xLabel: state.m === 'spearman' ? `rank(${xColName})` : xColName,
+    yLabel: state.m === 'spearman' ? `rank(${yColName})` : isResidualized ? `Residualized ${yColName}` : yColName,
     modelKey: state.m,
     groupColorType,
     groupLabel: hColName,
@@ -280,8 +280,8 @@ function render() {
   updateStats({
     modelResult,
     modelKey:   state.m,
-    xLabel:     xColName,
-    yLabel:     yColName,
+    xLabel:     state.m === 'spearman' ? `rank(${xColName})` : xColName,
+    yLabel:     state.m === 'spearman' ? `rank(${yColName})` : yColName,
     n:          activeIndices.length,
     nCensored:  censored.size,
     nuisanceNames,
