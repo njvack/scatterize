@@ -125,6 +125,8 @@
 </main>
 
 <footer class="site-footer">
+  <button id="about-btn" class="footer-link">Help</button>
+  <span class="footer-sep">·</span>
   <button id="help-btn" class="footer-link">Keyboard shortcuts</button>
   <span class="footer-sep">·</span>
   <a href="https://github.com/njvack/scatterize/issues" class="footer-link">Feedback</a>
@@ -133,6 +135,50 @@
   <span class="footer-sep">·</span>
   <a href="https://github.com/njvack/scatterize" class="footer-link">Github</a>
 </footer>
+
+<dialog id="about-modal" class="modal">
+  <p class="help-modal-title">About Scatterize</p>
+
+  <section>
+    <p>You should look at your data. Examining your data outside of the context of summary statistics is an essential part of the scientific process. Scatterize is designed to help you understand the distribution of your data and let you see how different choices about model calculation, outlying points, and covariates may affect your results.</p>
+  </section>
+
+  <section>
+    <h4>Statistical models</h4>
+    <dl>
+      <dt>OLS</dt>
+      <dd>Standard linear regression. Fits a line minimizing the sum of squared errors. Sensitive to outliers.</dd>
+      <dt>Robust</dt>
+      <dd>IRLS regression with Tukey biweight weighting. Automatically downweights outliers.</dd>
+      <dt>Spearman</dt>
+      <dd>Rank-based correlation. Measures monotonic association without assuming linearity or normality.</dd>
+      <dt>Theil-Sen</dt>
+      <dd>Median-based slope estimator. Highly robust to outliers; uses the median of all pairwise slopes.</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h4>Smoothers</h4>
+    <dl>
+      <dt>Running median</dt>
+      <dd>Local medians in a sliding window. Robust to outliers; reveals trends without assuming a shape.</dd>
+      <dt>LOWESS</dt>
+      <dd>Locally weighted regression. A smooth curve fitted independently at each point.</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h4>Censoring</h4>
+    <p>Click any point to censor it — exclude it from the regression while keeping it visible as a grey hollow marker. Click again to restore it. Use censoring to explore how individual observations affect your results.</p>
+  </section>
+
+  <section>
+    <h4>Privacy &amp; sharing</h4>
+    <p>Everything runs in your browser — your data is never sent to a server. If you load a public CSV or Google Sheet URL, all settings (variables, model, censored points) are encoded in the URL. Share that URL and anyone with access to the data will see the same view.</p>
+  </section>
+
+  <p class="help-modal-dismiss">Press <kbd>Esc</kbd> to close</p>
+</dialog>
 
 <dialog id="help-modal" class="modal">
   <p class="help-modal-title">Keyboard shortcuts</p>

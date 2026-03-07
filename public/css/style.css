@@ -497,7 +497,21 @@ html, body {
   }
 }
 
-/* ─── Help Modal ────────────────────────────────────────────────────────── */
+/* ─── About / Help Modals ───────────────────────────────────────────────── */
+
+#about-modal {
+  padding: 20px 24px;
+  max-width: 660px;
+  max-height: 80dvh;
+  overflow-y: auto;
+
+  & section { margin-bottom: 14px; }
+  & h4 { margin: 0 0 4px; font-size: 13px; }
+  & p  { margin: 0; font-size: 13px; line-height: 1.5; }
+  & dl { margin: 0; font-size: 13px; }
+  & dt { font-weight: 600; margin-top: 4px; }
+  & dd { margin: 0 0 0 14px; line-height: 1.4; }
+}
 
 #help-modal {
   padding: 20px 24px;

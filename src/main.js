@@ -394,6 +394,13 @@ function setLoading(on, url) {
 // Keyboard shortcuts
 // ---------------------------------------------------------------------------
 
+function toggleAbout() {
+  const modal = document.getElementById('about-modal');
+  if (!modal) return;
+  if (modal.open) modal.close();
+  else modal.showModal();
+}
+
 function toggleHelp() {
   const modal = document.getElementById('help-modal');
   if (!modal) return;
@@ -894,6 +901,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Error dismiss
   document.getElementById('error-close')?.addEventListener('click', () => showError(null));
+
+  // About modal
+  document.getElementById('about-btn')?.addEventListener('click', toggleAbout);
+  document.getElementById('about-modal')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.close();
+  });
 
   // Help modal
   document.getElementById('help-btn')?.addEventListener('click', toggleHelp);
