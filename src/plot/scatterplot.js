@@ -22,7 +22,6 @@ export { buildColorOf } from './plot-model.js';
 
 const SUPERTICK_LEN       = 14;   // px: hover supertick
 const POINT_R_HOVER_DELTA = 2;    // px: hover radius = point radius + this
-const JITTER              = 0.15; // px: jitter to prevent degenerate Delaunay triangles
 const MAX_HOVER_DIST      = 40;   // px: beyond this from nearest point, no hover
 
 // Read CSS custom properties once at init — used to apply all visual styles
@@ -134,7 +133,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   );
 
   let prevState = new Map(); // index → { sx, sy, cornerX, cornerY, isCorner }
-  let currentHoverIdx = null; // index into voronoiPoints for current hover (dedup)
+  let currentHoverIdx = null; // data point index (.index) of current hover, or null
   let lastMousePos = null;    // [mx, my] in overlay coords; null when mouse is outside
   let _plotState = null;      // { allPoints, iH, colorOf, xScale, yScale } — for highlightPoint
   let _pointR = POINT_R;         // current render's scaled point radius
@@ -457,10 +456,38 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     // A tiny random jitter breaks collinearity without affecting hover feel.
     overlayCanvas.selectAll('rect.interaction-rect').remove();
 
-    if (voronoiPoints.length >= 2) {
-      const vx = d => (d.corner ? d.corner.x : d.sx) + (Math.random() * 2 - 1) * JITTER;
-      const vy = d => (d.corner ? d.corner.y : d.sy) + (Math.random() * 2 - 1) * JITTER;
-      const delaunay = d3.Delaunay.from(voronoiPoints, vx, vy);
+    if (voronoiPoints.length >= 1) {
+      // Spatial grid for hit detection — robust to collinear/coincident points
+      // that cause degenerate Delaunay triangulations (e.g. many x=0 values).
+      // Grid cells are MAX_HOVER_DIST/2 wide; querying a 5×5 neighbourhood
+      // guarantees we find any point within MAX_HOVER_DIST of the cursor.
+      const GRID_CELL = MAX_HOVER_DIST / 2;
+      const gridCells = new Map();
+      for (const p of voronoiPoints) {
+        const px = p.corner ? p.corner.x : p.sx;
+        const py = p.corner ? p.corner.y : p.sy;
+        const key = `${Math.floor(px / GRID_CELL)},${Math.floor(py / GRID_CELL)}`;
+        if (!gridCells.has(key)) gridCells.set(key, []);
+        gridCells.get(key).push({ p, px, py });
+      }
+
+      function findNearest(mx, my) {
+        const cx0 = Math.floor(mx / GRID_CELL);
+        const cy0 = Math.floor(my / GRID_CELL);
+        let bestDist = MAX_HOVER_DIST;
+        let bestP = null;
+        for (let dx = -2; dx <= 2; dx++) {
+          for (let dy = -2; dy <= 2; dy++) {
+            const cell = gridCells.get(`${cx0 + dx},${cy0 + dy}`);
+            if (!cell) continue;
+            for (const { p, px, py } of cell) {
+              const dist = Math.hypot(mx - px, my - py);
+              if (dist < bestDist) { bestDist = dist; bestP = p; }
+            }
+          }
+        }
+        return bestP; // null if nothing within MAX_HOVER_DIST
+      }
 
       // Extend beyond plot area so corner markers are reachable.
       // Left/bottom have larger extensions to cover the new corner positions.
@@ -478,12 +505,9 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
       function handleHover(mx, my) {
         if (performance.now() < _animatingUntil) return;
-        const i = delaunay.find(mx, my);
-        const d = voronoiPoints[i];
-        const px = d.corner ? d.corner.x : d.sx;
-        const py = d.corner ? d.corner.y : d.sy;
+        const d = findNearest(mx, my);
 
-        if (Math.hypot(mx - px, my - py) > MAX_HOVER_DIST) {
+        if (!d) {
           if (currentHoverIdx !== null) {
             currentHoverIdx = null;
             clearHover();
@@ -493,8 +517,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
           return;
         }
 
-        if (i === currentHoverIdx) return;
-        currentHoverIdx = i;
+        if (d.index === currentHoverIdx) return;
+        currentHoverIdx = d.index;
         clearHover();
         interactionRect.style('cursor', 'pointer');
         if (d.censored) {
@@ -523,7 +547,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
         })
         .on('click', () => {
           if (currentHoverIdx === null) return;
-          onPointClick(voronoiPoints[currentHoverIdx].index);
+          onPointClick(currentHoverIdx);
         });
 
       // Re-establish hover at the last known position after a data/model change
