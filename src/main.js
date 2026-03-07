@@ -28,6 +28,7 @@ const MODELS = { ols, robust, spearman, theilsen: theilSen };
 let scatter     = null;
 let diagnostics = null;
 let _cachedUpdateArgs = null;  // last args passed to scatter.update(); reused on resize
+let _cachedCSVData    = null;  // data snapshot for CSV export
 let hoveredIndex = null;         // currently hovered original row index
 let currentPointColors = null;   // parallel to residuals, one color per active point
 let currentPoints = null;        // full points array from last render (for group hover)
@@ -94,6 +95,7 @@ function render() {
     scatter?.clear();
     diagnostics?.clear();
     updateStats({ modelResult: null, modelKey: state.m });
+    _cachedCSVData = null;
     return;
   }
 
@@ -244,6 +246,23 @@ function render() {
     else if (state.sm === 'lowess') smootherData = lowess(activeXY, sw / 100);
   }
   syncSmootherControls(state, activeIndices.length);
+
+  // Cache data for CSV export
+  _cachedCSVData = {
+    activeIndices,
+    censored,
+    xColName, yColName, hColName,
+    xLabel: state.m === 'spearman' ? `rank(${xColName})` : xColName,
+    yLabel: state.m === 'spearman' ? `rank(${yColName})` : isResidualized ? `Residualized ${yColName}` : yColName,
+    isResidualized,
+    isSpearman: state.m === 'spearman',
+    nuisanceNames,
+    residuals: modelResult?.residuals ?? null,
+    displayX,
+    displayY,
+    yActiveOrig: isResidualized ? yActiveOrig : null,
+    smootherData,
+  };
 
   // Update scatter plot
   _cachedUpdateArgs = {
@@ -477,6 +496,114 @@ async function fetchFontBase64() {
   return _fontBase64;
 }
 
+// Linear interpolation into a sorted [{x, y}] array.
+function interpolateAt(pts, x) {
+  if (!pts || !pts.length) return null;
+  if (x <= pts[0].x) return pts[0].y;
+  if (x >= pts[pts.length - 1].x) return pts[pts.length - 1].y;
+  let lo = 0, hi = pts.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (pts[mid].x <= x) lo = mid; else hi = mid;
+  }
+  const t = (x - pts[lo].x) / (pts[hi].x - pts[lo].x);
+  return pts[lo].y + t * (pts[hi].y - pts[lo].y);
+}
+
+function buildCSVString() {
+  if (!_cachedCSVData || !data) return null;
+  const {
+    activeIndices, censored, xColName, yColName, hColName,
+    xLabel, yLabel, isResidualized, isSpearman,
+    nuisanceNames, residuals, displayX, displayY, yActiveOrig, smootherData,
+  } = _cachedCSVData;
+
+  const activeSet   = new Set(activeIndices);
+  const dispXMap    = new Map(activeIndices.map((oi, ai) => [oi, displayX[ai]]));
+  const dispYMap    = new Map(activeIndices.map((oi, ai) => [oi, displayY[ai]]));
+  const origYMap    = yActiveOrig
+    ? new Map(activeIndices.map((oi, ai) => [oi, yActiveOrig[ai]]))
+    : null;
+  const residualMap = residuals
+    ? new Map(activeIndices.map((oi, ai) => [oi, residuals[ai]]))
+    : null;
+
+  // Interpolate smoother at each active point's display X.
+  let smoothMap = null;
+  if (smootherData) {
+    const bandLowPts  = smootherData.band?.map(p => ({ x: p.x, y: p.y0 }));
+    const bandHighPts = smootherData.band?.map(p => ({ x: p.x, y: p.y1 }));
+    smoothMap = new Map();
+    for (let ai = 0; ai < activeIndices.length; ai++) {
+      const x = displayX[ai];
+      smoothMap.set(activeIndices[ai], {
+        low:  interpolateAt(bandLowPts, x),
+        line: interpolateAt(smootherData.line, x),
+        high: interpolateAt(bandHighPts, x),
+      });
+    }
+  }
+
+  // Build column headers.
+  const headers = [xLabel, yLabel];
+  if (isResidualized)    headers.push(yColName);
+  if (isSpearman)        headers.push(xColName, yColName);
+  nuisanceNames.forEach(n => headers.push(n));
+  if (residualMap)       headers.push('residual');
+  if (hColName)          headers.push(hColName);
+  if (smoothMap)         headers.push('smooth_low', 'smooth_line', 'smooth_high');
+
+  const escapeCell = v => {
+    if (v == null || v === '') return '';
+    const s = String(v);
+    return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const lines = [headers.map(escapeCell).join(',')];
+
+  for (let i = 0; i < data.length; i++) {
+    const row      = data[i];
+    const isActive = activeSet.has(i);
+
+    const xVal = isSpearman
+      ? (isActive ? dispXMap.get(i) : '')
+      : row[xColName];
+    const yVal = (isSpearman || isResidualized)
+      ? (isActive ? dispYMap.get(i) : '')
+      : row[yColName];
+
+    const vals = [xVal, yVal];
+
+    if (isResidualized)
+      vals.push(isActive ? (origYMap?.get(i) ?? '') : row[yColName]);
+    if (isSpearman)
+      vals.push(row[xColName], row[yColName]);
+
+    nuisanceNames.forEach(n => vals.push(row[n]));
+    if (residualMap) vals.push(isActive ? (residualMap.get(i) ?? '') : '');
+    if (hColName)    vals.push(row[hColName]);
+    if (smoothMap) {
+      const s = smoothMap.get(i);
+      vals.push(s?.low ?? '', s?.line ?? '', s?.high ?? '');
+    }
+
+    lines.push(vals.map(escapeCell).join(','));
+  }
+
+  return lines.join('\n');
+}
+
+function downloadCSV(filename) {
+  const csv = buildCSVString();
+  if (!csv) return;
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function downloadSVG(svgEl, filename) {
   const clone = svgEl.cloneNode(true);
   const blob = new Blob(
@@ -550,6 +677,7 @@ function setupShareModal() {
     const isLocal = state.src?.startsWith('local:');
 
     // Populate filename inputs
+    document.getElementById('csv-filename').value      = exportFilename('csv');
     document.getElementById('svg-filename').value      = exportFilename('svg');
     document.getElementById('svg-diag-filename').value = exportFilename('svg').replace('.svg', '-diagnostics.svg');
     document.getElementById('png-filename').value      = exportFilename('png');
@@ -575,6 +703,12 @@ function setupShareModal() {
     if (e.target === e.currentTarget) e.currentTarget.close();
   });
   modal.addEventListener('cancel', e => e.currentTarget.close());
+
+  // CSV download
+  document.getElementById('csv-download-btn')?.addEventListener('click', () => {
+    const raw = document.getElementById('csv-filename')?.value || exportFilename('csv');
+    downloadCSV(raw.endsWith('.csv') ? raw : `${raw}.csv`);
+  });
 
   // SVG scatter download
   document.getElementById('svg-download-btn')?.addEventListener('click', () => {
