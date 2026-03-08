@@ -79,6 +79,21 @@ export function incompleteBeta(a, b, x) {
 }
 
 // ---------------------------------------------------------------------------
+// Standard normal CDF via Abramowitz & Stegun 26.2.17 (max error 7.5e-8)
+// ---------------------------------------------------------------------------
+export function normalCDF(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const p = 1 - (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x) * poly;
+  return x >= 0 ? p : 1 - p;
+}
+
+// Two-tailed p-value from a z-statistic (asymptotic normal approximation).
+export function zPValue(z) {
+  return 2 * (1 - normalCDF(Math.abs(z)));
+}
+
+// ---------------------------------------------------------------------------
 // t-distribution: two-tailed p-value for t-statistic with df degrees of freedom
 // ---------------------------------------------------------------------------
 export function tPValue(t, df) {

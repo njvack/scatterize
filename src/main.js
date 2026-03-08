@@ -310,7 +310,7 @@ function render() {
   // Show/hide diag plots section.
   const diagEl = document.getElementById('diag-plots');
   const hasDiag = (state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length;
-  if (diagEl) diagEl.classList.toggle('hidden', !hasDiag);
+  if (diagEl) diagEl.hidden = !hasDiag;
 
   // Update diagnostic plots (OLS and Robust only)
   updateDiagnostics(modelResult, activeIndices);
@@ -353,7 +353,7 @@ function toggleCensor(index) {
 
 function showEmptyState(show) {
   const el = document.getElementById('empty-state');
-  if (el) el.classList.toggle('hidden', !show);
+  if (el) el.hidden = !show;
 }
 
 function showError(msg) {
@@ -370,6 +370,7 @@ function showError(msg) {
 
 function setLoading(on, url) {
   const btn = document.getElementById('load-btn');
+  const loadingEl = document.getElementById('loading-state');
   if (btn) {
     btn.disabled = on;
     btn.textContent = on ? 'Loading…' : 'Open link';
@@ -380,13 +381,13 @@ function setLoading(on, url) {
     loadingTimer = setTimeout(() => {
       const msgEl = document.getElementById('loading-message');
       if (msgEl) msgEl.textContent = `Loading data from ${url}`;
-      document.getElementById('loading-state')?.classList.remove('hidden');
+      if (loadingEl) loadingEl.hidden = false;
     }, LOAD_BLANK_DELAY);
   } else {
     clearTimeout(loadingTimer);
     loadingTimer = null;
     document.body.style.cursor = '';
-    document.getElementById('loading-state')?.classList.add('hidden');
+    if (loadingEl) loadingEl.hidden = true;
   }
 }
 

@@ -1,4 +1,4 @@
-import { solveLinear, diagInverse } from './common.js';
+import { solveLinear, diagInverse, zPValue } from './common.js';
 
 // M-estimation: IRLS with Tukey biweight weights.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
@@ -99,12 +99,18 @@ export function robust(x, y, nuisance = []) {
   const seSlope     = Math.sqrt(diagInv[1] * s2);
   const seIntercept = Math.sqrt(diagInv[0] * s2);
 
+  const tSlope     = slope     / seSlope;
+  const tIntercept = intercept / seIntercept;
+
   return {
     slope, intercept,
     seSlope, seIntercept,
     covIntSlope,
-    tSlope:     slope     / seSlope,
-    tIntercept: intercept / seIntercept,
+    tSlope, tIntercept,
+    // p-values via asymptotic normal approximation — t for M-estimators has
+    // no closed-form df, but converges to N(0,1) under H₀ as n → ∞.
+    pSlope:     zPValue(tSlope),
+    pIntercept: zPValue(tIntercept),
     scale,
     weights: w,
     residuals: r,

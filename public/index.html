@@ -8,28 +8,28 @@
 </head>
 <body>
 
-<header class="site-header">
-  <h1 class="site-title"><a href="./" class="site-title-link">Scatterize 3</a></h1>
-  <div class="data-source" id="data-source" hidden>
-    <span class="data-source-name" id="data-source-name"></span>
-    <button class="data-source-clear" id="clear-data-btn" aria-label="Clear data">×</button>
+<header>
+  <h1><a href="./">Scatterize 3</a></h1>
+  <div id="data-source" hidden>
+    <span id="data-source-name"></span>
+    <button id="clear-data-btn" aria-label="Clear data">×</button>
   </div>
 </header>
 
-<main id="app" class="app-grid">
+<main>
 
-  <aside class="panel panel-controls" id="panel-controls">
+  <section id="panel-controls" aria-label="Plot controls">
     <div class="control-group">
       <label for="x-select">X variable</label>
-      <select id="x-select" class="form-select"></select>
+      <select id="x-select"></select>
     </div>
     <div class="control-group">
       <label for="y-select">Y variable</label>
-      <select id="y-select" class="form-select"></select>
+      <select id="y-select"></select>
     </div>
     <div class="control-group">
       <label for="model-select">Model</label>
-      <select id="model-select" class="form-select">
+      <select id="model-select">
         <option value="ols">OLS</option>
         <option value="robust">Robust</option>
         <option value="spearman">Spearman</option>
@@ -38,51 +38,51 @@
     </div>
     <div class="control-group">
       <label for="smoother-select">Smoother</label>
-      <select id="smoother-select" class="form-select">
+      <select id="smoother-select">
         <option value="">None</option>
         <option value="median">Running median</option>
         <option value="lowess">LOWESS</option>
       </select>
       <div id="smoother-window-group" hidden>
-        <div class="smoother-window-header">
+        <div>
           <span id="smoother-window-label">Window</span><span id="smoother-window-pct">10%</span>
         </div>
         <input type="range" id="smoother-window" min="0" max="100" step="1">
       </div>
     </div>
-    <div class="control-group" id="nuisance-group">
+    <div class="control-group">
       <label>Nuisance covariates</label>
-      <div id="nuisance-list" class="checkbox-list"></div>
-      <p class="control-note" id="nuisance-note" hidden>
+      <div id="nuisance-list"></div>
+      <p id="nuisance-note" hidden>
         Not available for rank-based models.
       </p>
     </div>
     <div class="control-group">
       <label for="group-select">Group / color</label>
-      <select id="group-select" class="form-select">
+      <select id="group-select">
         <option value="">None</option>
       </select>
     </div>
-  </aside>
+  </section>
 
-  <div class="plot-container" id="plot-container">
+  <div id="plot-container">
     <svg id="scatter-back" class="scatter-layer"></svg>
     <canvas id="gl-canvas" class="scatter-layer" style="pointer-events:none"></canvas>
     <svg id="scatter-front" class="scatter-layer"></svg>
     <svg id="overlay-svg" class="scatter-layer overlay-svg"></svg>
-    <div class="loading-state hidden" id="loading-state">
+    <div id="loading-state" role="status" aria-live="polite" hidden>
       <p id="loading-message">Loading data…</p>
     </div>
-    <button id="share-btn" class="share-btn" aria-label="Download / Share">
+    <button id="share-btn" aria-label="Download / Share" aria-haspopup="dialog">
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
         <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
         <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
       </svg>
       Download
     </button>
-    <div class="empty-state" id="empty-state">
-      <div class="empty-state-inner">
-        <h3>Open a dataset</h3>
+    <div id="empty-state">
+      <div>
+        <h2>Open a dataset</h2>
         <div class="open-data-row">
           <button id="open-file-btn" class="btn btn-secondary">Browse files…</button>
           <span class="open-data-or">or</span>
@@ -90,7 +90,6 @@
             <input
               type="text"
               id="source-url"
-              class="url-input"
               placeholder="Paste a Google Sheets or CSV URL"
               autocomplete="off"
               spellcheck="false"
@@ -102,49 +101,46 @@
         <p class="open-data-examples">
           Examples:
           <a href="#src=https://njvack.github.io/scatterize/example_csv/anscombe.csv&x=0&y=4&m=ols">Anscombe's Quartet</a> ·
-          <a href="#src=https://njvack.github.io/scatterize/example_csv/mtcars.csv&x=3&y=0&m=ols">Motor Trends ’74 Cars</a> ·
+          <a href="#src=https://njvack.github.io/scatterize/example_csv/mtcars.csv&x=3&y=0&m=ols">Motor Trends '74 Cars</a> ·
           <a href="#src=https://njvack.github.io/scatterize/example_csv/ames_housing.csv&x=5&y=15&m=ols&h=17">Ames Housing</a>
         </p>
       </div>
     </div>
   </div>
 
-  <aside class="panel panel-stats" id="panel-stats">
-    <div id="stats-model" class="stats-section stats-section--model"></div>
-    <div id="stats-desc" class="stats-section stats-section--desc"></div>
-    <div id="diag-plots" class="diag-plots">
+  <section id="panel-stats" aria-label="Statistics">
+    <div id="stats-model"></div>
+    <div id="diag-plots" hidden>
       <h3>Diagnostics</h3>
-      <div class="diag-svg-container">
-        <svg id="diag-combined" class="diag-svg" style="height:150px"></svg>
+      <div>
+        <svg id="diag-combined" style="height:150px"></svg>
         <canvas id="diag-gl-canvas" class="overlay-svg" style="pointer-events:none"></canvas>
         <svg id="diag-overlay" class="overlay-svg"></svg>
       </div>
     </div>
-  </aside>
+  </section>
 
 </main>
 
-<footer class="site-footer">
-  <button id="about-btn" class="footer-link">Help</button>
-  <span class="footer-sep">·</span>
-  <button id="help-btn" class="footer-link">Keyboard shortcuts</button>
-  <span class="footer-sep">·</span>
-  <a href="https://github.com/njvack/scatterize/issues" class="footer-link">Feedback</a>
-  <span class="footer-sep">·</span>
-  <a href="https://www.theleagueofmoveabletype.com/league-spartan" class="footer-link">League Spartan</a>
-  <span class="footer-sep">·</span>
-  <a href="https://github.com/njvack/scatterize" class="footer-link">Github</a>
+<footer>
+  <ul>
+    <li><button id="about-btn" aria-haspopup="dialog">Help</button></li>
+    <li><button id="help-btn" aria-haspopup="dialog">Keyboard shortcuts</button></li>
+    <li><a href="https://github.com/njvack/scatterize/issues">Feedback</a></li>
+    <li><a href="https://www.theleagueofmoveabletype.com/league-spartan">League Spartan</a></li>
+    <li><a href="https://github.com/njvack/scatterize">Github</a></li>
+  </ul>
 </footer>
 
 <dialog id="about-modal" class="modal">
-  <p class="help-modal-title">About Scatterize</p>
+  <h2>About Scatterize</h2>
 
   <section>
     <p>You should look at your data. Examining your data outside of the context of summary statistics is an essential part of the scientific process. Scatterize is designed to help you understand the distribution of your data and let you see how different choices about model calculation, outlying points, and covariates may affect your results.</p>
   </section>
 
   <section>
-    <h4>Statistical models</h4>
+    <h3>Statistical models</h3>
     <dl>
       <dt>OLS</dt>
       <dd>Standard linear regression. Fits a line minimizing the sum of squared errors. Sensitive to outliers.</dd>
@@ -158,7 +154,7 @@
   </section>
 
   <section>
-    <h4>Smoothers</h4>
+    <h3>Smoothers</h3>
     <dl>
       <dt>Running median</dt>
       <dd>Local medians in a sliding window. Robust to outliers; reveals trends without assuming a shape.</dd>
@@ -168,12 +164,12 @@
   </section>
 
   <section>
-    <h4>Censoring</h4>
+    <h3>Censoring</h3>
     <p>Click any point to censor it — exclude it from the regression while keeping it visible as a grey hollow marker. Click again to restore it. Use censoring to explore how individual observations affect your results.</p>
   </section>
 
   <section>
-    <h4>Privacy &amp; sharing</h4>
+    <h3>Privacy &amp; sharing</h3>
     <p>Everything runs in your browser — your data is never sent to a server. If you load a public CSV or Google Sheet URL, all settings (variables, model, censored points) are encoded in the URL. Share that URL and anyone with access to the data will see the same view.</p>
   </section>
 
@@ -181,7 +177,7 @@
 </dialog>
 
 <dialog id="help-modal" class="modal">
-  <p class="help-modal-title">Keyboard shortcuts</p>
+  <h2>Keyboard shortcuts</h2>
   <table class="help-table">
     <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous Y variable</td></tr>
     <tr><td><kbd>u</kbd> / <kbd>i</kbd></td><td>Previous / next X variable</td></tr>
@@ -193,54 +189,54 @@
 </dialog>
 
 <dialog id="share-modal" class="modal">
-  <section class="share-section">
+  <section>
     <h3>Export CSV</h3>
     <div class="share-download-row">
       <input id="csv-filename" type="text" class="share-filename-input">
-      <button id="csv-download-btn" class="btn btn-secondary">Download</button>
+      <button id="csv-download-btn" class="btn btn-secondary" aria-label="Download CSV">Download</button>
     </div>
   </section>
-  <section class="share-section">
+  <section>
     <h3>Export SVG</h3>
     <div class="share-download-row">
       <input id="svg-filename" type="text" class="share-filename-input">
-      <button id="svg-download-btn" class="btn btn-secondary">Download</button>
+      <button id="svg-download-btn" class="btn btn-secondary" aria-label="Download SVG">Download</button>
     </div>
     <div class="share-download-row" id="svg-diag-row" hidden>
       <input id="svg-diag-filename" type="text" class="share-filename-input">
-      <button id="svg-diag-download-btn" class="btn btn-secondary">Download</button>
+      <button id="svg-diag-download-btn" class="btn btn-secondary" aria-label="Download SVG diagnostics">Download</button>
     </div>
-    <p class="share-url-note">SVG uses <a href="https://github.com/theleagueof/league-spartan/releases/latest" target="_blank" rel="noopener">League Spartan</a> — install the font to render text correctly.</p>
+    <p>SVG uses <a href="https://github.com/theleagueof/league-spartan/releases/latest" target="_blank" rel="noopener">League Spartan</a> — install the font to render text correctly.</p>
   </section>
-  <section class="share-section">
+  <section>
     <h3>Export PNG</h3>
     <div class="share-download-row">
       <input id="png-filename" type="text" class="share-filename-input">
-      <button id="png-download-btn" class="btn btn-secondary">Download</button>
+      <button id="png-download-btn" class="btn btn-secondary" aria-label="Download PNG">Download</button>
     </div>
     <div class="share-download-row" id="png-diag-row" hidden>
       <input id="png-diag-filename" type="text" class="share-filename-input">
-      <button id="png-diag-download-btn" class="btn btn-secondary">Download</button>
+      <button id="png-diag-download-btn" class="btn btn-secondary" aria-label="Download PNG diagnostics">Download</button>
     </div>
   </section>
-  <section class="share-section">
+  <section>
     <h3>Share URL</h3>
     <div class="share-download-row">
       <input id="share-url" type="text" class="share-filename-input" readonly>
-      <button id="copy-url-btn" class="btn btn-secondary">Copy</button>
+      <button id="copy-url-btn" class="btn btn-secondary" aria-label="Copy URL">Copy</button>
     </div>
-    <p class="share-url-note" id="local-note" hidden>Not available for local files.</p>
+    <p id="local-note" hidden>Not available for local files.</p>
   </section>
 </dialog>
 
-<div class="error-banner" id="error-banner" hidden>
+<div id="error-banner" role="alert" aria-live="assertive" hidden>
   <span id="error-message"></span>
-  <button class="error-close" id="error-close" aria-label="Dismiss">×</button>
+  <button id="error-close" aria-label="Dismiss">×</button>
 </div>
 
-<div class="drop-overlay" id="drop-overlay" aria-hidden="true">
-  <div class="drop-overlay-inner">
-    <p class="drop-message">Drop CSV file to load</p>
+<div id="drop-overlay" aria-hidden="true">
+  <div>
+    <p>Drop CSV file to load</p>
   </div>
 </div>
 

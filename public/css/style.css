@@ -54,12 +54,16 @@ a:hover   { text-decoration-color: var(--color-link); }
   --panel-pad: 14px;
 }
 
+html {
+  font-size: 87.5%; /* ≈14px at browser default; scales with user font preference */
+}
+
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 1rem;
   color: var(--color-text);
   background: var(--color-bg);
   overflow: hidden;
@@ -67,7 +71,7 @@ html, body {
 
 /* ─── Header ────────────────────────────────────────────────────────────── */
 
-.site-header {
+header {
   height: var(--header-height);
   display: flex;
   align-items: center;
@@ -78,21 +82,22 @@ html, body {
   flex-shrink: 0;
 }
 
-.site-title {
-  font-size: 18px;
+header h1 {
+  font-size: 1.286rem;
   font-weight: 600;
   margin: 0;
   white-space: nowrap;
   color: var(--color-text);
 }
 
-.site-title-link {
+header h1 a {
   color: inherit;
   text-decoration: none;
-}
-.site-title-link:hover { text-decoration: underline; }
 
-.data-source {
+  &:hover { text-decoration: underline; }
+}
+
+#data-source {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -101,20 +106,20 @@ html, body {
   max-width: 50%;
 }
 
-.data-source-name {
-  font-size: 13px;
+#data-source-name {
+  font-size: 0.929rem;
   color: var(--color-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.data-source-clear {
+#clear-data-btn {
   flex-shrink: 0;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 1.143rem;
   line-height: 1;
   color: var(--color-text-muted);
   padding: 0 2px;
@@ -122,11 +127,11 @@ html, body {
   &:hover { color: var(--color-text); }
 }
 
-.url-input {
+#source-url {
   flex: 1;
   min-width: 0;
   padding: 5px 10px;
-  font-size: 13px;
+  font-size: 0.929rem;
   font-family: var(--font-sans);
   border: 1px solid var(--color-border-mid);
   border-radius: 4px;
@@ -134,18 +139,18 @@ html, body {
   color: var(--color-text);
   outline: none;
   transition: border-color 0.15s;
-}
 
-.url-input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
+  }
 }
 
 /* ─── Buttons ───────────────────────────────────────────────────────────── */
 
 .btn {
   padding: 5px 14px;
-  font-size: 13px;
+  font-size: 0.929rem;
   font-family: var(--font-sans);
   border-radius: 4px;
   border: 1px solid transparent;
@@ -177,7 +182,7 @@ html, body {
 
 /* ─── App Grid ──────────────────────────────────────────────────────────── */
 
-.app-grid {
+main {
   display: grid;
   grid-template-columns: var(--controls-width) 1fr var(--stats-width);
   grid-template-rows: 1fr;
@@ -187,14 +192,14 @@ html, body {
 
 /* ─── Panels ────────────────────────────────────────────────────────────── */
 
-.panel {
+main > section {
   border-right: 1px solid var(--color-border);
   background: var(--color-surface);
   overflow-y: auto;
   padding: var(--panel-pad);
 }
 
-.panel-stats {
+#panel-stats {
   border-right: none;
   border-left: 1px solid var(--color-border);
   display: flex;
@@ -211,7 +216,7 @@ html, body {
 
 .control-group label {
   display: block;
-  font-size: 12px;
+  font-size: 0.857rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -219,10 +224,10 @@ html, body {
   margin-bottom: 5px;
 }
 
-.form-select {
+#panel-controls select {
   width: 100%;
   padding: 4px 8px;
-  font-size: 13px;
+  font-size: 0.929rem;
   font-family: var(--font-sans);
   border: 1px solid var(--color-border-mid);
   border-radius: 4px;
@@ -230,58 +235,58 @@ html, body {
   color: var(--color-text);
   cursor: pointer;
   outline: none;
+
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
-.form-select:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
-}
-
-.form-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.checkbox-list {
+#nuisance-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
+
+  & label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.929rem;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  & input[type="checkbox"] {
+    cursor: pointer;
+    margin: 0;
+  }
 }
 
-.checkbox-list label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: normal;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.checkbox-list input[type="checkbox"] {
-  cursor: pointer;
-  margin: 0;
-}
-
-.control-note {
+#nuisance-note {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: 0.786rem;
   color: var(--color-text-muted);
   font-style: italic;
 }
 
 #smoother-window-group {
   margin-top: 6px;
-}
 
-.smoother-window-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  margin-bottom: 2px;
+  & > div {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.786rem;
+    color: var(--color-text-muted);
+    margin-bottom: 2px;
+  }
 }
 
 #smoother-window {
@@ -290,7 +295,7 @@ html, body {
 
 /* ─── Plot Container ────────────────────────────────────────────────────── */
 
-.plot-container {
+#plot-container {
   position: relative;
   background: var(--color-bg);
   overflow: hidden;
@@ -314,33 +319,27 @@ html, body {
 
 /* ─── Loading State ─────────────────────────────────────────────────────── */
 
-.loading-state {
+#loading-state {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 1rem;
   color: var(--color-text-muted);
-}
-
-.loading-state.hidden {
-  display: none;
 }
 
 /* ─── Empty State ───────────────────────────────────────────────────────── */
 
-.empty-state {
+#empty-state {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  &.hidden { display: none; }
 }
 
-.empty-state-inner {
+#empty-state > div {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -349,8 +348,8 @@ html, body {
   padding: 0 24px;
 }
 
-.empty-state h3 {
-  font-size: 18px;
+#empty-state h2 {
+  font-size: 1.286rem;
   font-weight: 600;
   color: var(--color-text-muted);
   margin: 0;
@@ -364,7 +363,7 @@ html, body {
 }
 
 .open-data-or {
-  font-size: 13px;
+  font-size: 0.929rem;
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -374,33 +373,38 @@ html, body {
   gap: 8px;
   flex: 1;
   min-width: 0;
-}
 
-.open-data-url .url-input {
-  flex: 1;
-  min-width: 0;
+  & #source-url {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .open-data-note {
-  font-size: 12px;
+  font-size: 0.857rem;
   color: var(--color-text-muted);
   margin: 0;
 }
 
 .open-data-examples {
-  font-size: 13px;
+  font-size: 0.929rem;
   color: var(--color-text-muted);
   margin: 0;
 }
 
 /* ─── Stats Panel ───────────────────────────────────────────────────────── */
 
-.stats-section {
+#stats-model {
   padding: var(--panel-pad);
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.stats-section h3, .diag-plots h3 {
-  font-size: 12px;
+#stats-model h3,
+#diag-plots h3 {
+  font-size: 0.857rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -408,39 +412,30 @@ html, body {
   margin: 0 0 8px;
 }
 
-.stats-section--model {
-  flex: 0 0 auto;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.stats-section--desc {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  min-height: 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
 .stats-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 1rem;
   font-family: var(--font-sans);
 }
 
-.stats-table td {
+.stats-table td,
+.stats-table th {
   padding: 2px 0;
   vertical-align: top;
 }
 
-.stats-table td:first-child {
+.stats-table th[scope="row"] {
   color: var(--color-text-muted);
   padding-right: 10px;
   white-space: nowrap;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 0.929rem;
+  font-weight: normal;
+  text-align: left;
 }
 
-.stats-table td:last-child {
+.stats-table td {
   text-align: right;
 }
 
@@ -450,34 +445,30 @@ html, body {
   margin: 8px 0;
 }
 
-.stats-nuisance-header {
-  font-size: 11px;
+.stats-group-header {
+  font-size: 0.786rem;
   font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-family: var(--font-sans);
-  padding-bottom: 4px;
+  letter-spacing: 0.04em;
+  padding-top: 8px;
+  text-align: left;
 }
 
 /* ─── Diagnostic Plots ──────────────────────────────────────────────────── */
 
-.diag-plots {
+#diag-plots {
   flex: 0 0 auto;
   padding: var(--panel-pad);
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
 }
 
-.diag-plots.hidden {
-  display: none;
-}
-
-.diag-svg-container {
+#diag-plots > div {
   position: relative;
 }
 
-.diag-svg {
+#diag-combined {
   display: block;
   width: 100%;
 }
@@ -505,10 +496,18 @@ html, body {
   max-height: 80dvh;
   overflow-y: auto;
 
+  & h2 {
+    font-size: 0.786rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin: 0 0 12px;
+  }
   & section { margin-bottom: 14px; }
-  & h4 { margin: 0 0 4px; font-size: 13px; }
-  & p  { margin: 0; font-size: 13px; line-height: 1.5; }
-  & dl { margin: 0; font-size: 13px; }
+  & h3 { margin: 0 0 4px; font-size: 0.929rem; }
+  & p  { margin: 0; font-size: 0.929rem; line-height: 1.5; }
+  & dl { margin: 0; font-size: 0.929rem; }
   & dt { font-weight: 600; margin-top: 4px; }
   & dd { margin: 0 0 0 14px; line-height: 1.4; }
 }
@@ -516,20 +515,20 @@ html, body {
 #help-modal {
   padding: 20px 24px;
   min-width: 280px;
-}
 
-.help-modal-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  margin: 0 0 12px;
+  & h2 {
+    font-size: 0.786rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin: 0 0 12px;
+  }
 }
 
 .help-table {
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.929rem;
   width: 100%;
 }
 
@@ -545,14 +544,14 @@ html, body {
 
 .help-modal-dismiss {
   margin: 12px 0 0;
-  font-size: 12px;
+  font-size: 0.857rem;
   color: var(--color-text-muted);
 }
 
 kbd {
   display: inline-block;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 0.786rem;
   padding: 1px 5px;
   border: 1px solid var(--color-border-mid);
   border-radius: 3px;
@@ -562,7 +561,7 @@ kbd {
 
 /* ─── Share Button ──────────────────────────────────────────────────────── */
 
-.share-btn {
+#share-btn {
   position: absolute;
   bottom: 8px;
   right: 8px;
@@ -570,7 +569,7 @@ kbd {
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 0.857rem;
   font-family: var(--font-sans);
   color: var(--color-text);
   background: var(--color-bg);
@@ -579,32 +578,40 @@ kbd {
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
   z-index: 10;
-}
-.share-btn:hover {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+
+  &:hover {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
 }
 
 /* ─── Share Modal ───────────────────────────────────────────────────────── */
 
 #share-modal {
   min-width: 360px;
-}
 
-.share-section {
-  padding: 14px 18px;
+  & section {
+    padding: 14px 18px;
 
-  & + .share-section {
-    border-top: 1px solid var(--color-border);
-  }
+    & + section {
+      border-top: 1px solid var(--color-border);
+    }
 
-  & h3 {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-muted);
-    margin: 0 0 10px;
+    & h3 {
+      font-size: 0.786rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin: 0 0 10px;
+    }
+
+    & p {
+      margin: 6px 0 0;
+      font-size: 0.786rem;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
   }
 }
 
@@ -622,7 +629,7 @@ kbd {
   flex: 1;
   min-width: 0;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: 0.857rem;
   font-family: var(--font-sans);
   border: 1px solid var(--color-border-mid);
   border-radius: 4px;
@@ -642,34 +649,35 @@ kbd {
   }
 }
 
-.share-url-note {
-  margin: 6px 0 0;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-/* ─── Open File Modal ───────────────────────────────────────────────────── */
-
-#open-file-modal {
-  min-width: 320px;
-}
-
 /* ─── Footer ────────────────────────────────────────────────────────────── */
 
-.site-footer {
+footer {
   height: var(--footer-height);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
   flex-shrink: 0;
 }
 
-.footer-link {
-  font-size: 13px;
+footer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+footer li:not(:last-child)::after {
+  content: "·";
+  color: var(--color-border-mid);
+  margin: 0 6px;
+}
+
+footer a,
+footer button {
+  font-size: 0.929rem;
   font-family: var(--font-sans);
   color: var(--color-text-muted);
   text-decoration: none;
@@ -677,18 +685,13 @@ kbd {
   border: none;
   padding: 0;
   cursor: pointer;
-}
-.footer-link:hover { color: var(--color-text); text-decoration: underline; }
 
-.footer-sep {
-  color: var(--color-border-mid);
-  font-size: 13px;
-  user-select: none;
+  &:hover { color: var(--color-text); text-decoration: underline; }
 }
 
 /* ─── Error Banner ──────────────────────────────────────────────────────── */
 
-.error-banner {
+#error-banner {
   position: fixed;
   bottom: 16px;
   left: 50%;
@@ -697,7 +700,7 @@ kbd {
   color: #fff;
   padding: 10px 16px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 0.929rem;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -706,21 +709,22 @@ kbd {
   z-index: 100;
 }
 
-.error-close {
+#error-close {
   background: none;
   border: none;
   color: #fff;
-  font-size: 18px;
+  font-size: 1.286rem;
   cursor: pointer;
   padding: 0;
   line-height: 1;
   opacity: 0.8;
+
+  &:hover { opacity: 1; }
 }
-.error-close:hover { opacity: 1; }
 
 /* ─── Drop Overlay ──────────────────────────────────────────────────────── */
 
-.drop-overlay {
+#drop-overlay {
   position: fixed;
   inset: 0;
   background: rgba(39, 128, 227, 0.06);
@@ -733,13 +737,11 @@ kbd {
   opacity: 0;
   transition: opacity 0.1s;
   z-index: 200;
+
+  &.visible { opacity: 1; }
 }
 
-.drop-overlay.visible {
-  opacity: 1;
-}
-
-.drop-overlay-inner {
+#drop-overlay > div {
   background: var(--color-bg);
   border: 2px solid var(--color-accent);
   border-radius: 8px;
@@ -748,8 +750,8 @@ kbd {
   box-shadow: 0 2px 16px rgba(39, 128, 227, 0.15);
 }
 
-.drop-message {
-  font-size: 18px;
+#drop-overlay p {
+  font-size: 1.286rem;
   font-weight: 600;
   color: var(--color-accent);
   margin: 0;
@@ -765,7 +767,7 @@ kbd {
     overflow-x: hidden;
   }
 
-  .app-grid {
+  main {
     display: flex;
     flex-direction: column;
     height: auto;
@@ -773,24 +775,24 @@ kbd {
   }
 
   /* Show plot first, then controls, then stats */
-  .plot-container { order: 1; }
-  .panel-controls  { order: 2; }
-  .panel-stats     { order: 3; }
+  #plot-container  { order: 1; }
+  #panel-controls  { order: 2; }
+  #panel-stats     { order: 3; }
 
-  .plot-container {
+  #plot-container {
     height: 72vw;
     min-height: 260px;
     flex-shrink: 0;
   }
 
   /* Panels expand to content rather than clipping */
-  .panel {
+  main > section {
     overflow-y: visible;
     border-right: none;
     border-top: 1px solid var(--color-border);
   }
 
-  .panel-stats {
+  #panel-stats {
     display: block;
     overflow: visible;
     border-left: none;
@@ -798,17 +800,9 @@ kbd {
     padding: var(--panel-pad);
   }
 
-  .stats-section {
+  #stats-model {
     padding: 0;
     border-bottom: none;
-  }
-  
-
-  .stats-section--desc {
     overflow-y: visible;
-    min-height: 0;
-    padding-top: var(--panel-pad);
   }
-
 }
-

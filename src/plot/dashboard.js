@@ -228,76 +228,102 @@ const FMT = {
 };
 
 // Render the model results section of the stats panel.
-export function updateStats({ modelResult, modelKey, n, nCensored,
+export function updateStats({ modelResult, modelKey, xLabel,
+                               n, nCensored,
                                nuisanceNames = [], nuisancePartialR2 = [] }) {
   const el = document.getElementById('stats-model');
   if (!el) return;
   el.innerHTML = '';
 
   if (!modelResult) {
-    el.innerHTML = '<p class="stats-label">No results</p>';
+    el.innerHTML = `<h3>${MODEL_DISPLAY_NAMES[modelKey] ?? modelKey}</h3>`;
     return;
   }
 
-  const hasNuisance = nuisanceNames.length > 0 && (modelKey === 'ols' || modelKey === 'robust');
-  const rows = buildStatRows(modelResult, modelKey, hasNuisance);
+  const r = modelResult;
   const title = MODEL_DISPLAY_NAMES[modelKey] ?? modelKey;
+  const hasNuisance = nuisanceNames.length > 0 && (modelKey === 'ols' || modelKey === 'robust');
 
-  const hasNuisanceStats = nuisanceNames.length > 0 && nuisancePartialR2.length > 0
-    && (modelKey === 'ols' || modelKey === 'robust');
+  const samplePairs = [
+    ['n', FMT.n(n)],
+    ...(nCensored > 0 ? [['censored', FMT.n(nCensored)]] : []),
+  ];
 
-  const nuisanceRows = hasNuisanceStats
-    ? nuisanceNames.map((name, i) =>
-        `<tr><td>${name}</td><td>${FMT.r2(nuisancePartialR2[i])}</td></tr>`
-      ).join('')
-    : '';
+  let tableBody;
 
-  const html = `
+  if (modelKey === 'spearman' || modelKey === 'theilsen') {
+    tableBody = rows(flatRows(r, modelKey));
+  } else if (!hasNuisance) {
+    tableBody = rows(flatRows(r, modelKey));
+  } else {
+    // OLS/Robust with nuisance: one group header per IV.
+    // X variable and model-wide stats share a section (slope/SE/t/p/R²/intercept).
+    const xRows = modelKey === 'ols'
+      ? [
+          ['slope',      FMT.coef(r.slope)],
+          ['SE',         FMT.coef(r.seSlope)],
+          ['t',          FMT.stat(r.tSlope)],
+          ['p',          FMT.pval(r.pSlope)],
+          ['partial R²', FMT.r2(r.rSquared)],
+          ['R² (full)',  FMT.r2(r.fullModelRSquared)],
+          ['adj. R²',    FMT.r2(r.fullModelAdjRSquared)],
+          ['intercept',  FMT.coef(r.intercept)],
+        ]
+      : [ // Robust — p via asymptotic normal approximation
+          ['slope',     FMT.coef(r.slope)],
+          ['SE',        FMT.coef(r.seSlope)],
+          ['t',         FMT.stat(r.tSlope)],
+          ['p',         FMT.pval(r.pSlope)],
+          ['intercept', FMT.coef(r.intercept)],
+        ];
+
+    const nuisanceSections = nuisanceNames.map((name, i) => `
+      ${groupHeader(name)}
+      <tr><th scope="row">partial R²</th><td>${FMT.r2(nuisancePartialR2[i])}</td></tr>
+    `).join('');
+
+    tableBody = `${groupHeader(xLabel)}${rows(xRows)}${nuisanceSections}`;
+  }
+
+  el.innerHTML = `
     <h3>${title}</h3>
     <table class="stats-table">
-      ${rows.map(([label, val]) => `<tr><td>${label}</td><td>${val}</td></tr>`).join('')}
-      ${hasNuisanceStats ? `
-        <tr><td colspan="2"><hr class="stats-divider"></td></tr>
-        <tr><td colspan="2" class="stats-nuisance-header">nuisance partial R²</td></tr>
-        ${nuisanceRows}
-      ` : ''}
+      ${tableBody}
+      ${rows(samplePairs)}
     </table>
   `;
-  el.innerHTML = html;
-
-  // Descriptive stats
-  const descEl = document.getElementById('stats-desc');
-  if (descEl) {
-    descEl.innerHTML = `
-      <h3>Sample</h3>
-      <table class="stats-table">
-        <tr><td>n (active)</td><td>${FMT.n(n)}</td></tr>
-        ${nCensored > 0 ? `<tr><td>censored</td><td>${FMT.n(nCensored)}</td></tr>` : ''}
-      </table>
-    `;
-  }
 }
 
-const PARAMETRIC_ROWS = r => [
-  ['slope', FMT.coef(r.slope)],
-  ['SE',    FMT.coef(r.seSlope)],
-  ['t',     FMT.stat(r.tSlope)],
-  ['p',     FMT.pval(r.pSlope)],
-];
+function groupHeader(label) {
+  return `<tr><th colspan="2" class="stats-group-header">${label}</th></tr>`;
+}
 
-function buildStatRows(r, key, hasNuisance = false) {
+function rows(pairs) {
+  return pairs.map(([label, val]) =>
+    `<tr><th scope="row">${label}</th><td>${val}</td></tr>`
+  ).join('');
+}
+
+function flatRows(r, key) {
   switch (key) {
-    case 'ols': {
-      const r2Rows = hasNuisance
-        ? [['R² (full model)',      FMT.r2(r.fullModelRSquared)],
-           ['adj. R² (full model)', FMT.r2(r.fullModelAdjRSquared)],
-           ['R² (partial, X)',      FMT.r2(r.rSquared)]]
-        : [['R²',      FMT.r2(r.rSquared)],
-           ['adj. R²', FMT.r2(r.adjRSquared)]];
-      return [...PARAMETRIC_ROWS(r), ...r2Rows, ['intercept', FMT.coef(r.intercept)]];
-    }
-    case 'robust':
-      return [...PARAMETRIC_ROWS(r), ['intercept', FMT.coef(r.intercept)]];
+    case 'ols':
+      return [
+        ['slope',     FMT.coef(r.slope)],
+        ['SE',        FMT.coef(r.seSlope)],
+        ['t',         FMT.stat(r.tSlope)],
+        ['p',         FMT.pval(r.pSlope)],
+        ['R²',        FMT.r2(r.rSquared)],
+        ['adj. R²',   FMT.r2(r.adjRSquared)],
+        ['intercept', FMT.coef(r.intercept)],
+      ];
+    case 'robust': // p via asymptotic normal approximation
+      return [
+        ['slope',     FMT.coef(r.slope)],
+        ['SE',        FMT.coef(r.seSlope)],
+        ['t',         FMT.stat(r.tSlope)],
+        ['p',         FMT.pval(r.pSlope)],
+        ['intercept', FMT.coef(r.intercept)],
+      ];
     case 'spearman':
       return [
         ['ρ',         FMT.stat(r.rho)],

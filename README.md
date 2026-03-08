@@ -29,7 +29,7 @@ Download `scatterize.zip` from the [latest release](https://github.com/njvack/sc
 
 ## Credits
 
-This was built with a great deal of help from Claude Code and Anthropic's 4.6 set of models. I'll try and write more about the authoring process later. Long story short, though: As of early 2026, computers can write code.
+Scatterize was built with a great deal of help from Claude Code and Anthropic's 4.6 set of models. I'll try and write more about the authoring process later. Long story short, though: As of early 2026, computers can write code.
 
 The typeface used in Scatterize is the excellent [League Spartan](https://www.theleagueofmoveabletype.com/league-spartan), designed by [Caroline Hadilaksono](https://www.theleagueofmoveabletype.com/team/caroline-hadilaksono), [Micah Rich](https://www.theleagueofmoveabletype.com/team/micah-rich), [Tyler Finck](https://www.theleagueofmoveabletype.com/team/tyler-finck), and [Matt Bailey](https://www.theleagueofmoveabletype.com/team/matt-bailey) of [The League of Movable Type](https://www.theleagueofmoveabletype.com/). 
 
