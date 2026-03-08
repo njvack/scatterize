@@ -310,7 +310,7 @@ function render() {
   // Show/hide diag plots section.
   const diagEl = document.getElementById('diag-plots');
   const hasDiag = (state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length;
-  if (diagEl) diagEl.hidden = !hasDiag;
+  if (diagEl) diagEl.classList.toggle('hidden', !hasDiag);
 
   // Update diagnostic plots (OLS and Robust only)
   updateDiagnostics(modelResult, activeIndices);
