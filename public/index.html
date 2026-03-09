@@ -123,14 +123,15 @@
 
   <section id="panel-stats" aria-label="Statistics">
     <div id="stats-model"></div>
-    <div id="diag-plots">
+    <figure id="diag-plots">
       <h3>Diagnostics</h3>
       <div>
         <svg id="diag-combined" style="height:150px"></svg>
         <canvas id="diag-gl-canvas" class="overlay-svg" style="pointer-events:none"></canvas>
         <svg id="diag-overlay" class="overlay-svg"></svg>
       </div>
-    </div>
+      <figcaption id="diag-caption"></figcaption>
+    </figure>
   </section>
 
 </main>
@@ -201,7 +202,7 @@
   <h3>Point navigation</h3>
   <table class="help-table">
     <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Previous / next point</td></tr>
-    <tr><td><kbd>Alt</kbd> <kbd>←</kbd> / <kbd>→</kbd></td><td>Back / forward 1 percentile</td></tr>
+    <tr><td><kbd class="kbd-alt">⌥</kbd> <kbd>←</kbd> / <kbd>→</kbd></td><td>Back / forward 1 percentile</td></tr>
     <tr><td><kbd class="kbd-meta">⌘</kbd> <kbd>←</kbd> / <kbd>→</kbd></td><td>First / last point</td></tr>
     <tr><td><kbd>Space</kbd></td><td>Censor / uncensor selected point</td></tr>
     <tr><td><kbd>n</kbd> / <kbd>m</kbd></td><td>Next / previous navigation criterion</td></tr>

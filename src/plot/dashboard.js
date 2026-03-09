@@ -229,8 +229,7 @@ const FMT = {
 // Render the model results section of the stats panel.
 export function updateStats({ modelResult, modelKey, xLabel,
                                n, nCensored,
-                               nuisanceNames = [], nuisancePartialR2 = [],
-                               skewness = null, kurtosis = null }) {
+                               nuisanceNames = [], nuisancePartialR2 = [] }) {
   const el = document.getElementById('stats-model');
   if (!el) return;
   el.innerHTML = '';
@@ -247,8 +246,6 @@ export function updateStats({ modelResult, modelKey, xLabel,
   const samplePairs = [
     ['n',        FMT.n(n)],
     ...(nCensored > 0 ? [['censored', FMT.n(nCensored)]] : []),
-    ['skewness', FMT.stat(skewness)],
-    ['kurtosis', FMT.stat(kurtosis)],
   ];
 
   let tableBody;

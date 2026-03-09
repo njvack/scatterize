@@ -516,8 +516,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
         .style('pointer-events', 'all')
         .style('cursor', 'default');
 
-      function handleHover(mx, my) {
-        if (performance.now() < _animatingUntil) return;
+      function handleHover(mx, my, { force = false } = {}) {
+        if (!force && performance.now() < _animatingUntil) return;
         const d = findNearest(mx, my);
 
         if (!d) {
@@ -565,7 +565,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
       // Re-establish hover at the last known position after a data/model change
       // (e.g. censoring a point) so the highlight doesn't vanish until mousemove.
-      if (lastMousePos) handleHover(...lastMousePos);
+      // Force bypasses the animation guard since we're using final positions.
+      if (lastMousePos) handleHover(...lastMousePos, { force: true });
     }
 
     // Legend interaction rects must be the topmost child of overlayCanvas so they
@@ -785,8 +786,13 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     clearHover();
     if (index == null || !_plotState) return;
     const d = _plotState.allPoints.find(p => p.index === index);
-    if (!d || d.censored) return;
-    showHover(d, _plotState.iH, _plotState.colorOf(d), { outline });
+    if (!d) return;
+    if (d.censored) {
+      const { xScale, yScale, iH, iW } = _plotState;
+      showCensorHover(d, xScale, yScale, iH, iW);
+    } else {
+      showHover(d, _plotState.iH, _plotState.colorOf(d), { outline });
+    }
   }
 
   // getExportSVG() — returns a combined SVG element containing:

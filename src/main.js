@@ -40,6 +40,8 @@ let currentPointColors = null;     // parallel to residuals, one color per activ
 let currentPoints = null;          // full points array from last render (for group hover)
 let currentActiveIndices = null;   // active row indices from last render (for group hover)
 let currentModelResult = null;     // model result from last render (for go mode diagnostics)
+let lastSpaceCensored = null;      // row index of last space-censored point (for toggle-back)
+let _pendingHighlight = null;      // one-shot: highlight this index on next onSelect, then clear
 
 const LOAD_BLANK_DELAY = 250; // ms before showing loading message
 let loadingTimer = null;
@@ -365,15 +367,12 @@ function render() {
   goMode.update({ activePoints, residuals: modelResult?.residuals ?? null, hasQQ });
 
   // Update stats panel
-  const { skewness, kurtosis } = modelResult?.residuals
-    ? skewnessKurtosis(modelResult.residuals)
-    : { skewness: null, kurtosis: null };
   updateStats({
     modelResult, modelKey: state.m,
     xLabel: state.m === 'spearman' ? `rank(${xColName})` : xColName,
     yLabel: state.m === 'spearman' ? `rank(${yColName})` : yColName,
     n: activeIndices.length, nCensored: censored.size,
-    nuisanceNames, nuisancePartialR2, skewness, kurtosis,
+    nuisanceNames, nuisancePartialR2,
   });
 
   // Show/hide diag plots section
@@ -394,6 +393,7 @@ function redraw() {
 
 function updateDiagnostics(modelResult, activeIndices) {
   const state = getState();
+  const captionEl = document.getElementById('diag-caption');
   if ((state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length) {
     diagnostics.update({
       residuals:    modelResult.residuals,
@@ -401,8 +401,15 @@ function updateDiagnostics(modelResult, activeIndices) {
       hoveredIndex,
       pointColors:  currentPointColors,
     });
+    if (captionEl) {
+      const { skewness, kurtosis } = skewnessKurtosis(modelResult.residuals);
+      const fmt = v => v == null ? '—' : v.toFixed(3);
+      captionEl.innerHTML =
+        `skewness <span>${fmt(skewness)}</span>\u2003kurtosis <span>${fmt(kurtosis)}</span>`;
+    }
   } else {
     diagnostics?.clear();
+    if (captionEl) captionEl.textContent = '';
   }
 }
 
@@ -477,6 +484,8 @@ function toggleHelp() {
 }
 
 function setupKeyboard() {
+  function clearSpaceMemory() { lastSpaceCensored = null; }
+
   document.addEventListener('keydown', e => {
     // Ignore when typing in an input or select
     const inInput = e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT';
@@ -485,6 +494,7 @@ function setupKeyboard() {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       if (inInput) return;
       e.preventDefault(); // prevent page scroll
+      clearSpaceMemory();
       const forward = e.key === 'ArrowRight';
       if (e.metaKey || e.ctrlKey) {
         goMode.jumpToEnd(forward ? 'last' : 'first');
@@ -504,12 +514,29 @@ function setupKeyboard() {
       return;
     }
 
-    // Spacebar: censor the currently highlighted go mode point
+    // Spacebar: censor/uncensor the go mode point.
+    // If the last action was space-censoring a point, a second space uncensors
+    // that same point (since it's no longer in the active set to navigate to).
     if (e.key === ' ') {
+      e.preventDefault();
+      if (lastSpaceCensored != null) {
+        const idx = lastSpaceCensored;
+        lastSpaceCensored = null;
+        goMode.selectRowIndex(idx);
+        toggleCensor(idx);
+        return;
+      }
       const rowIndex = goMode.getRowIndex();
       if (rowIndex != null) {
-        e.preventDefault();
+        const state = getState();
+        const wasCensored = state.c.includes(rowIndex);
         toggleCensor(rowIndex);
+        if (!wasCensored) {
+          // Point was just censored — remember it so next space can undo,
+          // and request a one-shot highlight override for the re-render.
+          lastSpaceCensored = rowIndex;
+          _pendingHighlight = rowIndex;
+        }
       }
       return;
     }
@@ -521,6 +548,7 @@ function setupKeyboard() {
     const MODEL_KEYS = ['ols', 'robust', 'spearman', 'theilsen'];
     const mIdx = MODEL_KEYS.indexOf(state.m);
 
+    clearSpaceMemory();
     switch (e.key) {
       case 'j': setState({ y: Math.min(state.y + 1, nCols - 1) }); break;
       case 'k': setState({ y: Math.max(state.y - 1, 0) });         break;
@@ -889,11 +917,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Set up go mode
   goMode = createGoMode(document.getElementById('go-toolbar'), {
     onSelect(rowIndex) {
-      scatter.highlightPoint(rowIndex, { outline: true });
-      hoveredIndex = rowIndex;
+      // One-shot override: after space-censor, highlight the censored point
+      // instead of the go-mode neighbor it clamped to.
+      const highlightIdx = _pendingHighlight ?? rowIndex;
+      _pendingHighlight = null;
+      scatter.highlightPoint(highlightIdx, { outline: true });
+      hoveredIndex = highlightIdx;
       updateDiagnostics(currentModelResult, currentActiveIndices ?? []);
-      if (rowIndex != null && currentPoints) {
-        const pt = currentPoints[rowIndex];
+      if (highlightIdx != null && currentPoints) {
+        const pt = currentPoints[highlightIdx];
         if (pt) {
           const parts = [fmtPointVal(pt.originalX), fmtPointVal(pt.originalY)];
           if (pt.group != null) parts.push(String(pt.group));
@@ -906,6 +938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Show platform-appropriate modifier key in keyboard shortcuts
   if (!/Mac|iPhone|iPad/.test(navigator.platform)) {
     document.querySelectorAll('.kbd-meta').forEach(el => { el.textContent = 'Ctrl'; });
+    document.querySelectorAll('.kbd-alt').forEach(el => { el.textContent = 'Alt'; });
   }
 
   // Wire controls and keyboard

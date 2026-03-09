@@ -6,6 +6,7 @@ export function createGoMode(toolbarEl, { onSelect } = {}) {
   let _position = null;   // 0-based index into current criterion's sorted array; null = no selection
   let _criterion = 'x';  // 'x' | 'y' | 'qq'
   let _hasQQ = false;
+  let _pendingRowIndex = null;  // row index to select on next update (e.g. after uncensoring)
 
   const _indexInput = toolbarEl.querySelector('#go-index');
   const _totalEl    = toolbarEl.querySelector('#go-total');
@@ -128,10 +129,14 @@ export function createGoMode(toolbarEl, { onSelect } = {}) {
 
       _updateCritBtns();
 
-      // Restore position for the same row; if the row was removed (censored),
+      // If a pending selection was requested (e.g. after uncensoring), use it.
+      const targetRow = _pendingRowIndex ?? prevRowIndex;
+      _pendingRowIndex = null;
+
+      // Restore position for the target row; if it was removed (censored),
       // clamp to the nearest valid position in the new sorted order.
-      if (prevRowIndex != null) {
-        const newPos = _findPos(prevRowIndex);
+      if (targetRow != null) {
+        const newPos = _findPos(targetRow);
         if (newPos >= 0) {
           _position = newPos;
         } else {
@@ -142,6 +147,8 @@ export function createGoMode(toolbarEl, { onSelect } = {}) {
         _position = null;
       }
       _syncDisplay();
+      // Re-fire onSelect so the visual highlight stays in sync after data changes.
+      if (_position != null) onSelect?.(_rowIndexAt(_position));
     },
 
     /** Move by delta points (±1 for single step). Bounded, no wrap. */
@@ -190,6 +197,17 @@ export function createGoMode(toolbarEl, { onSelect } = {}) {
       }
       _syncDisplay();
       onSelect?.(_rowIndexAt(_position));
+    },
+
+    /** Select a specific row index, either immediately or on the next update
+     *  (e.g. after uncensoring, the point re-enters the active set on re-render). */
+    selectRowIndex(rowIndex) {
+      const pos = _findPos(rowIndex);
+      if (pos >= 0) {
+        _setPosition(pos);
+      } else {
+        _pendingRowIndex = rowIndex;
+      }
     },
 
     /** Clear selection (e.g. when data is unloaded). */

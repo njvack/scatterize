@@ -565,14 +565,26 @@ main > section {
   padding: var(--panel-pad);
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
+  margin: 0;
 
   &.hidden {
     visibility: hidden;
   }
-}
 
-#diag-plots > div {
-  position: relative;
+  > div {
+    position: relative;
+  }
+
+  figcaption {
+    font-size: 0.786rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    margin-top: 4px;
+
+    span {
+      color: var(--color-text);
+    }
+  }
 }
 
 #diag-combined {
