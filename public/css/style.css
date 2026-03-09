@@ -296,9 +296,18 @@ main > section {
 /* ─── Plot Container ────────────────────────────────────────────────────── */
 
 #plot-container {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   background: var(--color-bg);
   overflow: hidden;
+}
+
+#plot-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg);
 }
 
 .scatter-layer {
@@ -316,6 +325,94 @@ main > section {
   height: 100%;
   will-change: transform;
 }
+
+/* ─── Go Toolbar ────────────────────────────────────────────────────────── */
+
+#go-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.857rem;
+  flex-shrink: 0;
+}
+
+.go-label {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.786rem;
+}
+
+.go-criterion {
+  display: flex;
+  gap: 0;
+
+  & button {
+    padding: 2px 9px;
+    font-size: 0.857rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-mid);
+    cursor: pointer;
+    color: var(--color-text-muted);
+    transition: background 0.1s, color 0.1s;
+
+    &:first-child { border-radius: 3px 0 0 3px; }
+    &:last-child  { border-radius: 0 3px 3px 0; margin-left: -1px; }
+    &:not(:first-child):not(:last-child) { margin-left: -1px; }
+
+    &[aria-pressed="true"] {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: #fff;
+      z-index: 1;
+    }
+
+    &:hover:not([aria-pressed="true"]):not(:disabled) {
+      background: var(--color-border);
+      color: var(--color-text);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.go-pos,
+.go-pct {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+
+  & input {
+    width: 4.5em;
+    padding: 2px 5px;
+    font-size: 0.857rem;
+    font-family: var(--font-sans);
+    border: 1px solid var(--color-border-mid);
+    border-radius: 3px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    text-align: right;
+    outline: none;
+
+    &:focus {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
+    }
+  }
+}
+
+.go-pct input { width: 5em; }
 
 /* ─── Loading State ─────────────────────────────────────────────────────── */
 
@@ -528,6 +625,15 @@ main > section {
     color: var(--color-text-muted);
     margin: 0 0 12px;
   }
+
+  & h3 {
+    font-size: 0.786rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin: 14px 0 8px;
+  }
 }
 
 .help-table {
@@ -693,6 +799,33 @@ footer button {
   &:hover { color: var(--color-text); text-decoration: underline; }
 }
 
+/* ─── Screen-reader live region (visually hidden) ──────────────────────── */
+
+#aria-announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+
+  &.visible {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin-left: auto;
+    overflow: visible;
+    clip: auto;
+    font-size: 0.857rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+}
+
 /* ─── Error Banner ──────────────────────────────────────────────────────── */
 
 #error-banner {
@@ -787,6 +920,8 @@ footer button {
     height: 72vw;
     min-height: 260px;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Panels expand to content rather than clipping */

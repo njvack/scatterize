@@ -167,6 +167,32 @@ export function rank(arr) {
 }
 
 // Like residualize(), but also returns partial R² for each nuisance variable.
+// ---------------------------------------------------------------------------
+// Descriptive statistics
+// ---------------------------------------------------------------------------
+
+// Sample skewness and excess kurtosis (moment estimators).
+// skewness: m3 / m2^1.5
+// excess kurtosis: m4 / m2² - 3
+export function skewnessKurtosis(arr) {
+  const n = arr.length;
+  if (n < 3) return { skewness: null, kurtosis: null };
+  const mean = arr.reduce((s, v) => s + v, 0) / n;
+  let m2 = 0, m3 = 0, m4 = 0;
+  for (const v of arr) {
+    const d = v - mean;
+    const d2 = d * d;
+    m2 += d2;
+    m3 += d2 * d;
+    m4 += d2 * d2;
+  }
+  m2 /= n; m3 /= n; m4 /= n;
+  return {
+    skewness: m2 > 0 ? m3 / Math.pow(m2, 1.5) : null,
+    kurtosis: m2 > 0 ? m4 / (m2 * m2) - 3 : null,
+  };
+}
+
 // Partial R²_k = t²_k / (t²_k + df_residual), where t_k is the t-statistic
 // for nuisance k in the OLS fit of y on [1, z1, ..., zp].
 export function residualizeWithStats(y, nuisanceMatrix) {

@@ -800,16 +800,17 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     if (glRenderer) glRenderer.clear();
   }
 
-  // highlightPoint(index | null) — called externally (e.g. from QQ hover) to show
-  // the full hover treatment (superticks, legend highlight) without triggering
-  // onPointHover. No ring and no cursor change — signals location, not clickability.
-  function highlightPoint(index) {
+  // highlightPoint(index | null, opts) — called externally to show the full hover
+  // treatment (superticks, legend highlight) without triggering onPointHover.
+  // opts.outline = false (default): no ring — signals location, not clickability.
+  // opts.outline = true: full hover ring — use when the action (e.g. censor) is available.
+  function highlightPoint(index, { outline = false } = {}) {
     currentHoverIdx = null;
     clearHover();
     if (index == null || !_plotState) return;
     const d = _plotState.allPoints.find(p => p.index === index);
     if (!d || d.censored) return;
-    showHover(d, _plotState.iH, _plotState.colorOf(d), { outline: false });
+    showHover(d, _plotState.iH, _plotState.colorOf(d), { outline });
   }
 
   // getExportSVG() — returns a combined SVG element containing:

@@ -66,44 +66,57 @@
   </section>
 
   <div id="plot-container">
-    <svg id="scatter-back" class="scatter-layer"></svg>
-    <canvas id="gl-canvas" class="scatter-layer" style="pointer-events:none"></canvas>
-    <svg id="scatter-front" class="scatter-layer"></svg>
-    <svg id="overlay-svg" class="scatter-layer overlay-svg"></svg>
-    <div id="loading-state" role="status" aria-live="polite" hidden>
-      <p id="loading-message">Loading data…</p>
+    <div id="go-toolbar" hidden>
+      <span class="go-label">Navigate:</span>
+      <div class="go-criterion" role="group" aria-label="Sort by">
+        <button data-crit="x" aria-pressed="true">X</button>
+        <button data-crit="y" aria-pressed="false">Y</button>
+        <button data-crit="qq" aria-pressed="false" disabled>Q-Q</button>
+      </div>
+      <label class="go-pos">Point <input id="go-index" type="number" min="1"> of <output id="go-total">—</output></label>
+      <label class="go-pct"><input id="go-pct" type="text">%</label>
+      <span id="aria-announce" aria-live="polite" aria-atomic="true"></span>
     </div>
-    <button id="share-btn" aria-label="Download / Share" aria-haspopup="dialog">
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-      </svg>
-      Download
-    </button>
-    <div id="empty-state">
-      <div>
-        <h2>Open a dataset</h2>
-        <div class="open-data-row">
-          <button id="open-file-btn" class="btn btn-secondary">Browse files…</button>
-          <span class="open-data-or">or</span>
-          <div class="open-data-url">
-            <input
-              type="text"
-              id="source-url"
-              placeholder="Paste a Google Sheets or CSV URL"
-              autocomplete="off"
-              spellcheck="false"
-            >
-            <button id="load-btn" class="btn btn-primary">Load</button>
+    <div id="plot-area">
+      <svg id="scatter-back" class="scatter-layer"></svg>
+      <canvas id="gl-canvas" class="scatter-layer" style="pointer-events:none"></canvas>
+      <svg id="scatter-front" class="scatter-layer"></svg>
+      <svg id="overlay-svg" class="scatter-layer overlay-svg"></svg>
+      <div id="loading-state" role="status" aria-live="polite" hidden>
+        <p id="loading-message">Loading data…</p>
+      </div>
+      <button id="share-btn" aria-label="Download / Share" aria-haspopup="dialog">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+        </svg>
+        Download
+      </button>
+      <div id="empty-state">
+        <div>
+          <h2>Open a dataset</h2>
+          <div class="open-data-row">
+            <button id="open-file-btn" class="btn btn-secondary">Browse files…</button>
+            <span class="open-data-or">or</span>
+            <div class="open-data-url">
+              <input
+                type="text"
+                id="source-url"
+                placeholder="Paste a Google Sheets or CSV URL"
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <button id="load-btn" class="btn btn-primary">Load</button>
+            </div>
           </div>
+          <p class="open-data-note">Drop a CSV anywhere on the page · Data never leaves your browser</p>
+          <p class="open-data-examples">
+            Examples:
+            <a href="#src=https://njvack.github.io/scatterize/example_csv/anscombe.csv&x=0&y=4&m=ols">Anscombe's Quartet</a> ·
+            <a href="#src=https://njvack.github.io/scatterize/example_csv/mtcars.csv&x=3&y=0&m=ols">Motor Trends '74 Cars</a> ·
+            <a href="#src=https://njvack.github.io/scatterize/example_csv/ames_housing.csv&x=5&y=15&m=ols&h=17">Ames Housing</a>
+          </p>
         </div>
-        <p class="open-data-note">Drop a CSV anywhere on the page · Data never leaves your browser</p>
-        <p class="open-data-examples">
-          Examples:
-          <a href="#src=https://njvack.github.io/scatterize/example_csv/anscombe.csv&x=0&y=4&m=ols">Anscombe's Quartet</a> ·
-          <a href="#src=https://njvack.github.io/scatterize/example_csv/mtcars.csv&x=3&y=0&m=ols">Motor Trends '74 Cars</a> ·
-          <a href="#src=https://njvack.github.io/scatterize/example_csv/ames_housing.csv&x=5&y=15&m=ols&h=17">Ames Housing</a>
-        </p>
       </div>
     </div>
   </div>
@@ -184,6 +197,14 @@
     <tr><td><kbd>o</kbd> / <kbd>p</kbd></td><td>Previous / next model</td></tr>
     <tr><td><kbd>c</kbd></td><td>Clear censored points</td></tr>
     <tr><td><kbd>?</kbd></td><td>Show / hide this help</td></tr>
+  </table>
+  <h3>Point navigation</h3>
+  <table class="help-table">
+    <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Previous / next point</td></tr>
+    <tr><td><kbd>Alt</kbd> <kbd>←</kbd> / <kbd>→</kbd></td><td>Back / forward 1 percentile</td></tr>
+    <tr><td><kbd class="kbd-meta">⌘</kbd> <kbd>←</kbd> / <kbd>→</kbd></td><td>First / last point</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>Censor / uncensor selected point</td></tr>
+    <tr><td><kbd>n</kbd> / <kbd>m</kbd></td><td>Next / previous navigation criterion</td></tr>
   </table>
   <p class="help-modal-dismiss">Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>
 </dialog>

@@ -6,6 +6,7 @@ import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
 import { createScatterplot, buildColorOf, readPalette } from './plot/scatterplot.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
+import { createGoMode }                        from './plot/gomode.js';
 import { populateControls, bindControls, syncControls, updateStats,
          bindSmootherControls, syncSmootherControls } from './plot/dashboard.js';
 import { runningMedianIQR, lowess } from './plot/smoother.js';
@@ -13,7 +14,7 @@ import { ols }      from './stats/ols.js';
 import { robust }   from './stats/robust.js';
 import { spearman } from './stats/spearman.js';
 import { theilSen } from './stats/theilsen.js';
-import { residualizeWithStats, RANK_MODELS, rank } from './stats/common.js';
+import { residualizeWithStats, RANK_MODELS, rank, skewnessKurtosis } from './stats/common.js';
 
 // ---------------------------------------------------------------------------
 // App state (in-memory, not in URL)
@@ -27,12 +28,15 @@ const MODELS = { ols, robust, spearman, theilsen: theilSen };
 
 let scatter     = null;
 let diagnostics = null;
+let goMode      = null;
+let _prevAnnounceState = null;  // tracks what was last announced, to announce only deltas
 let _cachedUpdateArgs = null;  // last args passed to scatter.update(); reused on resize
 let _cachedCSVData    = null;  // data snapshot for CSV export
-let hoveredIndex = null;         // currently hovered original row index
-let currentPointColors = null;   // parallel to residuals, one color per active point
-let currentPoints = null;        // full points array from last render (for group hover)
-let currentActiveIndices = null; // active row indices from last render (for group hover)
+let hoveredIndex = null;           // currently hovered original row index
+let currentPointColors = null;     // parallel to residuals, one color per active point
+let currentPoints = null;          // full points array from last render (for group hover)
+let currentActiveIndices = null;   // active row indices from last render (for group hover)
+let currentModelResult = null;     // model result from last render (for go mode diagnostics)
 
 const LOAD_BLANK_DELAY = 250; // ms before showing loading message
 let loadingTimer = null;
@@ -84,6 +88,33 @@ async function loadData(url) {
 }
 
 // ---------------------------------------------------------------------------
+// Accessibility announcements
+// ---------------------------------------------------------------------------
+
+const MODEL_LABELS = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' };
+
+function announce(text) {
+  const el = document.getElementById('aria-announce');
+  if (!el) return;
+  // Clear first so the same text re-triggers the live region on repeated censor/uncensor.
+  el.textContent = '';
+  requestAnimationFrame(() => { el.textContent = text; });
+}
+
+function announcePValue(p) {
+  if (p == null || !Number.isFinite(p)) return null;
+  if (p < 0.0001) return 'p<0.0001';
+  if (p < 0.001)  return `p=${p.toFixed(4)}`;
+  return `p=${p.toFixed(3)}`;
+}
+
+function fmtPointVal(v) {
+  if (!Number.isFinite(v)) return String(v);
+  if (Number.isInteger(v)) return String(v);
+  return String(+v.toPrecision(4));
+}
+
+// ---------------------------------------------------------------------------
 // Render pipeline
 // ---------------------------------------------------------------------------
 
@@ -94,6 +125,8 @@ function render() {
     showEmptyState(true);
     scatter?.clear();
     diagnostics?.clear();
+    goMode?.reset();
+    document.getElementById('go-toolbar').hidden = true;
     updateStats({ modelResult: null, modelKey: state.m });
     _cachedCSVData = null;
     return;
@@ -232,9 +265,10 @@ function render() {
   const colorOf = buildColorOf(active, groupColorType, readPalette().point);
   currentPointColors = activeIndices.map(i => colorOf(points[i]));
 
-  // Store for group hover callbacks
+  // Store for group hover callbacks and go mode
   currentPoints = points;
   currentActiveIndices = activeIndices;
+  currentModelResult = modelResult;
 
   // Compute smoother data
   let smootherData = null;
@@ -295,7 +329,20 @@ function render() {
   };
   scatter.update(_cachedUpdateArgs);
 
+  // Update go mode with fresh sorted point data
+  const hasQQ = state.m === 'ols' || state.m === 'robust';
+  const activePoints = activeIndices.map((rowIndex, ai) => ({
+    rowIndex,
+    xVal: displayX[ai],
+    yVal: displayY[ai],
+  }));
+  goMode.update({ activePoints, residuals: modelResult?.residuals ?? null, hasQQ });
+  document.getElementById('go-toolbar').hidden = false;
+
   // Update stats panel
+  const { skewness, kurtosis } = modelResult?.residuals
+    ? skewnessKurtosis(modelResult.residuals)
+    : { skewness: null, kurtosis: null };
   updateStats({
     modelResult,
     modelKey:   state.m,
@@ -305,6 +352,8 @@ function render() {
     nCensored:  censored.size,
     nuisanceNames,
     nuisancePartialR2,
+    skewness,
+    kurtosis,
   });
 
   // Show/hide diag plots section.
@@ -315,6 +364,25 @@ function render() {
   // Update diagnostic plots (OLS and Robust only)
   updateDiagnostics(modelResult, activeIndices);
   
+  // Accessibility: announce what changed
+  const pStr      = announcePValue(modelResult?.pValue ?? modelResult?.pSlope);
+  const modelLabel = MODEL_LABELS[state.m] ?? state.m;
+  const yAnnLabel  = isResidualized ? `Residualized ${yColName}` : yColName;
+  const nStr       = `n=${activeIndices.length}`;
+  const prev       = _prevAnnounceState;
+  const fullDesc   = [`${yAnnLabel} over ${xColName}`, modelLabel, nStr, pStr].filter(Boolean).join(', ');
+
+  if (!prev) {
+    announce(fullDesc);
+  } else if (state.x !== prev.x || state.y !== prev.y || isResidualized !== prev.isResidualized) {
+    announce(fullDesc);
+  } else if (state.m !== prev.m) {
+    announce([modelLabel, nStr, pStr].filter(Boolean).join(', '));
+  } else if (nuisanceNames.length !== prev.nuisanceCount || censored.size !== prev.censoredSize) {
+    announce([nStr, pStr].filter(Boolean).join(', '));
+  }
+  _prevAnnounceState = { x: state.x, y: state.y, m: state.m, isResidualized, nuisanceCount: nuisanceNames.length, censoredSize: censored.size };
+
   // Keep form controls in sync (keyboard nav changes state without touching the DOM)
   syncControls(state);
 }
@@ -411,10 +479,41 @@ function toggleHelp() {
 
 function setupKeyboard() {
   document.addEventListener('keydown', e => {
-    // Ignore when typing in an input
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    // Ignore when typing in an input or select
+    const inInput = e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT';
+
+    // Arrow keys: go mode navigation (blocked by inputs so users can edit normally)
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if (inInput) return;
+      e.preventDefault(); // prevent page scroll
+      const forward = e.key === 'ArrowRight';
+      if (e.metaKey || e.ctrlKey) {
+        goMode.jumpToEnd(forward ? 'last' : 'first');
+      } else if (e.altKey) {
+        goMode.stepByPercentile(forward ? 1 : -1);
+      } else {
+        goMode.step(forward ? 1 : -1);
+      }
+      return;
+    }
+
+    if (inInput) return;
 
     if (e.key === '?') { toggleHelp(); return; }
+    if (e.key === 'a') {
+      document.getElementById('aria-announce')?.classList.toggle('visible');
+      return;
+    }
+
+    // Spacebar: censor the currently highlighted go mode point
+    if (e.key === ' ') {
+      const rowIndex = goMode.getRowIndex();
+      if (rowIndex != null) {
+        e.preventDefault();
+        toggleCensor(rowIndex);
+      }
+      return;
+    }
 
     const state = getState();
     const nCols = columns.length;
@@ -431,6 +530,8 @@ function setupKeyboard() {
       case 'o': setState({ m: MODEL_KEYS[Math.max(mIdx - 1, 0)] });                   break;
       case 'p': setState({ m: MODEL_KEYS[Math.min(mIdx + 1, MODEL_KEYS.length - 1)] }); break;
       case 'c': setState({ c: [] }); break; // clear all censored
+      case 'n': goMode.cycleCriterion(-1); break;
+      case 'm': goMode.cycleCriterion(1);  break;
     }
   });
 }
@@ -786,6 +887,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       })
     : { update: () => {}, clear: () => {}, setExternalHover: () => {}, setGroupHover: () => {} };
 
+  // Set up go mode
+  goMode = createGoMode(document.getElementById('go-toolbar'), {
+    onSelect(rowIndex) {
+      scatter.highlightPoint(rowIndex, { outline: true });
+      hoveredIndex = rowIndex;
+      updateDiagnostics(currentModelResult, currentActiveIndices ?? []);
+      if (rowIndex != null && currentPoints) {
+        const pt = currentPoints[rowIndex];
+        if (pt) {
+          const parts = [fmtPointVal(pt.originalX), fmtPointVal(pt.originalY)];
+          if (pt.group != null) parts.push(String(pt.group));
+          announce(parts.join(', '));
+        }
+      }
+    },
+  });
+
+  // Show platform-appropriate modifier key in keyboard shortcuts
+  if (!/Mac|iPhone|iPad/.test(navigator.platform)) {
+    document.querySelectorAll('.kbd-meta').forEach(el => { el.textContent = 'Ctrl'; });
+  }
+
   // Wire controls and keyboard
   bindControls();
   bindSmootherControls();
@@ -811,6 +934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const ok = await loadData(state.src);
       if (ok) {
         window._loadedSrc = state.src;
+        _prevAnnounceState = null;
         populateControls(colMeta, state);
       }
     } else if (!state.src && data) {
