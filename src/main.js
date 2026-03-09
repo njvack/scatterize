@@ -5,6 +5,7 @@ import { getState, setState, onStateChange } from './state.js';
 import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
 import { createScatterplot, buildColorOf, readPalette } from './plot/scatterplot.js';
+import { MODEL_DISPLAY_NAMES } from './plot/plot-model.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
 import { createGoMode }                        from './plot/gomode.js';
 import { populateControls, bindControls, syncControls, updateStats,
@@ -23,6 +24,8 @@ import { residualizeWithStats, RANK_MODELS, rank, skewnessKurtosis } from './sta
 let data    = null;  // parsed CSV rows (array of objects)
 let columns = [];    // numeric-eligible column names (usable in models)
 let colMeta = [];    // all column metadata: [{ name, isNumeric, colorType }]
+let allColumns = []; // all column names (numeric and non-numeric)
+let loadedSrc = null; // URL of the currently loaded data source
 
 const MODELS = { ols, robust, spearman, theilsen: theilSen };
 
@@ -74,7 +77,7 @@ async function loadData(url) {
     data    = await fetchData(url);
     colMeta = classifyColumns(data);
     columns = colMeta.filter(c => c.isNumeric).map(c => c.name);
-    window._allColumns = colMeta.map(c => c.name);
+    allColumns = colMeta.map(c => c.name);
 
     return true;
   } catch (err) {
@@ -90,8 +93,6 @@ async function loadData(url) {
 // ---------------------------------------------------------------------------
 // Accessibility announcements
 // ---------------------------------------------------------------------------
-
-const MODEL_LABELS = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' };
 
 function announce(text) {
   const el = document.getElementById('aria-announce');
@@ -118,22 +119,11 @@ function fmtPointVal(v) {
 // Render pipeline
 // ---------------------------------------------------------------------------
 
-function render() {
-  const state = getState();
-
-  if (!data || !columns.length) {
-    showEmptyState(true);
-    scatter?.clear();
-    diagnostics?.clear();
-    goMode?.reset();
-    updateStats({ modelResult: null, modelKey: state.m });
-    _cachedCSVData = null;
-    return;
-  }
-
-  showEmptyState(false);
-
-  const allCols  = window._allColumns ?? columns;
+// Compute the model and all derived data for a given state.
+// Returns null if data is insufficient; otherwise an object with all values
+// needed by the UI update phase.
+function computeModel(state) {
+  const allCols  = allColumns.length ? allColumns : columns;
   const xColName = columns[state.x] ?? columns[0];
   const yColName = columns[state.y] ?? columns[1] ?? columns[0];
   const hColName = state.h != null ? allCols[state.h] : null;
@@ -143,7 +133,6 @@ function render() {
 
   const censored = new Set(state.c);
 
-  // Compute nuisance names early: needed for active-index filtering and clash check.
   const nuisanceNames = (!RANK_MODELS.has(state.m) && state.n.length)
     ? state.n.map(i => columns[i]).filter(Boolean)
     : [];
@@ -156,8 +145,7 @@ function render() {
     showError(null);
   }
 
-  // Rows where any nuisance value is missing are excluded from the fit (silently,
-  // same treatment as missing X or Y).
+  // Rows where any nuisance value is missing are excluded from the fit.
   const activeIndices = data
     .map((_, i) => i)
     .filter(i => !censored.has(i)
@@ -165,19 +153,12 @@ function render() {
       && Number.isFinite(data[i][yColName])
       && nuisanceNames.every(col => Number.isFinite(data[i][col])));
 
-  if (!activeIndices.length) {
-    showEmptyState(false);
-    return;
-  }
-
-  // Raw x/y for all rows (for display coords)
-  const xAll = data.map(row => row[xColName]);
-  const yAll = data.map(row => row[yColName]);
+  if (!activeIndices.length) return null;
 
   // Active x/y values
-  const xActive = activeIndices.map(i => xAll[i]);
-  let   yActive = activeIndices.map(i => yAll[i]);
-  const yActiveOrig = yActive.slice();  // original Y before any residualization
+  const xActive = activeIndices.map(i => data[i][xColName]);
+  let   yActive = activeIndices.map(i => data[i][yColName]);
+  const yActiveOrig = yActive.slice();
 
   // Residualize Y against nuisance covariates (OLS/Robust only)
   let isResidualized = false;
@@ -193,7 +174,7 @@ function render() {
       nNuisance = nuisanceNames.length;
     } catch (e) {
       showError(`Residualization failed: ${e.message}`);
-      return;
+      return null;
     }
   }
 
@@ -212,19 +193,16 @@ function render() {
     modelResult = modelFn(displayX, displayY);
   } catch (err) {
     showError(`Model error: ${err.message}`);
-    return;
+    return null;
   }
 
-  // Full-model R² when nuisance is present: ols() received pre-residualized Y,
-  // so we compute it here where we have both original Y and model residuals.
-  // By FWL, residuals from residualized regression equal residuals from joint model.
+  // Full-model R² when nuisance is present
   if (isResidualized && state.m === 'ols' && modelResult.residuals) {
     const n = yActiveOrig.length;
     const yMeanOrig = yActiveOrig.reduce((s, v) => s + v, 0) / n;
     const sstOrig   = yActiveOrig.reduce((s, yi) => s + (yi - yMeanOrig) ** 2, 0);
     const ssr       = modelResult.residuals.reduce((s, r) => s + r * r, 0);
     const fmR2      = 1 - ssr / sstOrig;
-    // Adjusted full-model R²: df accounts for X + all nuisance predictors
     const dfFull    = n - 2 - nNuisance;
     modelResult = {
       ...modelResult,
@@ -233,31 +211,87 @@ function render() {
     };
   }
 
-  // Build display Y map: active index → display Y value
-  const activeDisplayY = new Map(activeIndices.map((origIdx, ai) => [origIdx, displayY[ai]]));
+  // Build display coordinate maps
   const activeDisplayX = new Map(activeIndices.map((origIdx, ai) => [origIdx, displayX[ai]]));
-
-  // Build robust weight map: active index → weight (null for non-robust models)
+  const activeDisplayY = new Map(activeIndices.map((origIdx, ai) => [origIdx, displayY[ai]]));
   const activeWeights = (state.m === 'robust' && modelResult.weights)
     ? new Map(activeIndices.map((origIdx, ai) => [origIdx, modelResult.weights[ai]]))
     : null;
 
   // Build point array for scatter plot
-  const points = data.map((row, i) => {
-    const isCensored = censored.has(i);
-    const dispX = activeDisplayX.get(i) ?? row[xColName];
-    const dispY = activeDisplayY.get(i) ?? row[yColName];
-    return {
-      index:    i,
-      displayX: dispX,
-      displayY: dispY,
-      originalX: row[xColName],
-      originalY: row[yColName],
-      group:    hColName ? row[hColName] : null,
-      censored: isCensored,
-      weight:   activeWeights ? (activeWeights.get(i) ?? null) : null,
-    };
-  });
+  const points = data.map((row, i) => ({
+    index:    i,
+    displayX: activeDisplayX.get(i) ?? row[xColName],
+    displayY: activeDisplayY.get(i) ?? row[yColName],
+    originalX: row[xColName],
+    originalY: row[yColName],
+    group:    hColName ? row[hColName] : null,
+    censored: censored.has(i),
+    weight:   activeWeights ? (activeWeights.get(i) ?? null) : null,
+  }));
+
+  const xLabel = state.m === 'spearman' ? `rank(${xColName})` : xColName;
+  const yLabel = state.m === 'spearman' ? `rank(${yColName})` : isResidualized ? `Residualized ${yColName}` : yColName;
+
+  return {
+    xColName, yColName, hColName, groupColorType,
+    censored, nuisanceNames, nuisancePartialR2,
+    activeIndices, displayX, displayY, yActiveOrig,
+    isResidualized, modelResult, points,
+    xLabel, yLabel,
+  };
+}
+
+// Announce state changes for screen readers — only announces what's different.
+function announceStateChange(state, computed) {
+  const { xColName, yColName, isResidualized, nuisanceNames, censored, activeIndices, modelResult } = computed;
+  const pStr       = announcePValue(modelResult?.pValue ?? modelResult?.pSlope);
+  const modelLabel = MODEL_DISPLAY_NAMES[state.m] ?? state.m;
+  const yAnnLabel  = isResidualized ? `Residualized ${yColName}` : yColName;
+  const nStr       = `n=${activeIndices.length}`;
+  const prev       = _prevAnnounceState;
+  const fullDesc   = [`${yAnnLabel} over ${xColName}`, modelLabel, nStr, pStr].filter(Boolean).join(', ');
+
+  if (!prev) {
+    announce(fullDesc);
+  } else if (state.x !== prev.x || state.y !== prev.y || isResidualized !== prev.isResidualized) {
+    announce(fullDesc);
+  } else if (state.m !== prev.m) {
+    announce([modelLabel, nStr, pStr].filter(Boolean).join(', '));
+  } else if (nuisanceNames.length !== prev.nuisanceCount || censored.size !== prev.censoredSize) {
+    announce([nStr, pStr].filter(Boolean).join(', '));
+  }
+  _prevAnnounceState = {
+    x: state.x, y: state.y, m: state.m, isResidualized,
+    nuisanceCount: nuisanceNames.length, censoredSize: censored.size,
+  };
+}
+
+function render() {
+  const state = getState();
+
+  if (!data || !columns.length) {
+    showEmptyState(true);
+    scatter?.clear();
+    diagnostics?.clear();
+    goMode?.reset();
+    updateStats({ modelResult: null, modelKey: state.m });
+    _cachedCSVData = null;
+    return;
+  }
+
+  showEmptyState(false);
+
+  const computed = computeModel(state);
+  if (!computed) return;
+
+  const {
+    xColName, yColName, hColName, groupColorType,
+    censored, nuisanceNames, nuisancePartialR2,
+    activeIndices, displayX, displayY, yActiveOrig,
+    isResidualized, modelResult, points,
+    xLabel, yLabel,
+  } = computed;
 
   // Compute group colors for active points (used by diagnostic QQ coloring).
   const active = points.filter(p => !p.censored);
@@ -282,27 +316,22 @@ function render() {
 
   // Cache data for CSV export
   _cachedCSVData = {
-    activeIndices,
-    censored,
+    activeIndices, censored,
     xColName, yColName, hColName,
-    xLabel: state.m === 'spearman' ? `rank(${xColName})` : xColName,
-    yLabel: state.m === 'spearman' ? `rank(${yColName})` : isResidualized ? `Residualized ${yColName}` : yColName,
+    xLabel, yLabel,
     isResidualized,
     isSpearman: state.m === 'spearman',
     nuisanceNames,
     residuals: modelResult?.residuals ?? null,
-    displayX,
-    displayY,
+    displayX, displayY,
     yActiveOrig: isResidualized ? yActiveOrig : null,
     smootherData,
   };
 
   // Update scatter plot
   _cachedUpdateArgs = {
-    points,
-    modelResult,
-    xLabel: state.m === 'spearman' ? `rank(${xColName})` : xColName,
-    yLabel: state.m === 'spearman' ? `rank(${yColName})` : isResidualized ? `Residualized ${yColName}` : yColName,
+    points, modelResult,
+    xLabel, yLabel,
     modelKey: state.m,
     groupColorType,
     groupLabel: hColName,
@@ -328,12 +357,10 @@ function render() {
   };
   scatter.update(_cachedUpdateArgs);
 
-  // Update go mode with fresh sorted point data
+  // Update go mode
   const hasQQ = state.m === 'ols' || state.m === 'robust';
   const activePoints = activeIndices.map((rowIndex, ai) => ({
-    rowIndex,
-    xVal: displayX[ai],
-    yVal: displayY[ai],
+    rowIndex, xVal: displayX[ai], yVal: displayY[ai],
   }));
   goMode.update({ activePoints, residuals: modelResult?.residuals ?? null, hasQQ });
 
@@ -342,46 +369,20 @@ function render() {
     ? skewnessKurtosis(modelResult.residuals)
     : { skewness: null, kurtosis: null };
   updateStats({
-    modelResult,
-    modelKey:   state.m,
-    xLabel:     state.m === 'spearman' ? `rank(${xColName})` : xColName,
-    yLabel:     state.m === 'spearman' ? `rank(${yColName})` : yColName,
-    n:          activeIndices.length,
-    nCensored:  censored.size,
-    nuisanceNames,
-    nuisancePartialR2,
-    skewness,
-    kurtosis,
+    modelResult, modelKey: state.m,
+    xLabel: state.m === 'spearman' ? `rank(${xColName})` : xColName,
+    yLabel: state.m === 'spearman' ? `rank(${yColName})` : yColName,
+    n: activeIndices.length, nCensored: censored.size,
+    nuisanceNames, nuisancePartialR2, skewness, kurtosis,
   });
 
-  // Show/hide diag plots section.
+  // Show/hide diag plots section
   const diagEl = document.getElementById('diag-plots');
   const hasDiag = (state.m === 'ols' || state.m === 'robust') && modelResult?.residuals?.length;
   if (diagEl) diagEl.classList.toggle('hidden', !hasDiag);
-
-  // Update diagnostic plots (OLS and Robust only)
   updateDiagnostics(modelResult, activeIndices);
-  
-  // Accessibility: announce what changed
-  const pStr      = announcePValue(modelResult?.pValue ?? modelResult?.pSlope);
-  const modelLabel = MODEL_LABELS[state.m] ?? state.m;
-  const yAnnLabel  = isResidualized ? `Residualized ${yColName}` : yColName;
-  const nStr       = `n=${activeIndices.length}`;
-  const prev       = _prevAnnounceState;
-  const fullDesc   = [`${yAnnLabel} over ${xColName}`, modelLabel, nStr, pStr].filter(Boolean).join(', ');
 
-  if (!prev) {
-    announce(fullDesc);
-  } else if (state.x !== prev.x || state.y !== prev.y || isResidualized !== prev.isResidualized) {
-    announce(fullDesc);
-  } else if (state.m !== prev.m) {
-    announce([modelLabel, nStr, pStr].filter(Boolean).join(', '));
-  } else if (nuisanceNames.length !== prev.nuisanceCount || censored.size !== prev.censoredSize) {
-    announce([nStr, pStr].filter(Boolean).join(', '));
-  }
-  _prevAnnounceState = { x: state.x, y: state.y, m: state.m, isResidualized, nuisanceCount: nuisanceNames.length, censoredSize: censored.size };
-
-  // Keep form controls in sync (keyboard nav changes state without touching the DOM)
+  announceStateChange(state, computed);
   syncControls(state);
 }
 
@@ -927,18 +928,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // If src changed from what we have loaded, reload data
-    const currentSrc = data ? (window._loadedSrc ?? null) : null;
+    const currentSrc = data ? (loadedSrc ?? null) : null;
     if (state.src && state.src !== currentSrc) {
       const ok = await loadData(state.src);
       if (ok) {
-        window._loadedSrc = state.src;
+        loadedSrc = state.src;
         _prevAnnounceState = null;
         populateControls(colMeta, state);
       }
     } else if (!state.src && data) {
-      data    = null;
-      columns = [];
-      window._loadedSrc = null;
+      data       = null;
+      columns    = [];
+      allColumns = [];
+      loadedSrc  = null;
     }
     render();
   });
@@ -976,7 +978,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const ok = await loadData(state.src);
     if (ok) {
-      window._loadedSrc = state.src;
+      loadedSrc = state.src;
       populateControls(colMeta, state);
     }
   }

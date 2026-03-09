@@ -5,27 +5,7 @@
 import * as d3 from 'd3';
 import { mean, stdev } from '../stats/common.js';
 import { createWebGLRenderer } from './webgl-renderer.js';
-
-// Convert a CSS color string + alpha to a WebGL straight RGBA array [0-1].
-function cssToGL(str, alpha = 1) {
-  const c = d3.color(str);
-  return c ? [c.r / 255, c.g / 255, c.b / 255, alpha] : [0, 0, 0, alpha];
-}
-
-// Read CSS custom properties once at init — same as scatterplot.js readPalette.
-function readPalette() {
-  const cs = getComputedStyle(document.documentElement);
-  const v = name => cs.getPropertyValue(name).trim();
-  return {
-    point:    v('--color-point'),
-    regline:  v('--color-regline'),
-    censored: v('--color-censored'),
-    bg:       v('--color-bg'),
-    text:     v('--color-text'),
-    muted:    v('--color-text-muted'),
-    font:     v('--font-sans'),
-  };
-}
+import { readPalette, cssToGL } from './plot-model.js';
 
 // ---------------------------------------------------------------------------
 // Normal distribution utilities
@@ -33,7 +13,7 @@ function readPalette() {
 
 // Inverse normal CDF (rational approximation, Beasley-Springer-Moro).
 // Accurate to ~7 significant figures.
-function normalQuantile(p) {
+export function normalQuantile(p) {
   if (p <= 0) return -Infinity;
   if (p >= 1) return  Infinity;
   const a = [-3.969683028665376e+01,  2.209460984245205e+02,
@@ -64,7 +44,7 @@ function normalQuantile(p) {
 }
 
 // Normal PDF
-function normalPDF(x, mu, sigma) {
+export function normalPDF(x, mu, sigma) {
   const z = (x - mu) / sigma;
   return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
 }
@@ -241,7 +221,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palett
 
   // ── Shared Y axis line ────────────────────────────────────────────────
   innerG.append('line').classed('diag-axis', true)
-    .style('stroke', '#999').style('stroke-width', '0.75').style('fill', 'none')
+    .style('stroke', palette.diagAxis).style('stroke-width', '0.75').style('fill', 'none')
     .attr('x1', sharedAxisX).attr('y1', 0)
     .attr('x2', sharedAxisX).attr('y2', iH);
 
@@ -249,7 +229,7 @@ function fullDraw(svg, overlaySvg, residuals, activeIndices, pointColors, palett
   for (const v of yScale.ticks(4)) {
     const y = yScale(v);
     innerG.append('line').classed('diag-axis', true)
-      .style('stroke', '#999').style('stroke-width', '0.75').style('fill', 'none')
+      .style('stroke', palette.diagAxis).style('stroke-width', '0.75').style('fill', 'none')
       .attr('x1', sharedAxisX - 3).attr('y1', y)
       .attr('x2', sharedAxisX).attr('y2', y);
   }
@@ -354,7 +334,7 @@ function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale, palette) {
     g.selectAll('.diag-bar')
       .data(bins)
       .join('rect').classed('diag-bar', true)
-      .style('fill', '#b8cce4').style('stroke', '#8aaccf').style('stroke-width', '0.5')
+      .style('fill', palette.histBar).style('stroke', palette.histBarStroke).style('stroke-width', '0.5')
       .attr('x', b => {
         const bw = b.x1 - b.x0;
         const density = bw > 0 ? b.length / (n * bw) : 0;
@@ -409,7 +389,7 @@ function drawDist(g, residuals, n, mu, sd, panelW, iH, yScale, palette) {
       .x0(panelW)
       .x1(d => xScale(d));
     g.append('path').classed('diag-bar', true)
-      .style('fill', '#b8cce4').style('stroke', '#8aaccf').style('stroke-width', '0.5')
+      .style('fill', palette.histBar).style('stroke', palette.histBarStroke).style('stroke-width', '0.5')
       .attr('d', area(densities));
 
     // Normal curve — same style as QQ reference line.
@@ -548,12 +528,3 @@ function highlightDiag(state, activeIndices, hoveredIndex) {
   state.hasHover = true;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function fmtShort(v) {
-  if (v === 0) return '0';
-  if (Math.abs(v) >= 1000 || (Math.abs(v) < 0.01 && v !== 0)) return v.toExponential(1);
-  return parseFloat(v.toPrecision(3)).toString();
-}

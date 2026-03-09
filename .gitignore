@@ -3,6 +3,7 @@ node_modules/
 
 # build output
 public/dist/
+public/js/
 public/bundle.js
 
 # macOS

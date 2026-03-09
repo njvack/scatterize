@@ -8,6 +8,39 @@
 import * as d3 from 'd3';
 import { Z95 } from '../stats/common.js';
 
+// Model display names — shared across dashboard, main, etc.
+export const MODEL_DISPLAY_NAMES = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' };
+
+// Convert a CSS color string + alpha to a WebGL straight RGBA array [0-1].
+// D3's color() handles hex, rgb(), named colors, etc.
+export function cssToGL(str, alpha = 1) {
+  const c = d3.color(str);
+  return c ? [c.r / 255, c.g / 255, c.b / 255, alpha] : [0, 0, 0, alpha];
+}
+
+// Read CSS custom properties once at init — used to apply all visual styles
+// inline so SVG export works without a stylesheet.
+export function readPalette() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = name => cs.getPropertyValue(name).trim();
+  return {
+    point:    v('--color-point'),
+    regline:  v('--color-regline'),
+    censored: v('--color-censored'),
+    bg:       v('--color-bg'),
+    text:     v('--color-text'),
+    muted:    v('--color-text-muted'),
+    font:     v('--font-sans'),
+    smoother: v('--color-smoother'),
+    axisLine: v('--color-axis-line'),
+    tickMark: v('--color-tick-mark'),
+    kde:      v('--color-kde'),
+    histBar:  v('--color-hist-bar'),
+    histBarStroke: v('--color-hist-bar-stroke'),
+    diagAxis: v('--color-diag-axis'),
+  };
+}
+
 // ColorBrewer Paired palette for group coloring (via D3).
 const PAIRED = d3.schemePaired;
 

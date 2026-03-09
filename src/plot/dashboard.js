@@ -3,8 +3,7 @@
 
 import { setState } from '../state.js';
 import { RANK_MODELS } from '../stats/common.js';
-
-const MODEL_DISPLAY_NAMES = { ols: 'OLS', robust: 'Robust', spearman: 'Spearman', theilsen: 'Theil-Sen' };
+import { MODEL_DISPLAY_NAMES } from './plot-model.js';
 
 // ---------------------------------------------------------------------------
 // Controls
@@ -210,14 +209,14 @@ export function bindControls() {
 // Stats panel
 // ---------------------------------------------------------------------------
 
-function fmtNum(v, decimals) {
+function fmtFixed(v, decimals) {
   if (Math.abs(v) >= 10000) return v.toExponential(3);
   return v.toFixed(decimals);
 }
 
 const FMT = {
-  coef: v => v == null ? '—' : fmtNum(v, 4),
-  stat: v => v == null ? '—' : fmtNum(v, 3),
+  coef: v => v == null ? '—' : fmtFixed(v, 4),
+  stat: v => v == null ? '—' : fmtFixed(v, 3),
   pval: v => {
     if (v == null) return '—';
     if (v < 0.001) return '<0.001';

@@ -5,24 +5,24 @@
 import { TICK_LEN, fiveNum, fmtNum } from './plot-model.js';
 
 // Draw only the axis spine (WebGL mode — fringe ticks go to the GL line buffer).
-export function drawAxisSpine(g, len, orient) {
+export function drawAxisSpine(g, len, orient, palette) {
   g.selectAll('*').remove();
   const isX = orient === 'x';
   g.append('line').classed('axis-line', true)
-    .style('stroke', '#555').style('stroke-width', '1')
+    .style('stroke', palette.axisLine).style('stroke-width', '1')
     .attr('x1', 0).attr('y1', 0)
     .attr('x2', isX ? len : 0)
     .attr('y2', isX ? 0 : len);
 }
 
 // Draw axis spine + per-point tick mark lines (SVG fallback; no text labels).
-export function drawAxis(g, vals, scale, iH, iW, orient) {
+export function drawAxis(g, vals, scale, iH, iW, orient, palette) {
   g.selectAll('*').remove();
   const isX = orient === 'x';
 
   g.append('line')
     .classed('axis-line', true)
-    .style('stroke', '#555').style('stroke-width', '1')
+    .style('stroke', palette.axisLine).style('stroke-width', '1')
     .attr('x1', 0).attr('y1', 0)
     .attr('x2', isX ? iW : 0)
     .attr('y2', isX ? 0 : iH);
@@ -33,7 +33,7 @@ export function drawAxis(g, vals, scale, iH, iW, orient) {
     const pos = scale(v);
     g.append('line')
       .classed('tick-mark', true)
-      .style('stroke', '#333').style('stroke-width', '0.75').style('opacity', '0.3')
+      .style('stroke', palette.tickMark).style('stroke-width', '0.75').style('opacity', '0.3')
       .attr('x1', isX ? pos : 0)
       .attr('y1', isX ? 0 : pos)
       .attr('x2', isX ? pos : -TICK_LEN)

@@ -139,6 +139,13 @@ export function diagInverse(M) {
   });
 }
 
+// Median of an array (sorts a copy; does not mutate input).
+export function arrayMedian(arr) {
+  const s = arr.slice().sort((a, b) => a - b);
+  const m = s.length;
+  return m % 2 === 0 ? (s[m / 2 - 1] + s[m / 2]) / 2 : s[(m - 1) / 2];
+}
+
 // Sample mean
 export function mean(arr) {
   return arr.reduce((s, v) => s + v, 0) / arr.length;
@@ -166,7 +173,6 @@ export function rank(arr) {
   return ranks;
 }
 
-// Like residualize(), but also returns partial R² for each nuisance variable.
 // ---------------------------------------------------------------------------
 // Descriptive statistics
 // ---------------------------------------------------------------------------

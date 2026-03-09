@@ -1,4 +1,4 @@
-import { solveLinear, diagInverse, zPValue } from './common.js';
+import { solveLinear, diagInverse, zPValue, arrayMedian } from './common.js';
 
 // M-estimation: IRLS with Tukey biweight weights.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
@@ -15,12 +15,6 @@ import { solveLinear, diagInverse, zPValue } from './common.js';
 //   what MASS::rlm returns.
 
 const TUKEY_C = 4.685;  // 95%-efficiency constant for Tukey bisquare
-
-function arrayMedian(arr) {
-  const s = arr.slice().sort((a, b) => a - b);
-  const m = s.length;
-  return m % 2 === 0 ? (s[m / 2 - 1] + s[m / 2]) / 2 : s[(m - 1) / 2];
-}
 
 function bisquareWeights(r, scale) {
   // w_i = (1 - (r_i/(c*s))^2)^2  for |r_i/(c*s)| < 1, else 0

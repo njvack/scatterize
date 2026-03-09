@@ -46,6 +46,12 @@ a:hover   { text-decoration-color: var(--color-link); }
   --color-regline:    #b5541a;
   --color-censored:   #aaaaaa;
   --color-smoother:   #59a14f;
+  --color-axis-line:  #555555;
+  --color-tick-mark:  #333333;
+  --color-kde:        #aaaaaa;
+  --color-hist-bar:        #b8cce4;
+  --color-hist-bar-stroke: #8aaccf;
+  --color-diag-axis:  #999999;
 
   --header-height: 52px;
   --footer-height: 32px;

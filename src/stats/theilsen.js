@@ -13,11 +13,7 @@
 //   K = z_{α/2} * sqrt(n(n-1)(2n+5)/18); C = floor((N-K)/2)
 //   CI = [sorted_slopes[C], sorted_slopes[N-C-1]]  (no-ties variance formula)
 
-function arrayMedian(arr) {
-  const s = arr.slice().sort((a, b) => a - b);
-  const m = s.length;
-  return m % 2 === 0 ? (s[m / 2 - 1] + s[m / 2]) / 2 : s[(m - 1) / 2];
-}
+import { arrayMedian } from './common.js';
 
 // Returns sizes of tie groups with > 1 member (singletons omitted; they
 // contribute 0 to all variance correction terms anyway).

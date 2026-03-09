@@ -10,7 +10,7 @@
 import * as d3 from 'd3';
 import { createWebGLRenderer } from './webgl-renderer.js';
 import {
-  buildPlotModel, buildColorOf,
+  buildPlotModel, buildColorOf, readPalette, cssToGL,
   fmtNum,
   POINT_R, TICK_LEN, CORNER_R, KDE_MAX_PX,
   CORNER_BOT_STRIP_Y, CORNER_LEFT_STRIP_X,
@@ -18,35 +18,11 @@ import {
 import { drawAxisSpine, drawAxis, drawAxisLabels } from './axes.js';
 import { createLegendRenderer } from './legend.js';
 
-export { buildColorOf } from './plot-model.js';
+export { buildColorOf, readPalette } from './plot-model.js';
 
 const SUPERTICK_LEN       = 14;   // px: hover supertick
 const POINT_R_HOVER_DELTA = 2;    // px: hover radius = point radius + this
 const MAX_HOVER_DIST      = 40;   // px: beyond this from nearest point, no hover
-
-// Read CSS custom properties once at init — used to apply all visual styles
-// inline so SVG export works without a stylesheet.
-export function readPalette() {
-  const cs = getComputedStyle(document.documentElement);
-  const v = name => cs.getPropertyValue(name).trim();
-  return {
-    point:    v('--color-point'),
-    regline:  v('--color-regline'),
-    censored: v('--color-censored'),
-    bg:       v('--color-bg'),
-    text:     v('--color-text'),
-    muted:    v('--color-text-muted'),
-    font:     v('--font-sans'),
-    smoother: v('--color-smoother'),
-  };
-}
-
-// Convert a CSS color string + alpha to a WebGL straight RGBA array [0-1].
-// D3's color() handles hex, rgb(), named colors, etc.
-function cssToGL(str, alpha = 1) {
-  const c = d3.color(str);
-  return c ? [c.r / 255, c.g / 255, c.b / 255, alpha] : [0, 0, 0, alpha];
-}
 
 // in frontSvg with D3 joins (same as before, just split across two SVGs).
 export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanvas = null } = {}) {
@@ -74,10 +50,10 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   const backPlotArea = backCanvas.append('g').attr('class', 'plot-area')
     .attr('clip-path', `url(#${backClipId})`);
   const xKdeEl = backPlotArea.append('path').attr('class', 'kde--x')
-    .style('fill', '#aaa').style('fill-opacity', '0.35')
+    .style('fill', palette.kde).style('fill-opacity', '0.35')
     .style('stroke', 'none').style('pointer-events', 'none');
   const yKdeEl = backPlotArea.append('path').attr('class', 'kde--y')
-    .style('fill', '#aaa').style('fill-opacity', '0.35')
+    .style('fill', palette.kde).style('fill-opacity', '0.35')
     .style('stroke', 'none').style('pointer-events', 'none');
   const ciBandEl  = backPlotArea.append('path').attr('class', 'ci-band')
     .style('fill', palette.regline).style('fill-opacity', '0.12')
@@ -218,12 +194,12 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
     if (glRenderer) {
       // WebGL mode: SVG draws spine only; fringe ticks go to the GL line buffer.
-      drawAxisSpine(xAxisG, iW, 'x');
-      drawAxisSpine(yAxisG, iH, 'y');
+      drawAxisSpine(xAxisG, iW, 'x', palette);
+      drawAxisSpine(yAxisG, iH, 'y', palette);
     } else {
       // SVG fallback: draw spine + per-point fringe ticks in SVG.
-      drawAxis(xAxisG, xVals, xScale, iH, iW, 'x');
-      drawAxis(yAxisG, yVals, yScale, iH, iW, 'y');
+      drawAxis(xAxisG, xVals, xScale, iH, iW, 'x', palette);
+      drawAxis(yAxisG, yVals, yScale, iH, iW, 'y', palette);
     }
 
     // Front SVG labels — D3 join inside drawAxisLabels; pass T so they animate.
