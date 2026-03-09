@@ -126,7 +126,6 @@ function render() {
     scatter?.clear();
     diagnostics?.clear();
     goMode?.reset();
-    document.getElementById('go-toolbar').hidden = true;
     updateStats({ modelResult: null, modelKey: state.m });
     _cachedCSVData = null;
     return;
@@ -337,7 +336,6 @@ function render() {
     yVal: displayY[ai],
   }));
   goMode.update({ activePoints, residuals: modelResult?.residuals ?? null, hasQQ });
-  document.getElementById('go-toolbar').hidden = false;
 
   // Update stats panel
   const { skewness, kurtosis } = modelResult?.residuals
