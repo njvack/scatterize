@@ -35,7 +35,7 @@ a:hover   { text-decoration-color: var(--color-link); }
   --color-border:     #dee2e6;
   --color-border-mid: #ced4da;
   --color-text:       #212529;
-  --color-text-muted: #6c757d;
+  --color-text-muted: #3f464a;
   --color-accent:     #2780e3;
   --color-accent-dk:  #1a6bbf;
   --color-link:       var(--color-accent-dk);
