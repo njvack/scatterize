@@ -817,5 +817,5 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     return root;
   }
 
-  return { update, clear, highlightPoint, getExportSVG };
+  return { update, clear, highlightPoint, getExportSVG, showGroupHover };
 }

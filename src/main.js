@@ -42,6 +42,8 @@ let currentActiveIndices = null;   // active row indices from last render (for g
 let currentModelResult = null;     // model result from last render (for go mode diagnostics)
 let lastSpaceCensored = null;      // row index of last space-censored point (for toggle-back)
 let _pendingHighlight = null;      // one-shot: highlight this index on next onSelect, then clear
+let _kbGroupIdx = null;            // keyboard legend highlight: index into _kbGroups, null = none
+let _kbGroups = [];                // sorted categorical group names from last render
 
 const LOAD_BLANK_DELAY = 250; // ms before showing loading message
 let loadingTimer = null;
@@ -299,6 +301,15 @@ function render() {
   const active = points.filter(p => !p.censored);
   const colorOf = buildColorOf(active, groupColorType, readPalette().point);
   currentPointColors = activeIndices.map(i => colorOf(points[i]));
+
+  // Update keyboard legend highlight groups; clear highlight on any re-render.
+  _kbGroupIdx = null;
+  if (hColName && groupColorType === 'categorical') {
+    const groupValues = active.map(p => p.group).filter(g => g != null);
+    _kbGroups = [...new Set(groupValues.map(String))].sort().slice(0, 10);
+  } else {
+    _kbGroups = [];
+  }
 
   // Store for group hover callbacks and go mode
   currentPoints = points;
@@ -559,6 +570,20 @@ function setupKeyboard() {
       case 'c': setState({ c: [] }); break; // clear all censored
       case 'n': goMode.cycleCriterion(-1); break;
       case 'm': goMode.cycleCriterion(1);  break;
+      case 'l':
+        if (!_kbGroups.length) break;
+        if (_kbGroupIdx == null) _kbGroupIdx = 0;
+        else if (_kbGroupIdx >= _kbGroups.length - 1) _kbGroupIdx = null;
+        else _kbGroupIdx++;
+        scatter.showGroupHover(_kbGroupIdx != null ? _kbGroups[_kbGroupIdx] : null);
+        break;
+      case ';':
+        if (!_kbGroups.length) break;
+        if (_kbGroupIdx == null) _kbGroupIdx = _kbGroups.length - 1;
+        else if (_kbGroupIdx <= 0) _kbGroupIdx = null;
+        else _kbGroupIdx--;
+        scatter.showGroupHover(_kbGroupIdx != null ? _kbGroups[_kbGroupIdx] : null);
+        break;
     }
   });
 }
