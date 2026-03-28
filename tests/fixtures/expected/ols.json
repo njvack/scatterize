@@ -14,9 +14,13 @@
       "t_intercept": -2.601058003,
       "p_intercept": 0.012318816154,
       "r_squared": 0.65107938076,
+      "full_r_squared": 0.65107938076,
       "adj_r_squared": 0.64381020119,
+      "f_stat": 89.5671065365,
+      "p_f": 1.4898364963e-12,
       "n": 50,
-      "df_residual": 48
+      "df_residual": 48,
+      "nuisance_stats": []
     }
   },
   {
@@ -34,9 +38,13 @@
       "t_intercept": 19.857575264,
       "p_intercept": 8.2417988453e-19,
       "r_squared": 0.75283279366,
+      "full_r_squared": 0.75283279366,
       "adj_r_squared": 0.74459388678,
+      "f_stat": 91.3753250038,
+      "p_f": 1.2939587014e-10,
       "n": 32,
-      "df_residual": 30
+      "df_residual": 30,
+      "nuisance_stats": []
     }
   },
   {
@@ -47,18 +55,106 @@
       "cyl"
     ],
     "results": {
-      "slope": -1.2371409566,
-      "intercept": 3.9801917425,
-      "se_slope": 0.54340102689,
-      "t_slope": -2.2766628978,
-      "p_slope": 0.030106849586,
-      "se_intercept": 1.8249020139,
-      "t_intercept": 2.1810440846,
-      "p_intercept": 0.0371526212,
-      "r_squared": 0.14732016535,
-      "adj_r_squared": 0.1188975042,
+      "slope": -3.190972139,
+      "intercept": 39.6862614803,
+      "se_slope": 0.75690649195,
+      "t_slope": -4.215807597,
+      "p_slope": 0.00022202004952,
+      "se_intercept": 1.7149840116,
+      "t_intercept": 23.1408929829,
+      "p_intercept": 3.0431815633e-20,
+      "r_squared": 0.37998462556,
+      "full_r_squared": 0.83022739333,
+      "adj_r_squared": 0.8185189377,
+      "f_stat": 70.908360538,
+      "p_f": 6.8089546848e-12,
       "n": 32,
-      "df_residual": 30
+      "df_residual": 29,
+      "nuisance_stats": [
+        {
+          "coef": -1.5077949683,
+          "se": 0.41468828824,
+          "t": -3.635971912,
+          "p": 0.0010642817848,
+          "partial_r2": 0.31312648962
+        }
+      ]
+    }
+  },
+  {
+    "dataset": "mtcars",
+    "x": "wt",
+    "y": "mpg",
+    "nuisance": [
+      "cyl",
+      "hp"
+    ],
+    "results": {
+      "slope": -3.1669731107,
+      "intercept": 38.7517873729,
+      "se_slope": 0.74057587927,
+      "t_slope": -4.2763654602,
+      "p_slope": 0.00019947649747,
+      "se_intercept": 1.7868640294,
+      "t_intercept": 21.6870375891,
+      "p_intercept": 4.7993988013e-19,
+      "r_squared": 0.39508247267,
+      "full_r_squared": 0.84314998327,
+      "adj_r_squared": 0.82634462433,
+      "f_stat": 50.1714950873,
+      "p_f": 2.1841780607e-11,
+      "n": 32,
+      "df_residual": 28,
+      "nuisance_stats": [
+        {
+          "coef": -0.94161681199,
+          "se": 0.55091638145,
+          "t": -1.7091828156,
+          "p": 0.09848009748,
+          "partial_r2": 0.094475501997
+        },
+        {
+          "coef": -0.018038102143,
+          "se": 0.011876249945,
+          "t": -1.5188382045,
+          "p": 0.14001515502,
+          "partial_r2": 0.076117049702
+        }
+      ]
+    }
+  },
+  {
+    "dataset": "stackloss",
+    "x": "Air.Flow",
+    "y": "stack.loss",
+    "nuisance": [
+      "Water.Temp"
+    ],
+    "results": {
+      "slope": 0.6711544409,
+      "intercept": -50.358840074,
+      "se_slope": 0.12669104674,
+      "t_slope": 5.2975680459,
+      "p_slope": 4.8979704085e-05,
+      "se_intercept": 5.1383280577,
+      "t_intercept": -9.8006276573,
+      "p_intercept": 1.2164710581e-08,
+      "r_squared": 0.60924124654,
+      "full_r_squared": 0.90876094235,
+      "adj_r_squared": 0.89862326928,
+      "f_stat": 89.6419657528,
+      "p_f": 4.3815434188e-10,
+      "n": 21,
+      "df_residual": 18,
+      "nuisance_stats": [
+        {
+          "coef": 1.2953513681,
+          "se": 0.36748544429,
+          "t": 3.5249052396,
+          "p": 0.0024191459339,
+          "partial_r2": 0.40838042826
+        }
+      ]
     }
   },
   {
@@ -76,9 +172,13 @@
       "t_intercept": 2.6673478276,
       "p_intercept": 0.025734051399,
       "r_squared": 0.66654245951,
+      "full_r_squared": 0.66654245951,
       "adj_r_squared": 0.62949162168,
+      "f_stat": 17.9899429677,
+      "p_f": 0.0021696288731,
       "n": 11,
-      "df_residual": 9
+      "df_residual": 9,
+      "nuisance_stats": []
     }
   },
   {
@@ -96,9 +196,13 @@
       "t_intercept": 2.6667578844,
       "p_intercept": 0.025758941031,
       "r_squared": 0.66624203373,
+      "full_r_squared": 0.66624203373,
       "adj_r_squared": 0.62915781525,
+      "f_stat": 17.9656484923,
+      "p_f": 0.0021788162369,
       "n": 11,
-      "df_residual": 9
+      "df_residual": 9,
+      "nuisance_stats": []
     }
   },
   {
@@ -116,9 +220,13 @@
       "t_intercept": 2.6700797366,
       "p_intercept": 0.02561910884,
       "r_squared": 0.66632404107,
+      "full_r_squared": 0.66632404107,
       "adj_r_squared": 0.62924893452,
+      "f_stat": 17.9722758234,
+      "p_f": 0.0021763052792,
       "n": 11,
-      "df_residual": 9
+      "df_residual": 9,
+      "nuisance_stats": []
     }
   },
   {
@@ -136,9 +244,13 @@
       "t_intercept": 2.6707634085,
       "p_intercept": 0.025590425201,
       "r_squared": 0.6667072569,
+      "full_r_squared": 0.6667072569,
       "adj_r_squared": 0.62967472989,
+      "f_stat": 18.0032882092,
+      "p_f": 0.0021646023472,
       "n": 11,
-      "df_residual": 9
+      "df_residual": 9,
+      "nuisance_stats": []
     }
   },
   {
@@ -156,9 +268,13 @@
       "t_intercept": 16.3073378068,
       "p_intercept": 3.3064529752e-21,
       "r_squared": 0.97435532479,
+      "full_r_squared": 0.97435532479,
       "adj_r_squared": 0.97382106073,
+      "f_stat": 1823.7335904903,
+      "p_f": 7.5928273346e-40,
       "n": 50,
-      "df_residual": 48
+      "df_residual": 48,
+      "nuisance_stats": []
     }
   },
   {
@@ -176,9 +292,13 @@
       "t_intercept": 2.7173056515,
       "p_intercept": 0.0091271448148,
       "r_squared": 0.34408708783,
+      "full_r_squared": 0.34408708783,
       "adj_r_squared": 0.33042223549,
+      "f_stat": 25.1804468386,
+      "p_f": 7.5817323114e-06,
       "n": 50,
-      "df_residual": 48
+      "df_residual": 48,
+      "nuisance_stats": []
     }
   }
 ]

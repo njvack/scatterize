@@ -69,10 +69,12 @@ function loadExpected(method) {
 // ---------------------------------------------------------------------------
 // Comparison utilities
 // ---------------------------------------------------------------------------
-const COEF_TOL   = 1e-6;  // relative tolerance for coefficients
-const PVAL_TOL   = 1e-4;  // relative tolerance for p-values (less precisely computed)
-const WEIGHT_TOL = 1e-4;  // absolute tolerance for IRLS weights
-const ROBUST_TOL = 1e-3;  // relative tolerance for M-estimation (iterative, floating-point)
+const COEF_TOL      = 1e-6;  // relative tolerance for coefficients
+const PVAL_TOL      = 1e-4;  // relative tolerance for p-values (less precisely computed)
+const WEIGHT_TOL    = 1e-4;  // absolute tolerance for IRLS weights
+const ROBUST_TOL    = 1e-3;  // relative tolerance for M-estimation (iterative, floating-point)
+const ROBUST_SE_TOL = 0.10;  // SE/t for robust nuisance predictors: MASS::rlm uses a
+                              // different asymptotic variance formula; coefs agree but SEs diverge ~3-7%
 
 let passed = 0;
 let failed = 0;
@@ -139,12 +141,34 @@ try {
       const nuisance = (c.nuisance ?? []).map(n => col(data, n));
       const r = ols(x, col(data, c.y), nuisance);
       const e = c.results;
-      check('slope',        r.slope,       e.slope);
-      check('intercept',    r.intercept,   e.intercept);
-      check('r_squared',    r.rSquared,    e.r_squared);
-      check('se_slope',     r.seSlope,     e.se_slope);
-      check('t_slope',      r.tSlope,      e.t_slope);
-      check('p_slope',      r.pSlope,      e.p_slope,   PVAL_TOL);
+      check('slope',          r.slope,              e.slope);
+      check('intercept',      r.intercept,          e.intercept);
+      check('r_squared',      r.rSquared,           e.r_squared);
+      check('full_r_squared', r.fullModelRSquared,  e.full_r_squared);
+      check('adj_r_squared',  r.adjRSquared,        e.adj_r_squared);
+      check('f_stat',         r.fStat,              e.f_stat);
+      check('p_f',            r.pF,                 e.p_f,         PVAL_TOL);
+      check('se_slope',       r.seSlope,            e.se_slope);
+      check('t_slope',        r.tSlope,             e.t_slope);
+      check('p_slope',        r.pSlope,             e.p_slope,     PVAL_TOL);
+      check('df_residual',    r.dfResidual,         e.df_residual);
+
+      // Nuisance stats (one per covariate)
+      const nuis = e.nuisance_stats ?? [];
+      for (let i = 0; i < nuis.length; i++) {
+        const label = `nuisance[${i}]`;
+        check(`${label}.coef`,      r.nuisanceStats[i].coef,      nuis[i].coef);
+        check(`${label}.se`,        r.nuisanceStats[i].se,        nuis[i].se);
+        check(`${label}.t`,         r.nuisanceStats[i].t,         nuis[i].t);
+        check(`${label}.p`,         r.nuisanceStats[i].p,         nuis[i].p,  PVAL_TOL);
+        check(`${label}.partialR2`, r.nuisanceStats[i].partialR2, nuis[i].partial_r2);
+      }
+
+      // yResidual presence
+      const hasNuisance = nuisance.length > 0;
+      const yResOk = hasNuisance ? r.yResidual != null : r.yResidual === null;
+      console.log(`    ${yResOk ? '✓' : '✗'} yResidual ${hasNuisance ? 'present' : 'null'} (no nuisance)`);
+      if (yResOk) passed++; else failed++;
     } catch (err) {
       if (err.message === 'not yet implemented') {
         console.log('    (not yet implemented)');
@@ -172,12 +196,22 @@ try {
       const data = loadData(c.dataset);
       const x = col(data, c.x);
       const y = col(data, c.y);
-      const r = robust(x, y);
+      const nuisance = (c.nuisance ?? []).map(n => col(data, n));
+      const r = robust(x, y, nuisance);
       const e = c.results;
       check('slope',        r.slope,     e.slope,     ROBUST_TOL);
       check('intercept',    r.intercept, e.intercept, ROBUST_TOL);
       check('scale',        r.scale,     e.scale,     ROBUST_TOL);
       checkArray('weights', r.weights,   e.weights,   ROBUST_TOL);
+
+      // Nuisance stats — coefs match well; SE/t use wider tolerance (see ROBUST_SE_TOL)
+      const nuis = e.nuisance_stats ?? [];
+      for (let i = 0; i < nuis.length; i++) {
+        const label = `nuisance[${i}]`;
+        check(`${label}.coef`, r.nuisanceStats[i].coef, nuis[i].coef, ROBUST_TOL);
+        check(`${label}.se`,   r.nuisanceStats[i].se,   nuis[i].se,   ROBUST_SE_TOL);
+        check(`${label}.t`,    r.nuisanceStats[i].t,    nuis[i].t,    ROBUST_SE_TOL);
+      }
     } catch (err) {
       if (err.message === 'not yet implemented') {
         console.log('    (not yet implemented)');

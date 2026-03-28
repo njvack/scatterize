@@ -515,6 +515,15 @@ main > section {
   margin: 0 0 8px;
 }
 
+#stats-model h4 {
+  font-size: 0.786rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 10px 0 4px;
+}
+
 .stats-table {
   width: 100%;
   border-collapse: collapse;

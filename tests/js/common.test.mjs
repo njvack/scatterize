@@ -6,9 +6,10 @@ import assert from 'node:assert/strict';
 import {
   arrayMedian, mean, stdev, rank,
   logGamma, incompleteBeta, normalCDF, zPValue, tPValue,
-  skewnessKurtosis, residualize, residualizeWithStats,
+  skewnessKurtosis,
   Z95,
 } from '../../src/stats/common.js';
+import { ols } from '../../src/stats/ols.js';
 
 // ---------------------------------------------------------------------------
 // arrayMedian
@@ -206,55 +207,37 @@ test('skewnessKurtosis: fewer than 3 values → nulls', () => {
 });
 
 // ---------------------------------------------------------------------------
-// residualize
+// ols nuisance / yResidual
 // ---------------------------------------------------------------------------
 
-test('residualize: removes linear trend', () => {
-  // y = 2*z + noise; after residualizing out z, residuals should have near-zero correlation with z
+test('ols nuisance: yResidual removes linear trend from z', () => {
+  // y = 2*z; x is independent signal. yResidual = y - b_z*z should be near-zero.
   const z = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const y = z.map(zi => 2 * zi + 0.1);
-  const residuals = residualize(y, [z]);
-  // Residuals should be near zero (perfect linear relationship)
-  const maxResid = Math.max(...residuals.map(Math.abs));
-  assert.ok(maxResid < 1e-10);
+  const x = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]; // independent of z
+  const y = z.map(zi => 2 * zi);
+  const r = ols(x, y, [z]);
+  // yResidual should be near-constant (z perfectly predicts y)
+  const range = Math.max(...r.yResidual) - Math.min(...r.yResidual);
+  assert.ok(range < 1e-8);
 });
 
-test('residualize: preserves residual structure', () => {
-  // y = z + x_signal; after removing z, residuals should reflect x_signal
-  const n = 20;
-  const z = Array.from({ length: n }, (_, i) => i);
-  const xSignal = Array.from({ length: n }, (_, i) => Math.sin(i));
-  const y = z.map((zi, i) => zi + xSignal[i]);
-  const residuals = residualize(y, [z]);
-  // Residuals should correlate with xSignal
-  const rMean = mean(residuals);
-  const xMean = mean(xSignal);
-  const cov = residuals.reduce((s, r, i) => s + (r - rMean) * (xSignal[i] - xMean), 0);
-  assert.ok(cov > 0); // positive correlation preserved
+test('ols nuisance: yResidual null when no nuisance', () => {
+  const x = [1, 2, 3, 4, 5];
+  const y = [2, 4, 5, 4, 5];
+  const r = ols(x, y);
+  assert.equal(r.yResidual, null);
 });
 
-// ---------------------------------------------------------------------------
-// residualizeWithStats
-// ---------------------------------------------------------------------------
-
-test('residualizeWithStats: returns residuals and partialR2', () => {
-  const z = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const y = z.map(zi => 3 * zi + 1);
-  const result = residualizeWithStats(y, [z]);
-  assert.ok(Array.isArray(result.residuals));
-  assert.ok(Array.isArray(result.partialR2));
-  assert.equal(result.partialR2.length, 1);
-  // Perfect linear → partial R² should be ≈ 1
-  assert.ok(result.partialR2[0] > 0.999);
-});
-
-test('residualizeWithStats: multiple nuisance variables', () => {
+test('ols nuisance: nuisanceStats populated', () => {
   const n = 30;
   const z1 = Array.from({ length: n }, (_, i) => i);
   const z2 = Array.from({ length: n }, (_, i) => i * i);
-  const y = z1.map((v, i) => v + 0.5 * z2[i]);
-  const result = residualizeWithStats(y, [z1, z2]);
-  assert.equal(result.partialR2.length, 2);
-  assert.ok(result.partialR2[0] > 0);
-  assert.ok(result.partialR2[1] > 0);
+  const x  = Array.from({ length: n }, (_, i) => Math.sin(i));
+  const y  = z1.map((v, i) => v + 0.5 * z2[i] + x[i]);
+  const r = ols(x, y, [z1, z2]);
+  assert.equal(r.nuisanceStats.length, 2);
+  assert.ok(r.nuisanceStats[0].partialR2 > 0);
+  assert.ok(r.nuisanceStats[1].partialR2 > 0);
+  // Perfect z fit: full model R² should be high
+  assert.ok(r.fullModelRSquared > 0.99);
 });

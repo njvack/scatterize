@@ -96,6 +96,20 @@ export function robust(x, y, nuisance = []) {
   const tSlope     = slope     / seSlope;
   const tIntercept = intercept / seIntercept;
 
+  // Per-nuisance stats — p-values via asymptotic normal (same as slope/intercept)
+  const nuisanceStats = nuisance.map((_, pi) => {
+    const j    = pi + 2;
+    const coef = b[j];
+    const se   = Math.sqrt(diagInv[j] * s2);
+    const t    = coef / se;
+    return { coef, se, t, p: zPValue(t) };
+  });
+
+  // Y with nuisance effects removed (for plot y-axis)
+  const yResidual = nuisance.length
+    ? y.map((yi, i) => yi - nuisance.reduce((s, col, pi) => s + b[pi + 2] * col[i], 0))
+    : null;
+
   return {
     slope, intercept,
     seSlope, seIntercept,
@@ -105,6 +119,8 @@ export function robust(x, y, nuisance = []) {
     // no closed-form df, but converges to N(0,1) under H₀ as n → ∞.
     pSlope:     zPValue(tSlope),
     pIntercept: zPValue(tIntercept),
+    nuisanceStats,
+    yResidual,
     scale,
     weights: w,
     residuals: r,

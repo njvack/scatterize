@@ -1,5 +1,5 @@
 // Shared statistical utilities
-import { Matrix, solve, QrDecomposition } from 'ml-matrix';
+import { Matrix, solve } from 'ml-matrix';
 
 // z_{0.975}: standard normal 95% CI critical value
 export const Z95 = 1.9599639845400536;
@@ -102,25 +102,12 @@ export function tPValue(t, df) {
 }
 
 // ---------------------------------------------------------------------------
-// Residualize y against one or more nuisance variables (columns of X matrix).
-// Returns the residuals from OLS of y on [1, nuisance...].
-// nuisanceMatrix is an array of arrays (one per nuisance variable, length n each).
-// Uses QR decomposition on the design matrix directly (avoids squaring the
-// condition number that normal equations would incur).
+// F-distribution: upper-tail p-value P(F > f) with d1, d2 degrees of freedom
 // ---------------------------------------------------------------------------
-
-// Private helper: fit OLS of y on [1, nuisance...], return fit components.
-function _olsNuisanceFit(y, nuisanceMatrix) {
-  const n = y.length;
-  const dm = Array.from({ length: n }, (_, i) => [1, ...nuisanceMatrix.map(col => col[i])]);
-  const X = new Matrix(dm);
-  const b = new QrDecomposition(X).solve(Matrix.columnVector(y)).getColumn(0);
-  const residuals = y.map((yi, i) => yi - dm[i].reduce((s, xij, j) => s + xij * b[j], 0));
-  return { X, b, residuals };
-}
-
-export function residualize(y, nuisanceMatrix) {
-  return _olsNuisanceFit(y, nuisanceMatrix).residuals;
+export function fPValue(f, d1, d2) {
+  if (f <= 0) return 1;
+  const x = d2 / (d1 * f + d2);
+  return incompleteBeta(d2 / 2, d1 / 2, x);  // equals P(F > f)
 }
 
 // Solve Ax = b via LU decomposition with partial pivoting (ml-matrix).
@@ -199,23 +186,3 @@ export function skewnessKurtosis(arr) {
   };
 }
 
-// Partial R²_k = t²_k / (t²_k + df_residual), where t_k is the t-statistic
-// for nuisance k in the OLS fit of y on [1, z1, ..., zp].
-export function residualizeWithStats(y, nuisanceMatrix) {
-  const { X, b, residuals } = _olsNuisanceFit(y, nuisanceMatrix);
-  const n = y.length;
-  const p = nuisanceMatrix.length;
-
-  const ssr        = residuals.reduce((s, r) => s + r * r, 0);
-  const dfResidual = n - p - 1;
-  const s2         = ssr / dfResidual;
-
-  const diagXtX = diagInverse(X.transpose().mmul(X).to2DArray());
-  const partialR2 = nuisanceMatrix.map((_, k) => {
-    const j  = k + 1;  // skip intercept column
-    const t2 = (b[j] ** 2) / (diagXtX[j] * s2);
-    return t2 / (t2 + dfResidual);
-  });
-
-  return { residuals, partialR2 };
-}

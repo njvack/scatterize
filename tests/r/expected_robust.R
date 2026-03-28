@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 # Generate expected robust regression results using MASS::rlm with psi.bisquare.
 # This is M-estimation (IRLS + Tukey biweight), not MM-estimation.
+# Uses joint model: rlm(y ~ x + nuisance1 + ...) directly (FWL doesn't hold for M-estimation).
 # Output: tests/fixtures/expected/robust.json
 
 if (!requireNamespace("jsonlite", quietly = TRUE))
@@ -12,44 +13,51 @@ data_dir    <- file.path(script_dir, "..", "fixtures", "data")
 expected_dir <- file.path(script_dir, "..", "fixtures", "expected")
 dir.create(expected_dir, recursive = TRUE, showWarnings = FALSE)
 
-residualize <- function(df, y_col, nuisance_cols) {
-  f <- as.formula(paste(y_col, "~", paste(nuisance_cols, collapse = " + ")))
-  resid(lm(f, data = df))
-}
-
 run_robust <- function(df, x_col, y_col, nuisance_cols = character(0)) {
-  x <- df[[x_col]]
-  y <- if (length(nuisance_cols) > 0) residualize(df, y_col, nuisance_cols)
-       else df[[y_col]]
+  predictors <- c(x_col, nuisance_cols)
+  f  <- as.formula(paste(y_col, "~", paste(predictors, collapse = " + ")))
 
   # psi.bisquare = Tukey biweight. Default tuning constant c=4.685 (95% efficiency).
-  m  <- MASS::rlm(y ~ x, psi = MASS::psi.bisquare)
+  m  <- MASS::rlm(f, data = df, psi = MASS::psi.bisquare)
   sm <- summary(m)
   cs <- coef(sm)  # columns: Value, Std. Error, t value (no p-values — not well-defined for M-estimators)
 
+  nuisance_stats <- lapply(nuisance_cols, function(z) {
+    list(
+      coef = unname(cs[z, "Value"      ]),
+      se   = unname(cs[z, "Std. Error" ]),
+      t    = unname(cs[z, "t value"    ])
+    )
+  })
+
   list(
-    slope       = unname(cs["x",           "Value"      ]),
-    intercept   = unname(cs["(Intercept)", "Value"      ]),
-    se_slope    = unname(cs["x",           "Std. Error" ]),
-    t_slope     = unname(cs["x",           "t value"    ]),
-    se_intercept = unname(cs["(Intercept)", "Std. Error"]),
-    t_intercept = unname(cs["(Intercept)", "t value"    ]),
-    scale       = m$s,                   # robust scale estimate
-    weights     = as.numeric(m$w),       # final IRLS weights, one per observation
-    n           = length(x)
+    slope        = unname(cs[x_col,           "Value"      ]),
+    intercept    = unname(cs["(Intercept)",   "Value"      ]),
+    se_slope     = unname(cs[x_col,           "Std. Error" ]),
+    t_slope      = unname(cs[x_col,           "t value"    ]),
+    se_intercept = unname(cs["(Intercept)",   "Std. Error" ]),
+    t_intercept  = unname(cs["(Intercept)",   "t value"    ]),
+    scale        = m$s,                   # robust scale estimate
+    weights      = as.numeric(m$w),       # final IRLS weights, one per observation
+    n            = nrow(df),
+    nuisance_stats = nuisance_stats
   )
 }
 
 cases <- list(
   list(dataset = "cars",               x = "speed",      y = "dist",        nuisance = c()),
   list(dataset = "stackloss",          x = "Air.Flow",   y = "stack.loss",  nuisance = c()),
+  list(dataset = "mtcars",             x = "wt",         y = "mpg",         nuisance = c("cyl")),
+  list(dataset = "stackloss",          x = "Air.Flow",   y = "stack.loss",  nuisance = c("Water.Temp")),
   list(dataset = "synthetic_linear",   x = "x",          y = "y",           nuisance = c()),
   list(dataset = "synthetic_outliers", x = "x",          y = "y",           nuisance = c())
 )
 
 results <- lapply(cases, function(case) {
   df <- read.csv(file.path(data_dir, paste0(case$dataset, ".csv")))
-  cat(sprintf("  %s: %s ~ %s\n", case$dataset, case$y, case$x))
+  cat(sprintf("  %s: %s ~ %s", case$dataset, case$y, case$x))
+  if (length(case$nuisance) > 0) cat(sprintf(" | nuisance: %s", paste(case$nuisance, collapse = ", ")))
+  cat("\n")
   list(
     dataset  = case$dataset,
     x        = case$x,

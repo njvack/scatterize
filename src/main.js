@@ -15,7 +15,7 @@ import { ols }      from './stats/ols.js';
 import { robust }   from './stats/robust.js';
 import { spearman } from './stats/spearman.js';
 import { theilSen } from './stats/theilsen.js';
-import { residualizeWithStats, RANK_MODELS, rank, skewnessKurtosis } from './stats/common.js';
+import { RANK_MODELS, rank, skewnessKurtosis } from './stats/common.js';
 
 // ---------------------------------------------------------------------------
 // App state (in-memory, not in URL)
@@ -161,28 +161,12 @@ function computeModel(state) {
 
   // Active x/y values
   const xActive = activeIndices.map(i => data[i][xColName]);
-  let   yActive = activeIndices.map(i => data[i][yColName]);
-  const yActiveOrig = yActive.slice();
+  const yActive = activeIndices.map(i => data[i][yColName]);
 
-  // Residualize Y against nuisance covariates (OLS/Robust only)
-  let isResidualized = false;
-  let nuisancePartialR2 = [];
-  let nNuisance = 0;
-  if (nuisanceNames.length) {
-    const nuisData = nuisanceNames.map(col => activeIndices.map(i => data[i][col]));
-    try {
-      const result = residualizeWithStats(yActive, nuisData);
-      yActive = result.residuals;
-      nuisancePartialR2 = result.partialR2;
-      isResidualized = true;
-      nNuisance = nuisanceNames.length;
-    } catch (e) {
-      showError(`Residualization failed: ${e.message}`);
-      return null;
-    }
-  }
+  // Build nuisance data arrays (always; empty for rank models)
+  const nuisData = nuisanceNames.map(col => activeIndices.map(i => data[i][col]));
 
-  // Rank-transform for Spearman display
+  // Rank-transform for Spearman display (nuisanceNames is [] for rank models)
   let displayX = xActive;
   let displayY = yActive;
   if (state.m === 'spearman') {
@@ -190,30 +174,19 @@ function computeModel(state) {
     displayY = rank(yActive);
   }
 
-  // Run model
+  // Run model — pass nuisData (rank models receive [])
   const modelFn = MODELS[state.m] ?? ols;
   let modelResult;
   try {
-    modelResult = modelFn(displayX, displayY);
+    modelResult = modelFn(displayX, displayY, nuisData);
   } catch (err) {
     showError(`Model error: ${err.message}`);
     return null;
   }
 
-  // Full-model R² when nuisance is present
-  if (isResidualized && state.m === 'ols' && modelResult.residuals) {
-    const n = yActiveOrig.length;
-    const yMeanOrig = yActiveOrig.reduce((s, v) => s + v, 0) / n;
-    const sstOrig   = yActiveOrig.reduce((s, yi) => s + (yi - yMeanOrig) ** 2, 0);
-    const ssr       = modelResult.residuals.reduce((s, r) => s + r * r, 0);
-    const fmR2      = 1 - ssr / sstOrig;
-    const dfFull    = n - 2 - nNuisance;
-    modelResult = {
-      ...modelResult,
-      fullModelRSquared:    fmR2,
-      fullModelAdjRSquared: 1 - (1 - fmR2) * (n - 1) / dfFull,
-    };
-  }
+  // For OLS/robust with nuisance, use yResidual for plot y-axis display
+  if (modelResult?.yResidual) displayY = modelResult.yResidual;
+  const isResidualized = modelResult?.yResidual != null;
 
   // Build display coordinate maps
   const activeDisplayX = new Map(activeIndices.map((origIdx, ai) => [origIdx, displayX[ai]]));
@@ -239,8 +212,8 @@ function computeModel(state) {
 
   return {
     xColName, yColName, hColName, groupColorType,
-    censored, nuisanceNames, nuisancePartialR2,
-    activeIndices, displayX, displayY, yActiveOrig,
+    censored, nuisanceNames,
+    activeIndices, displayX, displayY, yActive,
     isResidualized, modelResult, points,
     xLabel, yLabel,
   };
@@ -291,8 +264,8 @@ function render() {
 
   const {
     xColName, yColName, hColName, groupColorType,
-    censored, nuisanceNames, nuisancePartialR2,
-    activeIndices, displayX, displayY, yActiveOrig,
+    censored, nuisanceNames,
+    activeIndices, displayX, displayY, yActive,
     isResidualized, modelResult, points,
     xLabel, yLabel,
   } = computed;
@@ -337,7 +310,7 @@ function render() {
     nuisanceNames,
     residuals: modelResult?.residuals ?? null,
     displayX, displayY,
-    yActiveOrig: isResidualized ? yActiveOrig : null,
+    yActiveOrig: isResidualized ? yActive : null,
     smootherData,
   };
 
@@ -383,7 +356,7 @@ function render() {
     xLabel: state.m === 'spearman' ? `rank(${xColName})` : xColName,
     yLabel: state.m === 'spearman' ? `rank(${yColName})` : yColName,
     n: activeIndices.length, nCensored: censored.size,
-    nuisanceNames, nuisancePartialR2,
+    nuisanceNames,
   });
 
   // Show/hide diag plots section
