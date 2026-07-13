@@ -80,6 +80,15 @@ tests/
 └── js/
 ```
 
+## Common Tasks
+
+Use `just` as the task runner (`just --list` for all recipes):
+
+- `just test` — full JS suite (unit tests + R-comparison); `just test-unit` / `just test-stats` for either half
+- `just dev` / `just build` / `just lint` — esbuild dev server, prod bundle, ESLint
+- `just fixtures` / `just expected` — regenerate R fixtures / expected JSON (`just r-deps` installs R packages first)
+- `just clean` — remove generated fixtures and expected JSON
+
 ## Testing
 
 When adding a new stat: write R reference first (`tests/r/`), confirm output, implement JS, compare. Tolerance: ~6 sig figs for coefficients, ~4 for p-values.
