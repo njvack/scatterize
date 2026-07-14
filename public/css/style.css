@@ -1,77 +1,12 @@
-/* Scatterize — Quarto/R-docs aesthetic */
+/* Scatterize — Quarto/R-docs aesthetic (app shell).
+   Shared tokens, fonts, and link styles live in base.css. */
 
-/* ─── Fonts ─────────────────────────────────────────────────────────────── */
+@import url("base.css");
 
-@font-face {
-  font-family: "League Spartan";
-  src: url("../fonts/LeagueSpartan-VF.woff2") format("woff2-variations");
-  font-weight: 100 900;
-  font-display: swap;
-}
-
-/* ─── Links ─────────────────────────────────────────────────────────────── */
-
-a {
-  color: var(--color-link);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--color-link) 40%, transparent);
-}
-a:visited { color: var(--color-link-visited); }
-a:hover   { text-decoration-color: var(--color-link); }
-
-/* ─── Reset & Base ─────────────────────────────────────────────────────── */
-
-/* Ensure [hidden] is respected even when author styles set display. */
-[hidden] { display: none !important; }
-
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-:root {
-  --font-sans: "League Spartan", sans-serif;
-  --color-bg:         #ffffff;
-  --color-surface:    #f8f9fa;
-  --color-border:     #dee2e6;
-  --color-border-mid: #ced4da;
-  --color-text:       #212529;
-  --color-text-muted: #3f464a;
-  --color-accent:     #2780e3;
-  --color-accent-dk:  #1a6bbf;
-  --color-link:       var(--color-accent-dk);
-  --color-link-visited: #5a4a8a;
-
-  /* Plot colors */
-  --color-point:      #4e79a7;
-  --color-regline:    #b5541a;
-  --color-censored:   #aaaaaa;
-  --color-smoother:   #59a14f;
-  --color-axis-line:  #555555;
-  --color-tick-mark:  #333333;
-  --color-kde:        #aaaaaa;
-  --color-hist-bar:        #b8cce4;
-  --color-hist-bar-stroke: #8aaccf;
-  --color-diag-axis:  #999999;
-
-  --header-height: 52px;
-  --footer-height: 32px;
-  --controls-width: 190px;
-  --stats-width: 230px;
-  --panel-pad: 14px;
-}
-
-html {
-  font-size: 87.5%; /* ≈14px at browser default; scales with user font preference */
-}
+/* ─── App Base ──────────────────────────────────────────────────────────── */
 
 html, body {
-  margin: 0;
-  padding: 0;
   height: 100%;
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  color: var(--color-text);
-  background: var(--color-bg);
   overflow: hidden;
 }
 
