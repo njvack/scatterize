@@ -28,6 +28,10 @@ test-stats:
 test-unit:
     node --test tests/js/*.test.mjs
 
+# Benchmark exact-enumeration S-estimator cost (optionally pass sizes: just bench-exact-s 500 1000)
+bench-exact-s *sizes:
+    node tests/js/bench-exact-s.mjs {{sizes}}
+
 # Bundle and minify for production
 build:
     npm run build
