@@ -43,7 +43,11 @@ main {
   width: 100%;
   max-width: 40rem;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 4rem;
+ /*
+ Set horiz padding in px -- mobile screens should have content go
+ quite near the edge and that should not scale with font size
+ */
+  padding: 2.5rem 12px 4rem;
   line-height: 1.6;
 }
 
@@ -59,15 +63,12 @@ main section {
 }
 
 main h2 {
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: normal;
   line-height: 1.3;
   margin: 0 0 0.5rem;
   padding-bottom: 0.3rem;
   border-bottom: 1px solid var(--color-border);
-  text-transform: lowercase;
-  font-variant: small-caps;
-  letter-spacing: 0.1rem;
 }
 
 main p {
@@ -89,13 +90,30 @@ main figure {
   margin: 1.5rem 0;
 }
 
+main figure a {
+  display: block;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-surface);
+
+  &:hover {
+    border-color: var(--color-accent);
+  }
+}
+
 main figure img {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
+}
+
+/* Datasaurus grid: 3 columns of the remaining twelve plots. */
+main figure div {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
 }
 
 main figcaption {
@@ -148,5 +166,9 @@ footer a {
 
   main h1 {
     font-size: 1.714rem;
+  }
+
+  main figure div {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

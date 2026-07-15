@@ -375,6 +375,7 @@ main > section {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 150%;
 }
 
 #empty-state > div {
@@ -384,10 +385,11 @@ main > section {
   gap: 16px;
   max-width: 640px;
   padding: 0 24px;
+  font-size: 1.2rem;
 }
 
 #empty-state h2 {
-  font-size: 1.286rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-text-muted);
   margin: 0;
@@ -401,7 +403,6 @@ main > section {
 }
 
 .open-data-or {
-  font-size: 0.929rem;
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -419,13 +420,11 @@ main > section {
 }
 
 .open-data-note {
-  font-size: 0.857rem;
   color: var(--color-text-muted);
   margin: 0;
 }
 
 .open-data-examples {
-  font-size: 0.929rem;
   color: var(--color-text-muted);
   margin: 0;
 }

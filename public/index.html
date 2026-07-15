@@ -111,7 +111,7 @@
       </div>
       <div id="empty-state">
         <div>
-          <h2>Open a dataset</h2>
+          <h2>Open a dataset&hellip;</h2>
           <div class="open-data-row">
             <button id="open-file-btn" class="btn btn-secondary">Browse files…</button>
             <span class="open-data-or">or</span>
@@ -133,6 +133,7 @@
             <a href="#src=https://njvack.github.io/scatterize/example_csv/mtcars.csv&x=3&y=0&m=ols">Motor Trends '74 Cars</a> ·
             <a href="#src=https://njvack.github.io/scatterize/example_csv/ames_housing.csv&x=5&y=15&m=ols&h=17">Ames Housing</a>
           </p>
+          <p class="open-data-note">New to Scatterize? <a href="about.html">Read the introduction.</a></p>
         </div>
       </div>
     </div>
@@ -155,8 +156,9 @@
 
 <footer>
   <ul>
-    <li><button id="about-btn" aria-haspopup="dialog">Help</button></li>
+    <li><button id="about-btn" aria-haspopup="dialog">Reference</button></li>
     <li><button id="help-btn" aria-haspopup="dialog">Keyboard shortcuts</button></li>
+    <li><a href="about.html">About</a></li>
     <li><a href="https://github.com/njvack/scatterize/issues">Feedback</a></li>
     <li><a href="https://www.theleagueofmoveabletype.com/league-spartan">League Spartan</a></li>
     <li><a href="https://github.com/njvack/scatterize">Github</a></li>
@@ -164,11 +166,7 @@
 </footer>
 
 <dialog id="about-modal" class="modal">
-  <h2>About Scatterize</h2>
-
-  <section>
-    <p>You should look at your data. Examining your data outside of the context of summary statistics is an essential part of the scientific process. Scatterize is designed to help you understand the distribution of your data and let you see how different choices about model calculation, outlying points, and covariates may affect your results.</p>
-  </section>
+  <h2>Scatterize reference</h2>
 
   <section>
     <h3>Statistical models</h3>
@@ -210,10 +208,10 @@
 <dialog id="help-modal" class="modal">
   <h2>Keyboard shortcuts</h2>
   <table class="help-table">
-    <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous Y variable</td></tr>
+    <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Previous / next Y variable</td></tr>
     <tr><td><kbd>u</kbd> / <kbd>i</kbd></td><td>Previous / next X variable</td></tr>
     <tr><td><kbd>o</kbd> / <kbd>p</kbd></td><td>Previous / next model</td></tr>
-    <tr><td><kbd>l</kbd> / <kbd>;</kbd></td><td>Next / previous legend group</td></tr>
+    <tr><td><kbd>l</kbd> / <kbd>;</kbd></td><td>Previous / next legend group</td></tr>
     <tr><td><kbd>c</kbd></td><td>Clear censored points</td></tr>
     <tr><td><kbd>?</kbd></td><td>Show / hide this help</td></tr>
   </table>
