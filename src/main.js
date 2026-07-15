@@ -535,8 +535,8 @@ function setupKeyboard() {
 
     clearSpaceMemory();
     switch (e.key) {
-      case 'j': setState({ y: Math.min(state.y + 1, nCols - 1) }); break;
-      case 'k': setState({ y: Math.max(state.y - 1, 0) });         break;
+      case 'k': setState({ y: Math.min(state.y + 1, nCols - 1) }); break;
+      case 'j': setState({ y: Math.max(state.y - 1, 0) });         break;
       case 'u': setState({ x: Math.max(state.x - 1, 0) });         break;
       case 'i': setState({ x: Math.min(state.x + 1, nCols - 1) }); break;
       case 'o': setState({ m: MODEL_KEYS[Math.max(mIdx - 1, 0)] });                   break;
@@ -544,14 +544,14 @@ function setupKeyboard() {
       case 'c': setState({ c: [] }); break; // clear all censored
       case 'n': goMode.cycleCriterion(-1); break;
       case 'm': goMode.cycleCriterion(1);  break;
-      case 'l':
+      case ';':
         if (!_kbGroups.length) break;
         if (_kbGroupIdx == null) _kbGroupIdx = 0;
         else if (_kbGroupIdx >= _kbGroups.length - 1) _kbGroupIdx = null;
         else _kbGroupIdx++;
         scatter.showGroupHover(_kbGroupIdx != null ? _kbGroups[_kbGroupIdx] : null);
         break;
-      case ';':
+      case 'l':
         if (!_kbGroups.length) break;
         if (_kbGroupIdx == null) _kbGroupIdx = _kbGroups.length - 1;
         else if (_kbGroupIdx <= 0) _kbGroupIdx = null;
