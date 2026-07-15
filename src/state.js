@@ -14,7 +14,13 @@ export const DEFAULTS = {
   yl: null,
   sm: null,   // smoother type: null | 'median'
   sw: 10,     // smoother window percent (1–100)
+  hide: [],   // hidden plot elements: subset of HIDEABLE
 };
+
+// Plot elements that can be hidden via the plot settings menu.
+// fit = best-fit line, ci = confidence band, kde = axis density strips,
+// fringe = per-point axis tick marks.
+export const HIDEABLE = ['fit', 'ci', 'kde', 'fringe'];
 
 function parseIntList(s) {
   if (!s) return [];
@@ -25,6 +31,13 @@ function parseFloatList(s) {
   if (!s) return null;
   const vals = s.split(',').map(Number);
   return vals.length && vals.every(v => !isNaN(v)) ? vals : null;
+}
+
+// Unknown tokens dropped; canonical order and de-duplication for stable URLs.
+function parseHideList(s) {
+  if (!s) return [];
+  const tokens = new Set(s.split(','));
+  return HIDEABLE.filter(t => tokens.has(t));
 }
 
 function parseIntOrNull(s) {
@@ -48,6 +61,7 @@ export function parseState(hashStr) {
     yl:  raw.has('yl') ? parseFloatList(raw.get('yl')) : DEFAULTS.yl,
     sm:  raw.get('sm') ?? DEFAULTS.sm,
     sw:  raw.has('sw') ? parseInt(raw.get('sw'), 10) : DEFAULTS.sw,
+    hide: raw.has('hide') ? parseHideList(raw.get('hide')) : [...DEFAULTS.hide],
   };
 }
 
@@ -64,7 +78,7 @@ export function serializeState(state) {
   if (state.h  != null) params.set('h',  String(state.h));
   if (state.sm != null) params.set('sm', state.sm);
   if (state.sm != null && state.sw !== DEFAULTS.sw) params.set('sw', String(state.sw));
-  for (const key of ['n', 'c', 'xl', 'yl']) {
+  for (const key of ['n', 'c', 'xl', 'yl', 'hide']) {
     if (state[key]?.length) params.set(key, state[key].join(','));
   }
   return params.toString();

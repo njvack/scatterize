@@ -418,9 +418,11 @@ export function createWebGLRenderer(canvas) {
     const root = document.createElementNS(ns, 'g');
     root.setAttribute('class', 'webgl-export');
 
-    // Fringe tick lines (no clip).
+    // Fringe tick lines (no clip).  Fully transparent lines (censored points,
+    // hidden fringe) are placeholders for animation — skip them in the export.
     for (const l of _linesData) {
       const [r, g, b, a] = l.color;
+      if (a === 0) continue;
       const colorStr = `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
       const el = document.createElementNS(ns, 'line');
       el.setAttribute('x1', l.x1);  el.setAttribute('y1', l.y1);

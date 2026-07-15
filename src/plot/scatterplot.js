@@ -139,8 +139,10 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     onPointHover = () => {},
     onGroupHover = () => {},
     smootherData = null,
+    hide = [],
     animate = true,
   }) {
+    const hidden = new Set(hide);
     _onGroupHover = onGroupHover;
     if (animate) _animatingUntil = performance.now() + 220;  // 200ms anim + buffer
 
@@ -192,8 +194,9 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     xAxisG.attr('transform', `translate(0,${iH})`);
     yAxisG.attr('transform', `translate(0,0)`);
 
-    if (glRenderer) {
-      // WebGL mode: SVG draws spine only; fringe ticks go to the GL line buffer.
+    if (glRenderer || hidden.has('fringe')) {
+      // WebGL mode (fringe ticks go to the GL line buffer) or fringe hidden:
+      // SVG draws spine only.
       drawAxisSpine(xAxisG, iW, 'x', palette);
       drawAxisSpine(yAxisG, iH, 'y', palette);
     } else {
@@ -238,12 +241,17 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       }
     }
 
-    drawKdeStrip(xKdeEl, xKdeData, xScale, 'x');
-    drawKdeStrip(yKdeEl, yKdeData, yScale, 'y');
+    if (hidden.has('kde')) {
+      xKdeEl.style('display', 'none');
+      yKdeEl.style('display', 'none');
+    } else {
+      drawKdeStrip(xKdeEl, xKdeData, xScale, 'x');
+      drawKdeStrip(yKdeEl, yKdeData, yScale, 'y');
+    }
 
     // ── Regression line ───────────────────────────────────────────────────
 
-    if (hasLine) {
+    if (hasLine && !hidden.has('fit')) {
       const x0 = xScale.domain()[0];
       const x1 = xScale.domain()[1];
       const ly0 = yScale(modelResult.intercept + modelResult.slope * x0);
@@ -265,7 +273,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
     // ── CI band ───────────────────────────────────────────────────────────
 
-    if (bandData) {
+    if (bandData && !hidden.has('ci')) {
       const areaGen = d3.area()
         .x(d => xScale(d.x))
         .y0(d => yScale(d.lo))
@@ -362,10 +370,11 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       // Every point gets two entries (x tick + y tick) regardless of censored status,
       // so the array length stays constant at 2*n across censoring changes — a
       // necessary condition for the WebGL renderer to interpolate rather than snap.
-      // Censored and corner points get alpha=0 (invisible but still present).
+      // Censored and corner points get alpha=0 (invisible but still present);
+      // hiding the fringe zeroes every line's alpha the same way.
       const glLines = [];
       for (const p of allPoints) {
-        const alpha = (p.censored || p.corner) ? 0 : 0.3;
+        const alpha = (hidden.has('fringe') || p.censored || p.corner) ? 0 : 0.3;
         const color = cssToGL(palette.muted, alpha);
         glLines.push(
           { x1: MARGIN.left + p.sx, y1: MARGIN.top + iH,

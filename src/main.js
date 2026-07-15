@@ -324,6 +324,7 @@ function render() {
     customXTicks: state.xl,
     customYTicks: state.yl,
     smootherData,
+    hide: state.hide,
     onPointClick: (index) => toggleCensor(index),
     onPointHover: (index) => {
       hoveredIndex = index;

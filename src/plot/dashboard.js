@@ -120,6 +120,11 @@ export function syncControls(state) {
   if (ySel) ySel.value = String(state.y);
   if (mSel) mSel.value = state.m;
   if (gSel) gSel.value = state.h != null ? String(state.h) : '';
+
+  const hidden = new Set(state.hide);
+  document.querySelectorAll('#plot-settings input[data-hide]').forEach(cb => {
+    cb.checked = !hidden.has(cb.dataset.hide);
+  });
 }
 
 // Log-scale mapping between slider position (0–100) and window percent.
@@ -202,6 +207,31 @@ export function bindControls() {
   });
   gSel?.addEventListener('change', () => {
     setState({ h: gSel.value !== '' ? parseInt(gSel.value, 10) : null });
+  });
+
+  bindPlotSettings();
+}
+
+// Plot settings gear menu: checkboxes toggle plot elements (unchecked = hidden).
+function bindPlotSettings() {
+  const menu = document.getElementById('plot-settings');
+  if (!menu) return;
+
+  menu.querySelectorAll('input[data-hide]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const hide = [...menu.querySelectorAll('input[data-hide]')]
+        .filter(c => !c.checked)
+        .map(c => c.dataset.hide);
+      setState({ hide });
+    });
+  });
+
+  // Light dismiss: close on click outside or Escape.
+  document.addEventListener('click', e => {
+    if (menu.open && !menu.contains(e.target)) menu.open = false;
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && menu.open) menu.open = false;
   });
 }
 

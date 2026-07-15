@@ -54,6 +54,7 @@ Spearman/Theil-Sen don't support nuisance covariates (rank methods don't compose
 | `h` | Group/highlight column index |
 | `xl` | Custom X axis tick values (comma-sep) |
 | `yl` | Custom Y axis tick values (comma-sep) |
+| `hide` | Hidden plot elements (comma-sep of `fit`, `ci`, `kde`, `fringe`) |
 
 ## Project Structure
 

@@ -68,6 +68,15 @@ test('parseState: h=0 is parsed as 0, not null', () => {
   assert.equal(parseState('h=0').h, 0);
 });
 
+test('parseState: hide defaults to empty array', () => {
+  assert.deepEqual(parseState('').hide, []);
+});
+
+test('parseState: hide tokens parsed, unknown dropped, canonical order', () => {
+  const s = parseState('hide=fringe%2Cbogus%2Cci%2Cci');
+  assert.deepEqual(s.hide, ['ci', 'fringe']);
+});
+
 // ---------------------------------------------------------------------------
 // serializeState
 // ---------------------------------------------------------------------------
@@ -129,6 +138,17 @@ test('serializeState: h included when set', () => {
   assert.equal(params.get('h'), '2');
 });
 
+test('serializeState: hide list serialized; empty hide omitted', () => {
+  const withHide = new URLSearchParams(
+    serializeState({ ...DEFAULTS, src: 'x', hide: ['fit', 'kde'] })
+  );
+  assert.equal(withHide.get('hide'), 'fit,kde');
+  const noHide = new URLSearchParams(
+    serializeState({ ...DEFAULTS, src: 'x', hide: [] })
+  );
+  assert.equal(noHide.get('hide'), null);
+});
+
 test('serializeState: xl/yl float lists serialized correctly', () => {
   const params = new URLSearchParams(
     serializeState({ ...DEFAULTS, src: 'x', xl: [0, 1, 2.5], yl: [-1, 0, 1] })
@@ -148,6 +168,7 @@ test('round-trip: parse → serialize → parse preserves all fields', () => {
     'n=1%2C4', 'c=0%2C2',
     'h=5',
     'xl=0%2C1%2C2.5', 'yl=-1%2C0',
+    'hide=ci%2Cfringe',
   ].join('&');
   const parsed = parseState(original);
   const reparsed = parseState(serializeState(parsed));

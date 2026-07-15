@@ -631,12 +631,19 @@ kbd {
   line-height: 1.4;
 }
 
-/* ─── Share Button ──────────────────────────────────────────────────────── */
+/* ─── Plot Tools (settings gear + share button) ─────────────────────────── */
 
-#share-btn {
+#plot-tools {
   position: absolute;
   bottom: 8px;
   right: 8px;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  z-index: 10;
+}
+
+#share-btn {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -649,11 +656,69 @@ kbd {
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
-  z-index: 10;
 
   &:hover {
     background: var(--color-surface);
     border-color: var(--color-border);
+  }
+}
+
+#plot-settings {
+  position: relative;
+
+  & summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 100%;
+    padding: 4px 10px;
+    box-sizing: border-box;
+    font-size: 0.857rem;
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-mid);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:hover {
+      background: var(--color-surface);
+      border-color: var(--color-border);
+    }
+  }
+
+  &[open] summary {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+  & form {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-mid);
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    white-space: nowrap;
+
+    & label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.857rem;
+      cursor: pointer;
+    }
   }
 }
 
