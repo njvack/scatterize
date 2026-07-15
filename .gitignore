@@ -11,5 +11,6 @@ public/bundle.js
 
 # editor / Claude Code
 .claude/
+CLAUDE.md
 
 tmp/
