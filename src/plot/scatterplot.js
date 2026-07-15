@@ -121,6 +121,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   let _plotState = null;      // { allPoints, iH, colorOf, xScale, yScale } — for highlightPoint
   let _pointR = POINT_R;         // current render's scaled point radius
   let _pointRHover = POINT_R + POINT_R_HOVER_DELTA; // current render's hover radius
+  let _exportClip = null;        // { left, top, iW, iH } — plot-area geometry for export clip
   let _onGroupHover = () => {};  // called with groupName | null from showGroupHover
   let _lastPhysW = 0, _lastPhysH = 0;  // detect canvas resize for WebGL snap
   let _animatingUntil = 0;  // suppress hover while points are in flight
@@ -162,6 +163,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
             xKdeData, yKdeData, bandData, hasLine, pointR } = model;
     _pointR = pointR;
     _pointRHover = pointR + POINT_R_HOVER_DELTA;
+    _exportClip = { left: MARGIN.left, top: MARGIN.top, iW, iH };
 
     // Sync all SVG layers to the same coordinate system.
     backSvg.attr('viewBox', `0 0 ${W} ${H}`);
@@ -820,7 +822,30 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     root.setAttribute('xmlns',  ns);
 
     for (const child of backSvgEl.children)  root.appendChild(child.cloneNode(true));
-    if (glRenderer) root.appendChild(glRenderer.toSVGGroup(backClipId));
+    if (glRenderer) {
+      // The WebGL export points carry full (margin-inclusive) coords, but they're
+      // appended at the SVG root — not inside the margin-translated canvas group
+      // the plot's clipPath is authored against. So give them a dedicated clip
+      // rect positioned at the margin offset; otherwise the rightmost points
+      // (everything past x = iW) fall outside the clip and vanish on export.
+      const exportClipId = 'plot-clip-export-' + Math.random().toString(36).slice(2);
+      if (_exportClip) {
+        const defs = document.createElementNS(ns, 'defs');
+        const cp   = document.createElementNS(ns, 'clipPath');
+        cp.setAttribute('id', exportClipId);
+        const rect = document.createElementNS(ns, 'rect');
+        rect.setAttribute('x',      _exportClip.left);
+        rect.setAttribute('y',      _exportClip.top);
+        rect.setAttribute('width',  _exportClip.iW);
+        rect.setAttribute('height', _exportClip.iH);
+        cp.appendChild(rect);
+        defs.appendChild(cp);
+        root.appendChild(defs);
+        root.appendChild(glRenderer.toSVGGroup(exportClipId));
+      } else {
+        root.appendChild(glRenderer.toSVGGroup(backClipId));
+      }
+    }
     for (const child of frontSvgEl.children) root.appendChild(child.cloneNode(true));
 
     return root;
