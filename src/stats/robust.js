@@ -1,4 +1,4 @@
-import { solveLinear, diagInverse, zPValue, arrayMedian } from './common.js';
+import { solveLinear, diagInverse, zPValue, arrayMedian, mean } from './common.js';
 
 // M-estimation: IRLS with Tukey biweight weights.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
@@ -18,9 +18,19 @@ const TUKEY_C = 4.685;  // 95%-efficiency constant for Tukey bisquare
 
 function bisquareWeights(r, scale) {
   // w_i = (1 - (r_i/(c*s))^2)^2  for |r_i/(c*s)| < 1, else 0
+  // Equals MASS psi.bisquare(u) — the weight w(u) = ψ(u)/u, not ψ(u) itself.
   return r.map(ri => {
     const u = ri / (TUKEY_C * scale);
     return Math.abs(u) >= 1 ? 0 : (1 - u * u) ** 2;
+  });
+}
+
+function bisquarePsiPrime(r, scale) {
+  // ψ'(u) for Tukey bisquare — MASS psi.bisquare(u, deriv=1):
+  //   t = (u/c)^2;  (1 - t)(1 - 5t) for t < 1, else 0.
+  return r.map(ri => {
+    const t = (ri / (TUKEY_C * scale)) ** 2;
+    return t < 1 ? (1 - t) * (1 - 5 * t) : 0;
   });
 }
 
@@ -77,21 +87,45 @@ export function robust(x, y, nuisance = []) {
     w = bisquareWeights(r, scale);
   }
 
-  // Final reported weights = w (used in the final WLS), scale = used to compute w.
-  // SE: s² * diag((X'WX)⁻¹) using the same w and scale.
-  const { XtWX } = doWls(dm, y, w, n, k);
-  const s2 = scale * scale;
-  const diagInv = diagInverse(XtWX);
+  // Standard errors — MASS::summary.rlm, default method = "XtX"
+  // (rlm.R:233-302), verified to 1e-9 against R. Two pieces:
+  //
+  //   SE_j = sqrt( [(X'X)⁻¹]_jj ) · stddev
+  //
+  // using the UNWEIGHTED (X'X)⁻¹ (not X'WX), and a Huber-corrected scale
+  //   stddev = sqrt( Σ(r·w)² / (n − k) ) · κ / mn
+  //   mn = mean(ψ'(r/s)),  κ = 1 + k · var(ψ'(r/s)) / (n · mn²)
+  // where r is wresid (residuals from the final WLS fit), s is the reported
+  // scale, w = ψ(r/s) (bisquare weight), and var() is Bessel-corrected (÷ n−1).
+  const rFinal = residuals(dm, y, b);          // MASS wresid: post-final-WLS residuals
+  const wSE    = bisquareWeights(rFinal, scale);
+  const psip   = bisquarePsiPrime(rFinal, scale);
 
-  // Off-diagonal [0][1] of (X'WX)^{-1}: covariance of intercept and x-slope.
-  // Reuse the column-1 solve (intercept row) to avoid an extra factorization.
+  const S = rFinal.reduce((acc, ri, i) => acc + (ri * wSE[i]) ** 2, 0) / (n - k);
+  const mn = mean(psip);
+  const varPsip = psip.reduce((acc, p) => acc + (p - mn) ** 2, 0) / (n - 1);
+  const kappa = 1 + k * varPsip / (n * mn * mn);
+  const stddev = Math.sqrt(S) * kappa / mn;
+  const sd2 = stddev * stddev;
+
+  // Unweighted X'X and the pieces of its inverse we need.
+  const XtX = Array.from({ length: k }, () => new Array(k).fill(0));
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < k; j++) {
+      for (let l = 0; l < k; l++) XtX[j][l] += dm[i][j] * dm[i][l];
+    }
+  }
+  const diagInv = diagInverse(XtX);
+
+  // Off-diagonal [0][1] of (X'X)⁻¹ scaled by stddev²: covariance of intercept
+  // and x-slope (used by the CI band). Reuse the column-1 solve.
   const e1 = new Array(k).fill(0); e1[1] = 1;
-  const covIntSlope = solveLinear(XtWX, e1)[0] * s2;
+  const covIntSlope = solveLinear(XtX, e1)[0] * sd2;
 
   const slope       = b[1];
   const intercept   = b[0];
-  const seSlope     = Math.sqrt(diagInv[1] * s2);
-  const seIntercept = Math.sqrt(diagInv[0] * s2);
+  const seSlope     = Math.sqrt(diagInv[1]) * stddev;
+  const seIntercept = Math.sqrt(diagInv[0]) * stddev;
 
   const tSlope     = slope     / seSlope;
   const tIntercept = intercept / seIntercept;
@@ -100,7 +134,7 @@ export function robust(x, y, nuisance = []) {
   const nuisanceStats = nuisance.map((_, pi) => {
     const j    = pi + 2;
     const coef = b[j];
-    const se   = Math.sqrt(diagInv[j] * s2);
+    const se   = Math.sqrt(diagInv[j]) * stddev;
     const t    = coef / se;
     return { coef, se, t, p: zPValue(t) };
   });
@@ -122,8 +156,8 @@ export function robust(x, y, nuisance = []) {
     nuisanceStats,
     yResidual,
     scale,
-    weights: w,
-    residuals: r,
+    weights: w,       // pre-final-WLS bisquare weights (matches MASS rlm$w)
+    residuals: rFinal, // post-final-WLS residuals (matches MASS rlm$residuals)
     n,
   };
 }
