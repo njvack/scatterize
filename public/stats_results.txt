@@ -1,0 +1,379 @@
+
+────────────────────────────────────────────────────────────
+OLS
+────────────────────────────────────────────────────────────
+
+  cars: dist ~ speed
+    ✓ slope              got       3.932409  expected       3.932409  (rel diff 6.1e-12)
+    ✓ intercept          got      -17.57909  expected      -17.57909  (rel diff 6.2e-13)
+    ✓ r_squared          got      0.6510794  expected      0.6510794  (rel diff 2.7e-12)
+    ✓ full_r_squared     got      0.6510794  expected      0.6510794  (rel diff 2.7e-12)
+    ✓ adj_r_squared      got      0.6438102  expected      0.6438102  (rel diff 1.1e-12)
+    ✓ f_stat             got       89.56711  expected       89.56711  (rel diff 3.6e-13)
+    ✓ p_f                got   1.489836e-12  expected   1.489836e-12  (rel diff 3.3e-10)
+    ✓ se_slope           got      0.4155128  expected      0.4155128  (rel diff 6.9e-12)
+    ✓ t_slope            got       9.463990  expected       9.463990  (rel diff 1.7e-13)
+    ✓ p_slope            got   1.489836e-12  expected   1.489836e-12  (rel diff 3.3e-10)
+    ✓ df_residual        got       48.00000  expected       48.00000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+  mtcars: mpg ~ wt
+    ✓ slope              got      -5.344472  expected      -5.344472  (rel diff 4.2e-12)
+    ✓ intercept          got       37.28513  expected       37.28513  (rel diff 1.1e-12)
+    ✓ r_squared          got      0.7528328  expected      0.7528328  (rel diff 2.3e-12)
+    ✓ full_r_squared     got      0.7528328  expected      0.7528328  (rel diff 2.3e-12)
+    ✓ adj_r_squared      got      0.7445939  expected      0.7445939  (rel diff 2.8e-13)
+    ✓ f_stat             got       91.37533  expected       91.37533  (rel diff 4.2e-13)
+    ✓ p_f                got   1.293959e-10  expected   1.293959e-10  (rel diff 2.1e-10)
+    ✓ se_slope           got      0.5591010  expected      0.5591010  (rel diff 1.2e-12)
+    ✓ t_slope            got      -9.559044  expected      -9.559044  (rel diff 2.9e-12)
+    ✓ p_slope            got   1.293959e-10  expected   1.293959e-10  (rel diff 2.1e-10)
+    ✓ df_residual        got       30.00000  expected       30.00000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+  mtcars: mpg ~ wt | nuisance: cyl
+    ✓ slope              got      -3.190972  expected      -3.190972  (rel diff 5.1e-12)
+    ✓ intercept          got       39.68626  expected       39.68626  (rel diff 1.2e-12)
+    ✓ r_squared          got      0.3799846  expected      0.3799846  (rel diff 3.2e-12)
+    ✓ full_r_squared     got      0.8302274  expected      0.8302274  (rel diff 7.1e-13)
+    ✓ adj_r_squared      got      0.8185189  expected      0.8185189  (rel diff 3.7e-12)
+    ✓ f_stat             got       70.90836  expected       70.90836  (rel diff 1.8e-13)
+    ✓ p_f                got   6.808955e-12  expected   6.808955e-12  (rel diff 1.9e-12)
+    ✓ se_slope           got      0.7569065  expected      0.7569065  (rel diff 5.1e-13)
+    ✓ t_slope            got      -4.215808  expected      -4.215808  (rel diff 2.2e-13)
+    ✓ p_slope            got   0.0002220200  expected   0.0002220200  (rel diff 9.4e-10)
+    ✓ df_residual        got       29.00000  expected       29.00000  (rel diff 0.0e+0)
+    ✓ nuisance[0].coef   got      -1.507795  expected      -1.507795  (rel diff 2.7e-11)
+    ✓ nuisance[0].se     got      0.4146883  expected      0.4146883  (rel diff 9.4e-12)
+    ✓ nuisance[0].t      got      -3.635972  expected      -3.635972  (rel diff 1.4e-12)
+    ✓ nuisance[0].p      got    0.001064282  expected    0.001064282  (rel diff 8.5e-9)
+    ✓ nuisance[0].partialR2 got      0.3131265  expected      0.3131265  (rel diff 2.3e-12)
+    ✓ yResidual present (no nuisance)
+
+  mtcars: mpg ~ wt | nuisance: cyl, hp
+    ✓ slope              got      -3.166973  expected      -3.166973  (rel diff 1.5e-11)
+    ✓ intercept          got       38.75179  expected       38.75179  (rel diff 8.9e-13)
+    ✓ r_squared          got      0.3950825  expected      0.3950825  (rel diff 8.3e-12)
+    ✓ full_r_squared     got      0.8431500  expected      0.8431500  (rel diff 7.1e-13)
+    ✓ adj_r_squared      got      0.8263446  expected      0.8263446  (rel diff 4.8e-12)
+    ✓ f_stat             got       50.17150  expected       50.17150  (rel diff 6.9e-13)
+    ✓ p_f                got   2.184178e-11  expected   2.184178e-11  (rel diff 1.7e-11)
+    ✓ se_slope           got      0.7405759  expected      0.7405759  (rel diff 3.0e-12)
+    ✓ t_slope            got      -4.276365  expected      -4.276365  (rel diff 3.0e-12)
+    ✓ p_slope            got   0.0001994765  expected   0.0001994765  (rel diff 6.7e-10)
+    ✓ df_residual        got       28.00000  expected       28.00000  (rel diff 0.0e+0)
+    ✓ nuisance[0].coef   got     -0.9416168  expected     -0.9416168  (rel diff 7.8e-13)
+    ✓ nuisance[0].se     got      0.5509164  expected      0.5509164  (rel diff 1.4e-12)
+    ✓ nuisance[0].t      got      -1.709183  expected      -1.709183  (rel diff 1.9e-11)
+    ✓ nuisance[0].p      got     0.09848009  expected     0.09848010  (rel diff 4.7e-8)
+    ✓ nuisance[0].partialR2 got     0.09447550  expected     0.09447550  (rel diff 3.1e-12)
+    ✓ nuisance[1].coef   got    -0.01803810  expected    -0.01803810  (rel diff 5.9e-12)
+    ✓ nuisance[1].se     got     0.01187625  expected     0.01187625  (rel diff 3.8e-11)
+    ✓ nuisance[1].t      got      -1.518838  expected      -1.518838  (rel diff 1.3e-11)
+    ✓ nuisance[1].p      got      0.1400152  expected      0.1400152  (rel diff 6.8e-9)
+    ✓ nuisance[1].partialR2 got     0.07611705  expected     0.07611705  (rel diff 4.4e-13)
+    ✓ yResidual present (no nuisance)
+
+  stackloss: stack.loss ~ Air.Flow | nuisance: Water.Temp
+    ✓ slope              got      0.6711544  expected      0.6711544  (rel diff 3.1e-12)
+    ✓ intercept          got      -50.35884  expected      -50.35884  (rel diff 1.8e-13)
+    ✓ r_squared          got      0.6092412  expected      0.6092412  (rel diff 2.3e-12)
+    ✓ full_r_squared     got      0.9087609  expected      0.9087609  (rel diff 3.2e-13)
+    ✓ adj_r_squared      got      0.8986233  expected      0.8986233  (rel diff 2.1e-12)
+    ✓ f_stat             got       89.64197  expected       89.64197  (rel diff 1.1e-14)
+    ✓ p_f                got   4.381543e-10  expected   4.381543e-10  (rel diff 2.4e-12)
+    ✓ se_slope           got      0.1266910  expected      0.1266910  (rel diff 1.7e-11)
+    ✓ t_slope            got       5.297568  expected       5.297568  (rel diff 3.3e-12)
+    ✓ p_slope            got  0.00004897970  expected  0.00004897970  (rel diff 4.6e-10)
+    ✓ df_residual        got       18.00000  expected       18.00000  (rel diff 0.0e+0)
+    ✓ nuisance[0].coef   got       1.295351  expected       1.295351  (rel diff 2.4e-11)
+    ✓ nuisance[0].se     got      0.3674854  expected      0.3674854  (rel diff 1.1e-13)
+    ✓ nuisance[0].t      got       3.524905  expected       3.524905  (rel diff 1.1e-11)
+    ✓ nuisance[0].p      got    0.002419146  expected    0.002419146  (rel diff 3.4e-9)
+    ✓ nuisance[0].partialR2 got      0.4083804  expected      0.4083804  (rel diff 2.8e-12)
+    ✓ yResidual present (no nuisance)
+
+  anscombe: y1 ~ x1
+    ✓ slope              got      0.5000909  expected      0.5000909  (rel diff 1.8e-12)
+    ✓ intercept          got       3.000091  expected       3.000091  (rel diff 3.0e-12)
+    ✓ r_squared          got      0.6665425  expected      0.6665425  (rel diff 1.8e-12)
+    ✓ full_r_squared     got      0.6665425  expected      0.6665425  (rel diff 1.8e-12)
+    ✓ adj_r_squared      got      0.6294916  expected      0.6294916  (rel diff 5.7e-12)
+    ✓ f_stat             got       17.98994  expected       17.98994  (rel diff 1.3e-12)
+    ✓ p_f                got    0.002169629  expected    0.002169629  (rel diff 9.6e-10)
+    ✓ se_slope           got      0.1179055  expected      0.1179055  (rel diff 3.7e-11)
+    ✓ t_slope            got       4.241455  expected       4.241455  (rel diff 1.7e-12)
+    ✓ p_slope            got    0.002169629  expected    0.002169629  (rel diff 9.6e-10)
+    ✓ df_residual        got       9.000000  expected       9.000000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+  anscombe: y2 ~ x2
+    ✓ slope              got      0.5000000  expected      0.5000000  (rel diff 5.6e-16)
+    ✓ intercept          got       3.000909  expected       3.000909  (rel diff 3.0e-12)
+    ✓ r_squared          got      0.6662420  expected      0.6662420  (rel diff 3.8e-12)
+    ✓ full_r_squared     got      0.6662420  expected      0.6662420  (rel diff 3.8e-12)
+    ✓ adj_r_squared      got      0.6291578  expected      0.6291578  (rel diff 4.4e-12)
+    ✓ f_stat             got       17.96565  expected       17.96565  (rel diff 1.6e-12)
+    ✓ p_f                got    0.002178816  expected    0.002178816  (rel diff 9.5e-10)
+    ✓ se_slope           got      0.1179637  expected      0.1179637  (rel diff 2.0e-11)
+    ✓ t_slope            got       4.238590  expected       4.238590  (rel diff 6.5e-12)
+    ✓ p_slope            got    0.002178816  expected    0.002178816  (rel diff 9.5e-10)
+    ✓ df_residual        got       9.000000  expected       9.000000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+  anscombe: y3 ~ x3
+    ✓ slope              got      0.4997273  expected      0.4997273  (rel diff 5.5e-12)
+    ✓ intercept          got       3.002455  expected       3.002455  (rel diff 1.5e-11)
+    ✓ r_squared          got      0.6663240  expected      0.6663240  (rel diff 5.2e-12)
+    ✓ full_r_squared     got      0.6663240  expected      0.6663240  (rel diff 5.2e-12)
+    ✓ adj_r_squared      got      0.6292489  expected      0.6292489  (rel diff 2.5e-12)
+    ✓ f_stat             got       17.97228  expected       17.97228  (rel diff 1.6e-12)
+    ✓ p_f                got    0.002176305  expected    0.002176305  (rel diff 9.4e-10)
+    ✓ se_slope           got      0.1178777  expected      0.1178777  (rel diff 8.5e-12)
+    ✓ t_slope            got       4.239372  expected       4.239372  (rel diff 7.3e-13)
+    ✓ p_slope            got    0.002176305  expected    0.002176305  (rel diff 9.4e-10)
+    ✓ df_residual        got       9.000000  expected       9.000000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+  anscombe: y4 ~ x4
+    ✓ slope              got      0.4999091  expected      0.4999091  (rel diff 1.8e-12)
+    ✓ intercept          got       3.001727  expected       3.001727  (rel diff 9.1e-12)
+    ✓ r_squared          got      0.6667073  expected      0.6667073  (rel diff 2.3e-12)
+    ✓ full_r_squared     got      0.6667073  expected      0.6667073  (rel diff 2.3e-12)
+    ✓ adj_r_squared      got      0.6296747  expected      0.6296747  (rel diff 4.5e-12)
+    ✓ f_stat             got       18.00329  expected       18.00329  (rel diff 9.3e-13)
+    ✓ p_f                got    0.002164602  expected    0.002164602  (rel diff 9.5e-10)
+    ✓ se_slope           got      0.1178189  expected      0.1178189  (rel diff 2.7e-12)
+    ✓ t_slope            got       4.243028  expected       4.243028  (rel diff 2.0e-12)
+    ✓ p_slope            got    0.002164602  expected    0.002164602  (rel diff 9.5e-10)
+    ✓ df_residual        got       9.000000  expected       9.000000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+  synthetic_linear: y ~ x
+    ✓ slope              got       2.403992  expected       2.403992  (rel diff 5.6e-12)
+    ✓ intercept          got       1.046926  expected       1.046926  (rel diff 3.2e-11)
+    ✓ r_squared          got      0.9743553  expected      0.9743553  (rel diff 4.3e-12)
+    ✓ full_r_squared     got      0.9743553  expected      0.9743553  (rel diff 4.3e-12)
+    ✓ adj_r_squared      got      0.9738211  expected      0.9738211  (rel diff 2.7e-12)
+    ✓ f_stat             got       1823.734  expected       1823.734  (rel diff 1.6e-14)
+    ✓ p_f                got   7.592827e-40  expected   7.592827e-40  (rel diff 6.8e-12)
+    ✓ se_slope           got     0.05629272  expected     0.05629272  (rel diff 2.1e-12)
+    ✓ t_slope            got       42.70519  expected       42.70519  (rel diff 1.1e-12)
+    ✓ p_slope            got   7.592827e-40  expected   7.592827e-40  (rel diff 6.9e-12)
+    ✓ df_residual        got       48.00000  expected       48.00000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+  synthetic_outliers: y ~ x
+    ✓ slope              got       2.332011  expected       2.332011  (rel diff 2.0e-11)
+    ✓ intercept          got       1.440184  expected       1.440184  (rel diff 5.9e-12)
+    ✓ r_squared          got      0.3440871  expected      0.3440871  (rel diff 7.9e-12)
+    ✓ full_r_squared     got      0.3440871  expected      0.3440871  (rel diff 7.9e-12)
+    ✓ adj_r_squared      got      0.3304222  expected      0.3304222  (rel diff 1.0e-12)
+    ✓ f_stat             got       25.18045  expected       25.18045  (rel diff 4.6e-13)
+    ✓ p_f                got 0.000007581732  expected 0.000007581732  (rel diff 6.8e-9)
+    ✓ se_slope           got      0.4647280  expected      0.4647280  (rel diff 8.5e-13)
+    ✓ t_slope            got       5.018012  expected       5.018012  (rel diff 3.9e-12)
+    ✓ p_slope            got 0.000007581732  expected 0.000007581732  (rel diff 6.8e-9)
+    ✓ df_residual        got       48.00000  expected       48.00000  (rel diff 0.0e+0)
+    ✓ yResidual null (no nuisance)
+
+────────────────────────────────────────────────────────────
+Robust — internal M-estimation (Tukey biweight)
+────────────────────────────────────────────────────────────
+
+  cars: dist ~ speed
+    ✓ slope              got       3.665472  expected       3.665472  (rel diff 1.2e-11)
+    ✓ intercept          got      -15.51103  expected      -15.51103  (rel diff 3.9e-13)
+    ✓ scale              got       12.56017  expected       12.56017  (rel diff 2.8e-12)
+    ✓ weights            max abs diff 4.98e-12 over 50 values
+    ✓ se_slope           got      0.3833709  expected      0.3833709  (rel diff 9.1e-12)
+    ✓ t_slope            got       9.561164  expected       9.561164  (rel diff 3.3e-12)
+    ✓ se_intercept       got       6.235642  expected       6.235642  (rel diff 4.3e-12)
+    ✓ t_intercept        got      -2.487479  expected      -2.487479  (rel diff 1.1e-11)
+
+  stackloss: stack.loss ~ Air.Flow
+    ✓ slope              got       1.077059  expected       1.077114  (rel diff 5.1e-5)
+    ✓ intercept          got      -47.26806  expected      -47.27080  (rel diff 5.8e-5)
+    ✓ scale              got       2.237119  expected       2.238714  (rel diff 7.1e-4)
+    ✓ weights            max abs diff 7.58e-4 over 21 values
+    ✓ se_slope           got     0.06698839  expected     0.06698874  (rel diff 5.2e-6)
+    ✓ t_slope            got       16.07830  expected       16.07903  (rel diff 4.5e-5)
+    ✓ se_intercept       got       4.092144  expected       4.092166  (rel diff 5.2e-6)
+    ✓ t_intercept        got      -11.55093  expected      -11.55154  (rel diff 5.3e-5)
+
+  mtcars: mpg ~ wt | nuisance: cyl
+    ✓ slope              got      -3.075707  expected      -3.075641  (rel diff 2.1e-5)
+    ✓ intercept          got       38.81664  expected       38.81612  (rel diff 1.3e-5)
+    ✓ scale              got       2.366246  expected       2.366019  (rel diff 9.6e-5)
+    ✓ weights            max abs diff 1.68e-4 over 32 values
+    ✓ se_slope           got      0.7420704  expected      0.7420658  (rel diff 6.2e-6)
+    ✓ t_slope            got      -4.144764  expected      -4.144702  (rel diff 1.5e-5)
+    ✓ se_intercept       got       1.681369  expected       1.681358  (rel diff 6.2e-6)
+    ✓ t_intercept        got       23.08633  expected       23.08617  (rel diff 7.2e-6)
+    ✓ nuisance[0].coef   got      -1.465079  expected      -1.465045  (rel diff 2.3e-5)
+    ✓ nuisance[0].se     got      0.4065600  expected      0.4065575  (rel diff 6.2e-6)
+    ✓ nuisance[0].t      got      -3.603597  expected      -3.603537  (rel diff 1.7e-5)
+
+  stackloss: stack.loss ~ Air.Flow | nuisance: Water.Temp
+    ✓ slope              got      0.8384858  expected      0.8384664  (rel diff 2.3e-5)
+    ✓ intercept          got      -50.00440  expected      -50.00428  (rel diff 2.4e-6)
+    ✓ scale              got       2.713872  expected       2.713894  (rel diff 8.1e-6)
+    ✓ weights            max abs diff 5.90e-5 over 21 values
+    ✓ se_slope           got      0.1123474  expected      0.1123489  (rel diff 1.3e-5)
+    ✓ t_slope            got       7.463334  expected       7.463061  (rel diff 3.7e-5)
+    ✓ se_intercept       got       4.556577  expected       4.556639  (rel diff 1.3e-5)
+    ✓ t_intercept        got      -10.97411  expected      -10.97394  (rel diff 1.6e-5)
+    ✓ nuisance[0].coef   got      0.8109347  expected      0.8109825  (rel diff 5.9e-5)
+    ✓ nuisance[0].se     got      0.3258795  expected      0.3258839  (rel diff 1.3e-5)
+    ✓ nuisance[0].t      got       2.488449  expected       2.488563  (rel diff 4.6e-5)
+
+  synthetic_linear: y ~ x
+    ✓ slope              got       2.433462  expected       2.433485  (rel diff 9.6e-6)
+    ✓ intercept          got       1.074364  expected       1.074391  (rel diff 2.5e-5)
+    ✓ scale              got      0.4313942  expected      0.4312838  (rel diff 2.6e-4)
+    ✓ weights            max abs diff 3.80e-4 over 50 values
+    ✓ se_slope           got     0.05761262  expected     0.05761442  (rel diff 3.1e-5)
+    ✓ t_slope            got       42.23835  expected       42.23744  (rel diff 2.2e-5)
+    ✓ se_intercept       got     0.06570498  expected     0.06570702  (rel diff 3.1e-5)
+    ✓ t_intercept        got       16.35134  expected       16.35123  (rel diff 6.6e-6)
+
+  synthetic_outliers: y ~ x
+    ✓ slope              got       2.433169  expected       2.433142  (rel diff 1.1e-5)
+    ✓ intercept          got       1.105746  expected       1.105710  (rel diff 3.3e-5)
+    ✓ scale              got      0.3977951  expected      0.3977974  (rel diff 5.8e-6)
+    ✓ weights            max abs diff 2.34e-4 over 50 values
+    ✓ se_slope           got     0.05895863  expected     0.05895933  (rel diff 1.2e-5)
+    ✓ t_slope            got       41.26908  expected       41.26814  (rel diff 2.3e-5)
+    ✓ se_intercept       got     0.06724005  expected     0.06724084  (rel diff 1.2e-5)
+    ✓ t_intercept        got       16.44475  expected       16.44402  (rel diff 4.4e-5)
+
+────────────────────────────────────────────────────────────
+Robust — MM-estimation (S-init + fixed-scale bisquare M-step)
+────────────────────────────────────────────────────────────
+
+  starsCYG: log.light ~ log.Te
+    ✓ s_step.coef        max abs diff 4.87e-11 over 2 values
+    ✓ s_step.scale       got      0.4713563  expected      0.4713563  (rel diff 6.8e-12)
+    ✓ slope              got       2.253356  expected       2.253355  (rel diff 3.1e-8)
+    ✓ intercept          got      -4.970249  expected      -4.970248  (rel diff 6.2e-8)
+    ✓ scale              got      0.4713563  expected      0.4713563  (rel diff 6.8e-12)
+    ✓ weights            max abs diff 8.39e-8 over 47 values
+    ✓ se_slope           got      0.2228796  expected      0.2228796  (rel diff 4.8e-9)
+    ✓ t_slope            got       10.11019  expected       10.11019  (rel diff 3.5e-8)
+    ✓ se_intercept       got      0.9627489  expected      0.9627489  (rel diff 4.7e-9)
+    ✓ t_intercept        got      -5.162560  expected      -5.162559  (rel diff 6.7e-8)
+
+  phones: calls ~ year
+    ✓ s_step.coef        max abs diff 0.00e+0 over 2 values
+    ✓ s_step.scale       got       2.128546  expected       2.128546  (rel diff 9.6e-12)
+    ✓ slope              got       1.100950  expected       1.100947  (rel diff 2.8e-6)
+    ✓ intercept          got      -52.42316  expected      -52.42302  (rel diff 2.7e-6)
+    ✓ scale              got       2.128546  expected       2.128546  (rel diff 9.6e-12)
+    ✓ weights            max abs diff 8.03e-5 over 24 values
+    ✓ se_slope           got     0.04711585  expected     0.04711562  (rel diff 4.7e-6)
+    ✓ t_slope            got       23.36687  expected       23.36691  (rel diff 2.0e-6)
+    ✓ se_intercept       got       2.915922  expected       2.915908  (rel diff 4.7e-6)
+    ✓ t_intercept        got      -17.97825  expected      -17.97828  (rel diff 2.0e-6)
+
+  cars: dist ~ speed
+    ✓ s_step.coef        max abs diff 0.00e+0 over 2 values
+    ✓ s_step.scale       got       12.57039  expected       12.57039  (rel diff 1.8e-12)
+    ✓ slope              got       3.665825  expected       3.665817  (rel diff 2.2e-6)
+    ✓ intercept          got      -15.51365  expected      -15.51357  (rel diff 5.1e-6)
+    ✓ scale              got       12.57039  expected       12.57039  (rel diff 1.8e-12)
+    ✓ weights            max abs diff 7.93e-6 over 50 values
+    ✓ se_slope           got      0.3833884  expected      0.3833881  (rel diff 9.3e-7)
+    ✓ t_slope            got       9.561646  expected       9.561634  (rel diff 1.3e-6)
+    ✓ se_intercept       got       6.235928  expected       6.235922  (rel diff 9.3e-7)
+    ✓ t_intercept        got      -2.487785  expected      -2.487775  (rel diff 4.2e-6)
+
+  stackloss: stack.loss ~ Air.Flow
+    ✓ s_step.coef        max abs diff 3.33e-11 over 2 values
+    ✓ s_step.scale       got       2.232498  expected       2.232498  (rel diff 1.3e-11)
+    ✓ slope              got       1.076965  expected       1.076967  (rel diff 1.3e-6)
+    ✓ intercept          got      -47.26341  expected      -47.26349  (rel diff 1.6e-6)
+    ✓ scale              got       2.232498  expected       2.232498  (rel diff 1.3e-11)
+    ✓ weights            max abs diff 1.42e-5 over 21 values
+    ✓ se_slope           got     0.06699138  expected     0.06699147  (rel diff 1.3e-6)
+    ✓ t_slope            got       16.07618  expected       16.07618  (rel diff 6.0e-9)
+    ✓ se_intercept       got       4.092327  expected       4.092333  (rel diff 1.3e-6)
+    ✓ t_intercept        got      -11.54927  expected      -11.54928  (rel diff 2.6e-7)
+
+  mtcars: mpg ~ wt | nuisance: cyl
+    ✓ s_step.coef        max abs diff 2.38e-11 over 3 values
+    ✓ s_step.scale       got       2.119649  expected       2.119649  (rel diff 9.9e-12)
+    ✓ slope              got      -3.037079  expected      -3.037066  (rel diff 4.5e-6)
+    ✓ intercept          got       38.51367  expected       38.51357  (rel diff 2.6e-6)
+    ✓ scale              got       2.119649  expected       2.119649  (rel diff 9.9e-12)
+    ✓ weights            max abs diff 1.82e-5 over 32 values
+    ✓ se_slope           got      0.7425801  expected      0.7425789  (rel diff 1.7e-6)
+    ✓ t_slope            got      -4.089901  expected      -4.089889  (rel diff 2.9e-6)
+    ✓ se_intercept       got       1.682524  expected       1.682521  (rel diff 1.7e-6)
+    ✓ t_intercept        got       22.89042  expected       22.89040  (rel diff 8.7e-7)
+    ✓ nuisance[0].coef   got      -1.448027  expected      -1.448021  (rel diff 4.5e-6)
+    ✓ nuisance[0].se     got      0.4068393  expected      0.4068386  (rel diff 1.7e-6)
+    ✓ nuisance[0].t      got      -3.559212  expected      -3.559202  (rel diff 2.8e-6)
+
+  synthetic_outliers: y ~ x
+    ✓ s_step.coef        max abs diff 3.59e-11 over 2 values
+    ✓ s_step.scale       got      0.4755936  expected      0.4755936  (rel diff 7.5e-13)
+    ✓ slope              got       2.423098  expected       2.423098  (rel diff 3.1e-7)
+    ✓ intercept          got       1.094176  expected       1.094175  (rel diff 8.4e-7)
+    ✓ scale              got      0.4755936  expected      0.4755936  (rel diff 7.5e-13)
+    ✓ weights            max abs diff 8.12e-6 over 50 values
+    ✓ se_slope           got     0.05795988  expected     0.05795990  (rel diff 3.3e-7)
+    ✓ t_slope            got       41.80648  expected       41.80645  (rel diff 6.4e-7)
+    ✓ se_intercept       got     0.06610101  expected     0.06610103  (rel diff 3.3e-7)
+    ✓ t_intercept        got       16.55309  expected       16.55307  (rel diff 1.2e-6)
+
+────────────────────────────────────────────────────────────
+Spearman rank correlation
+────────────────────────────────────────────────────────────
+
+  cars: dist ~ speed
+    ✓ rho                got      0.8303568  expected      0.8303568  (rel diff 3.6e-12)
+    ✓ p_value            got   8.824558e-14  expected   8.824558e-14  (rel diff 1.2e-10)
+
+  faithful: waiting ~ eruptions
+    ✓ rho                got      0.7779721  expected      0.7779721  (rel diff 2.1e-12)
+    ✓ p_value            got   1.989542e-56  expected   1.989542e-56  (rel diff 2.2e-11)
+
+  synthetic_linear: y ~ x
+    ✓ rho                got      0.9862665  expected      0.9862665  (rel diff 2.7e-12)
+    ✓ p_value            got   3.345532e-39  expected       0.000000  (rel diff 3.3e-39)
+
+  synthetic_monotone: y ~ x
+    ✓ rho                got      0.9940456  expected      0.9940456  (rel diff 2.7e-12)
+    ✓ p_value            got   7.100180e-48  expected       0.000000  (rel diff 7.1e-48)
+
+────────────────────────────────────────────────────────────
+Theil-Sen estimator
+────────────────────────────────────────────────────────────
+
+  cars: dist ~ speed
+    ✓ slope              got       3.666667  expected       3.666667  (rel diff 9.1e-12)
+    ✓ intercept          got      -15.66667  expected      -15.66667  (rel diff 2.1e-12)
+    ✓ tau                got      0.6689901  expected      0.6689901  (rel diff 6.2e-12)
+    ✓ p_value            got   2.638271e-11  expected   2.638271e-11  (rel diff 1.7e-10)
+
+  faithful: waiting ~ eruptions
+    ✓ slope              got       10.19253  expected       10.19253  (rel diff 1.3e-12)
+    ✓ intercept          got       35.58607  expected       35.58607  (rel diff 6.9e-13)
+    ✓ tau                got      0.5747674  expected      0.5747674  (rel diff 8.7e-12)
+    ✓ p_value            got   6.195350e-44  expected   6.195350e-44  (rel diff 5.0e-12)
+
+  synthetic_linear: y ~ x
+    ✓ slope              got       2.456907  expected       2.456907  (rel diff 1.8e-11)
+    ✓ intercept          got       1.147707  expected       1.147707  (rel diff 3.6e-11)
+    ✓ tau                got      0.9102041  expected      0.9102041  (rel diff 2.9e-12)
+    ✓ p_value            got   1.090986e-20  expected   1.090986e-20  (rel diff 2.1e-11)
+
+  synthetic_outliers: y ~ x
+    ✓ slope              got       2.446873  expected       2.446873  (rel diff 4.2e-12)
+    ✓ intercept          got       1.159615  expected       1.159615  (rel diff 1.7e-11)
+    ✓ tau                got      0.8008163  expected      0.8008163  (rel diff 7.6e-13)
+    ✓ p_value            got   2.288213e-16  expected   2.288213e-16  (rel diff 7.9e-12)
+
+════════════════════════════════════════════════════════════
+  293 passed  0 failed  0 skipped
+════════════════════════════════════════════════════════════

@@ -21,6 +21,15 @@ save_csv(stackloss, "stackloss")
 save_csv(faithful, "faithful")
 save_csv(anscombe, "anscombe")
 
+# Robust-regression reference datasets:
+#   phones  (MASS) — Belgian phone calls; well-behaved, M ≈ MM
+#   starsCYG (robustbase) — Hertzsprung-Russell stars; leverage outliers make
+#            M follow OLS (wrong) while MM recovers the true slope (M-vs-MM test)
+if (!requireNamespace("MASS", quietly = TRUE)) stop("Install MASS")
+if (!requireNamespace("robustbase", quietly = TRUE)) stop("Install robustbase")
+save_csv(data.frame(year = MASS::phones$year, calls = MASS::phones$calls), "phones")
+save_csv(robustbase::starsCYG, "starsCYG")
+
 cat("\nSynthetic datasets:\n")
 
 # Clean linear: y = 2.5x + 1.0 + noise

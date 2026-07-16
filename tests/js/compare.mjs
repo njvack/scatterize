@@ -14,7 +14,8 @@ const fixturesDir = join(__dirname, '..', 'fixtures');
 // JS implementations — uncomment as each is built
 // ---------------------------------------------------------------------------
 import { ols }      from '../../src/stats/ols.js';
-import { robust }   from '../../src/stats/robust.js';
+import { robust, robustM } from '../../src/stats/robust.js';
+import { sEstimate } from '../../src/stats/s-estimate.js';
 import { spearman } from '../../src/stats/spearman.js';
 import { theilSen } from '../../src/stats/theilsen.js';
 
@@ -73,8 +74,8 @@ const COEF_TOL      = 1e-6;  // relative tolerance for coefficients
 const PVAL_TOL      = 1e-4;  // relative tolerance for p-values (less precisely computed)
 const WEIGHT_TOL    = 1e-4;  // absolute tolerance for IRLS weights
 const ROBUST_TOL    = 1e-3;  // relative tolerance for M-estimation (iterative, floating-point)
-const ROBUST_SE_TOL = 0.10;  // SE/t for robust nuisance predictors: MASS::rlm uses a
-                              // different asymptotic variance formula; coefs agree but SEs diverge ~3-7%
+const MM_TOL        = 1e-3;  // MM coef/SE/weights: the M-step is iterative (acc=1e-4)
+const MM_EXACT_TOL  = 1e-6;  // deterministic MM pieces: S-step coef/scale and the fixed MM scale
 
 let passed = 0;
 let failed = 0;
@@ -187,7 +188,7 @@ try {
 // ---------------------------------------------------------------------------
 // Robust tests
 // ---------------------------------------------------------------------------
-section('Robust (M-estimation, Tukey biweight)');
+section('Robust — internal M-estimation (Tukey biweight)');
 try {
   const cases = loadExpected('robust');
   for (const c of cases) {
@@ -197,20 +198,25 @@ try {
       const x = col(data, c.x);
       const y = col(data, c.y);
       const nuisance = (c.nuisance ?? []).map(n => col(data, n));
-      const r = robust(x, y, nuisance);
+      const r = robustM(x, y, nuisance);
       const e = c.results;
-      check('slope',        r.slope,     e.slope,     ROBUST_TOL);
-      check('intercept',    r.intercept, e.intercept, ROBUST_TOL);
-      check('scale',        r.scale,     e.scale,     ROBUST_TOL);
-      checkArray('weights', r.weights,   e.weights,   ROBUST_TOL);
+      check('slope',        r.slope,       e.slope,       ROBUST_TOL);
+      check('intercept',    r.intercept,   e.intercept,   ROBUST_TOL);
+      check('scale',        r.scale,       e.scale,       ROBUST_TOL);
+      checkArray('weights', r.weights,     e.weights,     ROBUST_TOL);
+      // SEs now use the MASS summary.rlm (XtX) formula exactly, so they track
+      // the coefficients at the same tolerance rather than the old ~10% gap.
+      check('se_slope',     r.seSlope,     e.se_slope,     ROBUST_TOL);
+      check('t_slope',      r.tSlope,      e.t_slope,      ROBUST_TOL);
+      check('se_intercept', r.seIntercept, e.se_intercept, ROBUST_TOL);
+      check('t_intercept',  r.tIntercept,  e.t_intercept,  ROBUST_TOL);
 
-      // Nuisance stats — coefs match well; SE/t use wider tolerance (see ROBUST_SE_TOL)
       const nuis = e.nuisance_stats ?? [];
       for (let i = 0; i < nuis.length; i++) {
         const label = `nuisance[${i}]`;
         check(`${label}.coef`, r.nuisanceStats[i].coef, nuis[i].coef, ROBUST_TOL);
-        check(`${label}.se`,   r.nuisanceStats[i].se,   nuis[i].se,   ROBUST_SE_TOL);
-        check(`${label}.t`,    r.nuisanceStats[i].t,    nuis[i].t,    ROBUST_SE_TOL);
+        check(`${label}.se`,   r.nuisanceStats[i].se,   nuis[i].se,   ROBUST_TOL);
+        check(`${label}.t`,    r.nuisanceStats[i].t,    nuis[i].t,    ROBUST_TOL);
       }
     } catch (err) {
       if (err.message === 'not yet implemented') {
@@ -220,6 +226,56 @@ try {
         console.log(`    ERROR: ${err.message}`);
         failed++;
       }
+    }
+  }
+} catch (err) {
+  console.log(`  Could not load expected values: ${err.message}`);
+  console.log('  Run: make expected');
+}
+
+// ---------------------------------------------------------------------------
+// MM-estimation tests (the public `robust`): S-init + fixed-scale M-step.
+// Layered: the S-step (coef + scale) is deterministic and matches lqs exactly;
+// the fixed MM scale is deterministic; the M-step coef/SE/weights are iterative.
+// ---------------------------------------------------------------------------
+section('Robust — MM-estimation (S-init + fixed-scale bisquare M-step)');
+try {
+  const cases = loadExpected('mm');
+  for (const c of cases) {
+    console.log(`\n  ${caseLabel(c)}`);
+    try {
+      const data = loadData(c.dataset);
+      const x = col(data, c.x);
+      const y = col(data, c.y);
+      const nuisance = (c.nuisance ?? []).map(n => col(data, n));
+      const r = robust(x, y, nuisance);
+
+      // S-step: reproduce MASS::lqs(method="S", nsamp="exact") deterministically.
+      const dm = x.map((xi, i) => [1, xi, ...nuisance.map(cl => cl[i])]);
+      const s = sEstimate(dm, y);
+      checkArray('s_step.coef', s.coef, c.s_step.coef, MM_EXACT_TOL);
+      check('s_step.scale', s.scale, c.s_step.scale, MM_EXACT_TOL);
+
+      const e = c.results;
+      check('slope',        r.slope,       e.slope,       MM_TOL);
+      check('intercept',    r.intercept,   e.intercept,   MM_TOL);
+      check('scale',        r.scale,       e.scale,       MM_EXACT_TOL);  // fixed S-scale
+      checkArray('weights', r.weights,     e.weights,     MM_TOL);
+      check('se_slope',     r.seSlope,     e.se_slope,     MM_TOL);
+      check('t_slope',      r.tSlope,      e.t_slope,      MM_TOL);
+      check('se_intercept', r.seIntercept, e.se_intercept, MM_TOL);
+      check('t_intercept',  r.tIntercept,  e.t_intercept,  MM_TOL);
+
+      const nuis = e.nuisance_stats ?? [];
+      for (let i = 0; i < nuis.length; i++) {
+        const label = `nuisance[${i}]`;
+        check(`${label}.coef`, r.nuisanceStats[i].coef, nuis[i].coef, MM_TOL);
+        check(`${label}.se`,   r.nuisanceStats[i].se,   nuis[i].se,   MM_TOL);
+        check(`${label}.t`,    r.nuisanceStats[i].t,    nuis[i].t,    MM_TOL);
+      }
+    } catch (err) {
+      console.log(`    ERROR: ${err.message}`);
+      failed++;
     }
   }
 } catch (err) {

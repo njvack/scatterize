@@ -150,7 +150,7 @@ And a corresponding JS script in `tests/js/` that:
 ### Reference R implementations
 
 - **OLS:** `lm(y ~ x + nuisance, data=df)` — check `coef()`, `summary()$r.squared`, p-values
-- **Robust:** `MASS::rlm(y ~ x, data=df, psi=psi.bisquare)` — M-estimation with Tukey biweight, matches the original `sm.RLM(..., M=TukeyBiweight())`. Check coefficients and weights. **Not** MM-estimation.
+- **Robust:** `MASS::rlm(y ~ x, data=df, method="MM")` — MM-estimation (Yohai 1987): a high-breakdown S-estimate (`lqs(method="S", k0=1.548)`, exact subset enumeration) supplies the start coefficients and a fixed scale, then a Tukey-biweight (c=4.685) M-step runs from there. 50% breakdown, 95% Gaussian efficiency. SEs use the `summary.rlm` XtX formula. Layered fixtures in `expected_mm.R` check the S-step and the full MM fit; `robustM()` (plain `psi=psi.bisquare`, M-estimation) is retained internally and checked by `expected_robust.R`.
 - **Spearman:** `cor.test(x, y, method="spearman")` — check rho and p-value
 - **Theil-Sen:** `mblm::mblm(y ~ x)` or `DescTools::TheilSen()` — slope and intercept; Kendall's τ p-value via `cor.test(x, y, method="kendall")`
 
