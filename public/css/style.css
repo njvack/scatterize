@@ -1,7 +1,6 @@
 /* Scatterize — Quarto/R-docs aesthetic (app shell).
-   Shared tokens, fonts, and link styles live in base.css. */
-
-@import url("base.css");
+   Shared tokens, fonts, and link styles live in base.css, linked before this
+   file in index.html (no @import — it serializes CSS and font loading). */
 
 /* ─── App Base ──────────────────────────────────────────────────────────── */
 
@@ -375,7 +374,6 @@ main > section {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 150%;
 }
 
 #empty-state > div {
@@ -631,6 +629,14 @@ kbd {
 }
 
 /* ─── Plot Tools (settings gear + share button) ─────────────────────────── */
+
+/* Chrome that only makes sense with a plot on screen. render() sets
+   .has-data on <body> once a dataset is loaded; until then (including the
+   pre-JS first paint and while loading) these stay hidden. */
+body:not(.has-data) #plot-tools,
+body:not(.has-data) #diag-plots {
+  display: none;
+}
 
 #plot-tools {
   position: absolute;

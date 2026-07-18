@@ -247,6 +247,9 @@ function announceStateChange(state, computed) {
 function render() {
   const state = getState();
 
+  // Drives CSS visibility of plot-only chrome (plot tools, diagnostics).
+  document.body.classList.toggle('has-data', !!(data && columns.length));
+
   if (!data || !columns.length) {
     showEmptyState(true);
     scatter?.clear();
@@ -432,7 +435,7 @@ function setLoading(on, url) {
   const loadingEl = document.getElementById('loading-state');
   if (btn) {
     btn.disabled = on;
-    btn.textContent = on ? 'Loading…' : 'Open link';
+    btn.textContent = on ? 'Loading…' : 'Load';
   }
   if (on) {
     showEmptyState(false);
