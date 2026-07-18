@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About — Scatterize 3</title>
+  <link rel="stylesheet" href="css/about.css">
+</head>
+<body>
+
+<header>
+  <p><a href="./">Scatterize 3</a></p>
+</header>
+
+<main>
+
+  <h1>About Scatterize</h1>
+
+  <p>You — yes, <em>you</em> — should look at your data.</p>
+
+  <p>
+      Analyzing data is a lot of work. There’s checking, cleaning, preprocessing, modeling&hellip; the list goes on. And at the end of the day, sometimes you want to run your models, write up your findings, and get on with things.
+  </p>
+  <p>
+      <em>Why,</em> you ask, should you bother looking at the data? In a nutshell: Descriptive statistics can only tell you so much. You have probably heard of <a href="https://en.wikipedia.org/wiki/Anscombe%27s_quartet">Anscombe’s Quartet</a>; even better is the <a href="https://www.research.autodesk.com/publications/same-stats-different-graphs/">Datasaurus Dozen</a> — a baker’s dozen of (x, y) pairs that share a bunch of descriptive stats:
+  </p>
+
+  <figure>
+      <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=6&amp;y=7">
+          <img src="img/scatterize-dino%20x-vs-dino%20y.png"
+               alt="Scatter plot whose points form the outline of a dinosaur">
+      </a>
+      <div>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=0&amp;y=1">
+              <img src="img/scatterize-away%20x-vs-away%20y.png"
+                   alt="Scatter plot with points scattered away from a central band">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=2&amp;y=3">
+              <img src="img/scatterize-bullseye%20x-vs-bullseye%20y.png"
+                   alt="Scatter plot whose points form a bullseye of concentric rings">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=4&amp;y=5">
+              <img src="img/scatterize-circle%20x-vs-circle%20y.png"
+                   alt="Scatter plot whose points form a circle">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=8&amp;y=9">
+              <img src="img/scatterize-dots%20x-vs-dots%20y.png"
+                   alt="Scatter plot whose points cluster into a grid of round dots">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=10&amp;y=11">
+              <img src="img/scatterize-h_lines%20x-vs-h_lines%20y.png"
+                   alt="Scatter plot whose points form several horizontal lines">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=12&amp;y=13">
+              <img src="img/scatterize-high_lines%20x-vs-high_lines%20y.png"
+                   alt="Scatter plot whose points form two widely spaced horizontal lines">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=14&amp;y=15">
+              <img src="img/scatterize-slant_down%20x-vs-slant_down%20y.png"
+                   alt="Scatter plot whose points form downward-slanting lines">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=16&amp;y=17">
+              <img src="img/scatterize-slant_up%20x-vs-slant_up%20y.png"
+                   alt="Scatter plot whose points form upward-slanting lines">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=18&amp;y=19">
+              <img src="img/scatterize-star%20x-vs-star%20y.png"
+                   alt="Scatter plot whose points form a five-pointed star">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=20&amp;y=21">
+              <img src="img/scatterize-v_lines%20x-vs-v_lines%20y.png"
+                   alt="Scatter plot whose points form several vertical lines">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=22&amp;y=23">
+              <img src="img/scatterize-wide_lines%20x-vs-wide_lines%20y.png"
+                   alt="Scatter plot whose points form two widely spaced vertical lines">
+          </a>
+          <a href="./#src=example_csv/datasaurus_dozen.csv&amp;x=24&amp;y=25">
+              <img src="img/scatterize-x_shape%20x-vs-x_shape%20y.png"
+                   alt="Scatter plot whose points form an X shape">
+          </a>
+      </div>
+  </figure>
+
+  <p>
+      So once you’re convinced that you should do this, you need to actually make it happen. And as nice as <a href="https://ggplot2.tidyverse.org/">ggplot2</a> is, it’s kind of a pain to make all the plots you definitely want to look at. And making plots for the things you’re <em>kind of</em> interested in? I mean&hellip; you <em>can</em> do it. People <em>do.</em>
+  </p>
+  <p>But maybe&hellip; it could be easier?</p>
+
+  <section>
+    <h2>What Scatterize Does</h2>
+    <p>
+        Scatterize is a simple tool that will show a bivariate view of “table-like” data. A scatterplot. You can use it on <a href="./#src=https%3A%2F%2Fnjvack.github.io%2Fscatterize%2Fexample_csv%2Fmtcars.csv&amp;x=2&amp;y=3&amp;m=ols">small datasets</a>. You can use it on <a href="./#src=https%3A%2F%2Fnjvack.github.io%2Fscatterize%2Fexample_csv%2Fames_housing.csv&amp;x=8&amp;y=15&amp;m=ols&amp;h=17">big datasets</a>. You can run ordinary or robust parametric models, as well as nonparametric models. You can add and remove covariates to see if age or SES are driving your relationship. Want to see how things look with a point censored? Click it and find out.
+    </p>
+    <p>
+        It will always show you how the variables you have selected relate to each other <em>after</em> regressing out any covariates.
+    </p>
+    <p>
+        If you’re looking at data that’s publicly hosted with the right permissions (a CSV file on the web, or a Google Sheet), you can send a link for your plot to someone else, and they’ll see what you see.
+    </p>
+    <p>
+        Everything in Scatterize happens on your computer, in your web browser, without sending any data to a server. If you or your IT folk don’t trust that, you can <a href="https://github.com/njvack/scatterize/releases/tag/latest">download the latest release</a>, unzip it, and open <strong>index.html</strong> in a browser on your computer; it should work fine from there.
+    </p>
+  </section>
+
+  <section>
+      <h2>OLS? Robust? Spearman? Theil-Sen? What model should I use?</h2>
+      <p>
+          tl;dr: Normally, use robust regression. Scatterize chooses ordinary least squares initially because I am a coward.
+      </p>
+      <p>
+          My unpopular opinion as a non-statistician: One of the biggest reasons OLS regression has been so popular, for so long, is that the math is easy, and that it’s relatively easy to prove things about it. It behaves well in a variety of circumstances. It is, unfortunately, quite susceptible to outliers — you’re minimizing <em>squared</em> error, so points far from your line have very large effects on it.
+      </p>
+      <p>
+          So: If you want to do normal parametric things with p-values and covariates and not think too hard about outliers, use robust regression. This will automatically downweight outliers; here’s an example where <a href="./#src=example_csv/starsCYG.csv&amp;x=0&amp;y=1&amp;m=robust">robust regression</a> gives a very different result than <a href="./#src=example_csv/starsCYG.csv&amp;x=0&amp;y=1&amp;m=ols">OLS</a>. (For reference, we’re using MM-estimation with the Tukey loss function, and fast-S estimation. If you want to choose these details, you want different software.)
+      </p>
+      <p>
+          If you want to see if a single pair of variables has a relationship, despite the effects of outliers, use <a href="./#src=example_csv/starsCYG.csv&amp;x=0&amp;y=1&amp;m=spearman">Spearman’s &rho;</a>.
+      </p>
+      <p>
+          If you want a very good “median” estimate of the slope between two variables while being extremely robust to outliers, use <a href="./#src=example_csv/starsCYG.csv&amp;x=0&amp;y=1&amp;m=theilsen">Theil-Sen</a>.
+      </p>
+      <p>
+          If people are grousing about you using robust regression, or your <em>n</em> is very small, use OLS regression.
+      </p>
+  </section>
+  <section>
+      <h2>What’s in this stats code? Should I trust it?</h2>
+      <p>
+          Of course you shouldn’t. Before you go and publish numbers you see here, run your model in R or SPSS or Matlab or statsmodels. Stats code in those packages has been tested a million times more thoroughly than this will ever be. Plus, then you'll know <em>exactly</em> what model you're running.
+      </p>
+      <p>
+          For reference: The stats code in this was generated primarily using Claude models developed by Anthropic. To build it, I used standard and synthetic data, ran models against it in R using standard packages, and made agreement with those results the target for success.
+      </p>
+      <p>
+          (Full disclosure: A good deal of the other code in this project was generated by Claude models, as well.)
+      </p>
+      <p>
+           Scatterize’s results should match the ones from R to within 6–12 decimal places; see <a href="stats_results.txt">the results table</a> for the full set of examples. The robust method we’re using in R is <strong>MASS::rlm(method="MM")</strong>.
+      </p>
+  </section>
+
+  <section>
+    <h2>What about p-hacking?</h2>
+    <p>
+        Don’t.
+    </p>
+    <p>
+        There are uncountably many ways to lie to yourself, or other people, about your data. You can make a matrix of p-values comparing every variable to every other variable, and repeat that with covariates. (Sometimes you should actually do just that.) There are as many ways to justify excluding a data point as there are points in your data set. You can run analyses until you see what you want, and justify every choice you made to get there.
+    </p>
+    <p>
+        You can also <em>not do those things.</em>
+    </p>
+    <p>
+        If you don’t want to p-hack, don’t p-hack. Pre-register your hypotheses. Do it in public, do it in private, whatever. Write down, ahead of time, what you expect to find in your data, and why you think you’ll find it. Let that record help you keep yourself honest.
+    </p>
+    <p>
+        Maybe you find what you’re hoping for, maybe you don’t. But looking at your data, in detail, will teach you a lot about it. It’ll help you learn to trust, or not, the results from your stats models. It’ll also help you decide what you want to research in the future.
+    </p>
+  </section>
+  <section>
+      <h2>About the author, the code, and the process</h2>
+      <p>
+          Scatterize was written by me, Nate Vack. I have two main jobs: One at the <a href="https://centerhealthyminds.org/">Center for Healthy Minds</a> at the University of Wisconsin-Madison, and the other as the co-founder of a product, mainly for libraries, called <a href="https://gimlet.us/">Gimlet</a>. I also try to be a good dad and at least a passably decent husband.
+      </p>
+      <p>
+          If you have feedback here, feel free to use the Feedback link at the bottom of the page if you’re comfortable in Github. If you’d rather send me an email, I’m at njvack@freshforever.net.
+      </p>
+      <p>
+          This project was part of neither job, although it was inspired and informed by both. It was largely a hobby project to resurrect <a href="https://github.com/njvack/scatterize/releases/tag/python-statsmodels">an old version of Scatterize</a> that required a server for data handling and statistics, and a way to learn to use coding agents — primarily Claude Code — while doing that.
+      </p>
+      <p>
+          You are free to use this code, and the plots and statistics produced by it, for any purpose you want. I will never write this up as a paper; if you want to cite it for some reason, let me know and I’ll help gin up a citation of some kind.
+      </p>
+      <p>
+          I can say without a doubt: This project would not have been practical without coding agents and their associated models. This was still a tremendous amount of work, and honestly I never would have had the energy to undertake it without a computer doing most of the typing.
+      </p>
+      <p>
+          On coding agents: It’s still very difficult for me to predict how they will do on a given task. Some things I thought were ridiculous stretch goals — for example, <em>re-implementing the entire plotting engine in WebGL for speed on large datasets</em> — were almost hilariously trivial. Just&hellip; a few minutes of cranking and it was basically done. Other things that seemed like they should be easy were a slog. I remain haunted by off-plot censor diamonds.
+      </p>
+      <p>
+          As of mid-July 2026, I am better at large-scale design and product decisions. Well, <em>I</em> think so.
+      </p>
+      <p>
+          I do not particularly like LLM writing style. The words on this page were written by me, using a keyboard, just like in the old days.
+      </p>
+  </section>
+  <section>
+      <h2>Special thanks</h2>
+      <p>
+          Special thanks go out to <a href="https://foxlab.ucdavis.edu/">Drew Fox</a>, who encouraged me to write this silly thing in the first place, and to <a href="https://shackmanlab.org/">Alex Shackman</a>, whose ideas have always steered me true.
+      </p>
+      <p>
+          And, of course, thank you for reading this far and trying Scatterize. I’ve been writing software for about thirty years now, and this is the product I’m happiest with. So far, at least. I hope it’s useful to you!
+      </p>
+      <figure>
+        <a href="./#src=example_csv/heart_nate.csv&amp;x=6&amp;y=7">
+            <img src="img/heart_nate.png" alt="❤️, Nate">
+        </a>
+      </figure>
+  </section>
+</main>
+
+<footer>
+  <ul>
+    <li><a href="./">Open Scatterize</a></li>
+    <li><a href="https://github.com/njvack/scatterize/issues">Feedback</a></li>
+    <li><a href="https://github.com/njvack/scatterize">Github</a></li>
+  </ul>
+</footer>
+
+</body>
+</html>
