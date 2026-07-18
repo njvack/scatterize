@@ -6,8 +6,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -28,9 +26,17 @@ jobs:
 
       - run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      # Publish the built site to the root of the gh-pages branch.
+      # clean-exclude keeps the PR preview directories intact so a push to
+      # main never wipes an open PR's preview; force: false rebases onto the
+      # branch instead of force-pushing over it.
+      - name: Deploy main site to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: public
+          branch: gh-pages
+          folder: public
+          clean-exclude: pr-preview/
+          force: false
 
       - name: Create zip for self-hosting
         run: cd public && zip -r ../scatterize.zip .
@@ -39,16 +45,6 @@ jobs:
         with:
           name: scatterize-zip
           path: scatterize.zip
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - id: deploy
-        uses: actions/deploy-pages@v4
 
   release:
     needs: build
