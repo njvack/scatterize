@@ -1,8 +1,7 @@
 /* Scatterize — static document pages (about.html).
-   Shared tokens, fonts, and link styles live in base.css;
+   Shared tokens, fonts, and link styles live in base.css, linked before this
+   file in about.html (no @import — it serializes CSS and font loading);
    this file only handles document layout and reading typography. */
-
-@import url("base.css");
 
 html {
     font-size: 130%;
