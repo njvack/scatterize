@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseState, serializeState, DEFAULTS } from '../../src/state.js';
+import { parseState, serializeState, resolveXY, effectiveNuisance, DEFAULTS } from '../../src/state.js';
 
 // ---------------------------------------------------------------------------
 // parseState
@@ -173,4 +173,42 @@ test('round-trip: parse → serialize → parse preserves all fields', () => {
   const parsed = parseState(original);
   const reparsed = parseState(serializeState(parsed));
   assert.deepEqual(parsed, reparsed);
+});
+
+// ---------------------------------------------------------------------------
+// resolveXY / effectiveNuisance (issue #39: X and Y always win)
+// ---------------------------------------------------------------------------
+
+test('resolveXY: in-range indices pass through', () => {
+  assert.deepEqual(resolveXY({ x: 2, y: 5 }, 10), { x: 2, y: 5 });
+});
+
+test('resolveXY: out-of-range falls back to 0 and 1', () => {
+  assert.deepEqual(resolveXY({ x: 12, y: -3 }, 10), { x: 0, y: 1 });
+  assert.deepEqual(resolveXY({ x: NaN, y: 99 }, 4), { x: 0, y: 1 });
+});
+
+test('resolveXY: single-column dataset maps y to 0', () => {
+  assert.deepEqual(resolveXY({ x: 5, y: 5 }, 1), { x: 0, y: 0 });
+});
+
+test('effectiveNuisance: passes through covariates not in use as X/Y', () => {
+  assert.deepEqual(effectiveNuisance({ x: 0, y: 1, n: [2, 3] }, 5), [2, 3]);
+});
+
+test('effectiveNuisance: excludes covariates in use as X or Y', () => {
+  assert.deepEqual(effectiveNuisance({ x: 2, y: 3, n: [2, 3, 4] }, 5), [4]);
+});
+
+test('effectiveNuisance: applies X/Y fallbacks before comparing', () => {
+  // x=99 resolves to column 0, so nuisance 0 is inert
+  assert.deepEqual(effectiveNuisance({ x: 99, y: 1, n: [0, 4] }, 5), [4]);
+});
+
+test('effectiveNuisance: drops out-of-range covariate indices', () => {
+  assert.deepEqual(effectiveNuisance({ x: 0, y: 1, n: [3, 17, -1] }, 5), [3]);
+});
+
+test('effectiveNuisance: empty when no columns', () => {
+  assert.deepEqual(effectiveNuisance({ x: 0, y: 1, n: [1] }, 0), []);
 });

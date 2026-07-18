@@ -84,6 +84,24 @@ export function serializeState(state) {
   return params.toString();
 }
 
+// Pure: resolve state.x/state.y to in-range indices over nCols numeric
+// columns, using the same fallbacks as the model pipeline (x → 0, y → 1).
+export function resolveXY(state, nCols) {
+  const inRange = i => Number.isInteger(i) && i >= 0 && i < nCols;
+  const x = inRange(state.x) ? state.x : 0;
+  const y = inRange(state.y) ? state.y : (nCols > 1 ? 1 : 0);
+  return { x, y };
+}
+
+// Pure: the nuisance covariate indices actually applied to the model.
+// X and Y always win (issue #39): a covariate currently in use as X or Y
+// stays selected in state.n but is inert until X/Y move off it.
+export function effectiveNuisance(state, nCols) {
+  if (!nCols) return [];
+  const { x, y } = resolveXY(state, nCols);
+  return state.n.filter(i => i >= 0 && i < nCols && i !== x && i !== y);
+}
+
 // Browser integration: read current state from URL hash.
 export function getState() {
   return parseState(window.location.hash.slice(1));

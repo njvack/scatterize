@@ -188,26 +188,126 @@ main > section {
   }
 }
 
-#nuisance-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.chip-picker {
+  position: relative;
+}
 
-  & label {
+.chip-picker-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--color-border-mid);
+  border-radius: 4px;
+  background: var(--color-bg);
+  cursor: text;
+
+  &:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
+  }
+
+  &.chip-picker-off {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.chip-picker-chips {
+  display: contents;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 4px 2px 7px;
+  font-size: 0.857rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  color: var(--color-text);
+
+  &.chip-inert { opacity: 0.55; }
+}
+
+.chip-badge {
+  font-size: 0.714rem;
+  font-weight: 600;
+  color: var(--color-accent-dk);
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+
+  &:hover { color: var(--color-text); }
+  &:disabled { cursor: not-allowed; }
+}
+
+.chip-picker-input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  padding: 2px;
+  font-size: 0.929rem;
+  font-family: var(--font-sans);
+  background: transparent;
+  color: var(--color-text);
+
+  &:disabled { cursor: not-allowed; }
+}
+
+.chip-picker-menu {
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 2px 0 0;
+  padding: 2px;
+  list-style: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  max-height: 220px;
+  overflow-y: auto;
+
+  & li {
     display: flex;
-    align-items: center;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 6px;
+    padding: 4px 8px;
     font-size: 0.929rem;
-    font-weight: normal;
-    text-transform: none;
-    letter-spacing: normal;
-    color: var(--color-text);
+    border-radius: 3px;
     cursor: pointer;
   }
 
-  & input[type="checkbox"] {
-    cursor: pointer;
-    margin: 0;
+  & li.chip-picker-highlight {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  & li.chip-picker-disabled {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  & li.chip-picker-empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+    cursor: default;
   }
 }
 

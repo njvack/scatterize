@@ -1,9 +1,10 @@
 // src/plot/dashboard.js
 // Populates control panel selectors and renders the stats panel.
 
-import { setState } from '../state.js';
+import { setState, resolveXY } from '../state.js';
 import { RANK_MODELS } from '../stats/common.js';
 import { MODEL_DISPLAY_NAMES } from './plot-model.js';
+import { createChipPicker } from './chip-picker.js';
 
 // ---------------------------------------------------------------------------
 // Controls
@@ -20,12 +21,13 @@ export function populateControls(colMeta, state) {
   populateColumnSelect('x-select', numericCols, nonNumericCols, state.x);
   populateColumnSelect('y-select', numericCols, nonNumericCols, state.y);
   populateColumnSelect('group-select', allCols, [], state.h, true);
-  populateNuisanceList(numericCols, nonNumericCols, state);
+
+  const picker = ensureNuisancePicker();
+  picker?.update({ options: numericCols.map((name, i) => ({ value: i, label: name })) });
+  syncNuisancePicker(state);
 
   const modelSelect = document.getElementById('model-select');
   modelSelect.value = state.m;
-
-  updateNuisanceAvailability(state.m);
 }
 
 // activeCols: selectable columns (value = index in activeCols)
@@ -62,50 +64,39 @@ function populateColumnSelect(id, activeCols, disabledCols, selectedIndex, allow
   if (allowNone && selectedIndex == null) el.value = '';
 }
 
-function populateNuisanceList(numericCols, nonNumericCols, state) {
-  const list = document.getElementById('nuisance-list');
-  if (!list) return;
-  list.innerHTML = '';
-  const selected = new Set(state.n);
+let nuisancePicker = null;
 
-  numericCols.forEach((col, i) => {
-    const label = document.createElement('label');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = String(i);
-    cb.checked = selected.has(i);
-    cb.addEventListener('change', () => {
-      const checked = [...list.querySelectorAll('input:not([disabled]):checked')]
-        .map(c => parseInt(c.value, 10));
-      setState({ n: checked });
-    });
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(' ' + col));
-    list.appendChild(label);
+function ensureNuisancePicker() {
+  if (nuisancePicker) return nuisancePicker;
+  const container = document.getElementById('nuisance-picker');
+  if (!container) return null;
+  nuisancePicker = createChipPicker({
+    container,
+    inputId: 'nuisance-input',
+    placeholder: 'Add covariate…',
+    searchLabel: 'Add nuisance covariate',
+    onChange: values => setState({ n: values }),
   });
-
-  nonNumericCols.forEach(col => {
-    const label = document.createElement('label');
-    label.style.opacity = '0.4';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.disabled = true;
-    cb.dataset.nonnumeric = 'true';
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(' ' + col));
-    list.appendChild(label);
-  });
+  return nuisancePicker;
 }
 
-function updateNuisanceAvailability(modelKey) {
-  const list = document.getElementById('nuisance-list');
-  const note = document.getElementById('nuisance-note');
-  const isRank = RANK_MODELS.has(modelKey);
-  if (list) {
-    // Only toggle the numeric checkboxes; non-numeric ones stay permanently disabled
-    list.querySelectorAll('input:not([data-nonnumeric])').forEach(cb => { cb.disabled = isRank; });
-    list.style.opacity = isRank ? '0.4' : '1';
+// Sync the nuisance picker to state: selection, rank-model availability, and
+// X/Y-in-use annotations. X and Y always win (issue #39): a covariate
+// currently in use as X or Y stays selected but is shown inert, and comes
+// back when X/Y move off it.
+function syncNuisancePicker(state) {
+  const picker = ensureNuisancePicker();
+  if (!picker) return;
+  const isRank = RANK_MODELS.has(state.m);
+  const inert = new Map();
+  if (!isRank) {
+    const { x, y } = resolveXY(state, picker.optionCount());
+    inert.set(y, { badge: 'Y', title: 'Not applied while in use as the Y variable' });
+    inert.set(x, { badge: 'X', title: 'Not applied while in use as the X variable' });
   }
+  picker.update({ selected: state.n, inert, enabled: !isRank });
+
+  const note = document.getElementById('nuisance-note');
   if (note) note.hidden = !isRank;
 }
 
@@ -120,6 +111,8 @@ export function syncControls(state) {
   if (ySel) ySel.value = String(state.y);
   if (mSel) mSel.value = state.m;
   if (gSel) gSel.value = state.h != null ? String(state.h) : '';
+
+  syncNuisancePicker(state);
 
   const hidden = new Set(state.hide);
   document.querySelectorAll('#plot-settings input[data-hide]').forEach(cb => {
@@ -198,13 +191,10 @@ export function bindControls() {
 
   xSel?.addEventListener('change', () => setState({ x: parseInt(xSel.value, 10) }));
   ySel?.addEventListener('change', () => setState({ y: parseInt(ySel.value, 10) }));
-  mSel?.addEventListener('change', () => {
-    const newM = mSel.value;
-    // Clear nuisance when switching to a rank model
-    const nuisancePatch = RANK_MODELS.has(newM) ? { n: [] } : {};
-    setState({ m: newM, ...nuisancePatch });
-    updateNuisanceAvailability(newM);
-  });
+  // Nuisance selection is kept (inert) across a switch to a rank model, so it
+  // survives a round-trip through Spearman/Theil-Sen. The picker disables and
+  // re-enables via syncControls on render.
+  mSel?.addEventListener('change', () => setState({ m: mSel.value }));
   gSel?.addEventListener('change', () => {
     setState({ h: gSel.value !== '' ? parseInt(gSel.value, 10) : null });
   });

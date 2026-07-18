@@ -1,7 +1,7 @@
 // src/main.js
 // Entry point: data loading, render pipeline, keyboard shortcuts.
 
-import { getState, setState, onStateChange } from './state.js';
+import { getState, setState, onStateChange, effectiveNuisance } from './state.js';
 import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
 import { createScatterplot, buildColorOf, readPalette } from './plot/scatterplot.js';
@@ -137,17 +137,13 @@ function computeModel(state) {
 
   const censored = new Set(state.c);
 
-  const nuisanceNames = (!RANK_MODELS.has(state.m) && state.n.length)
-    ? state.n.map(i => columns[i]).filter(Boolean)
+  // X and Y always win: a selected covariate in use as X or Y is inert
+  // (excluded here, kept in state) until X/Y move off it.
+  const nuisanceNames = !RANK_MODELS.has(state.m)
+    ? effectiveNuisance(state, columns.length).map(i => columns[i])
     : [];
 
-  // Warn if a nuisance variable is also the X or Y variable.
-  const nuisClash = nuisanceNames.filter(n => n === xColName || n === yColName);
-  if (nuisClash.length) {
-    showError(`Warning: "${nuisClash.join('", "')}" is selected as both a model variable and a nuisance covariate — results will be misleading.`);
-  } else {
-    showError(null);
-  }
+  showError(null); // clear any stale model error
 
   // Rows where any nuisance value is missing are excluded from the fit.
   const activeIndices = data
