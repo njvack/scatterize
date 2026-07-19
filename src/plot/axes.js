@@ -4,6 +4,41 @@
 
 import { TICK_LEN, fiveNum, fmtNum } from './plot-model.js';
 
+// Priority order for suppressing overdrawn tick labels: indices into vals,
+// highest priority first — extrema, then median, then inner quantiles
+// working outward from the median. Works for any tick count (custom ticks);
+// for the 5-number summary this yields [min, max, median, q1, q3].
+export function tickPriorityOrder(vals) {
+  const byRank = vals.map((_, i) => i).sort((a, b) => vals[a] - vals[b]);
+  const n = byRank.length;
+  if (n <= 2) return byRank;
+  const midRank = Math.floor(n / 2);
+  const inner = byRank
+    .map((i, rank) => ({ i, d: Math.abs(rank - midRank) }))
+    .slice(1, n - 1)
+    .sort((a, b) => a.d - b.d)
+    .map(o => o.i);
+  return [byRank[0], byRank[n - 1], ...inner];
+}
+
+// Decide which tick labels survive overdraw suppression (issue #53).
+// vals: tick data values; extents: parallel array of { pos, half } giving each
+// label's center position and half-extent along the axis (from real bounding
+// boxes). Greedy in priority order: a label is drawn only if it doesn't
+// overlap an already-accepted one. Returns a parallel boolean array.
+export function resolveTickOverlap(vals, extents, pad = 2) {
+  const visible = vals.map(() => false);
+  const kept = [];
+  for (const i of tickPriorityOrder(vals)) {
+    const e = extents[i];
+    if (kept.every(k => Math.abs(k.pos - e.pos) > k.half + e.half + pad)) {
+      kept.push(e);
+      visible[i] = true;
+    }
+  }
+  return visible;
+}
+
 // Draw only the axis spine (WebGL mode — fringe ticks go to the GL line buffer).
 export function drawAxisSpine(g, len, orient, palette) {
   g.selectAll('*').remove();
@@ -81,6 +116,32 @@ export function drawAxisLabels(g, vals, scale, iH, iW, orient, label, customTick
   } else {
     updT.attr('x', -TICK_LEN - 3).attr('y', v => scale(v));
   }
+
+  // Suppress labels that would overdraw each other (issue #53). Uses real
+  // bounding boxes (same approach as hover-supertick suppression), checked at
+  // the labels' *target* positions — bbox extent is position-independent, so
+  // measuring mid-transition is safe. Losers are flagged with data-suppressed
+  // so clearHover() doesn't resurrect them.
+  const nodes = [], extents = [];
+  g.selectAll(`text.${labelClass}`).each(function(v) {
+    this.style.removeProperty('display'); // un-hide so getBBox measures a real box
+    let half;
+    try {
+      const box = this.getBBox();
+      half = (isX ? box.width : box.height) / 2;
+    } catch {
+      half = isX ? fmtNum(v).length * 3.9 : 6.5; // not rendered — estimate at 13px font
+    }
+    nodes.push(this);
+    extents.push({ pos: scale(v), half });
+  });
+  resolveTickOverlap(tickVals, extents).forEach((show, i) => {
+    if (show) nodes[i].removeAttribute('data-suppressed');
+    else {
+      nodes[i].setAttribute('data-suppressed', '1');
+      nodes[i].style.display = 'none';
+    }
+  });
 
   // Axis title — one persistent element; snap on creation, transition thereafter.
   let title = g.select('text.axis-label');

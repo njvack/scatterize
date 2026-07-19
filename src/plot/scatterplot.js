@@ -709,8 +709,13 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     hoverG.selectAll('*').remove();
     legendHoverG.selectAll('*').remove();
     // Restore axis labels and legend ticks suppressed during hover.
-    xAxisLabelsG.selectAll('.tick-label--x').style('display', null);
-    yAxisLabelsG.selectAll('.tick-label--y').style('display', null);
+    // Labels flagged data-suppressed lost the static overdraw check
+    // (drawAxisLabels) and must stay hidden.
+    const restore = function() {
+      return this.hasAttribute('data-suppressed') ? 'none' : null;
+    };
+    xAxisLabelsG.selectAll('.tick-label--x').style('display', restore);
+    yAxisLabelsG.selectAll('.tick-label--y').style('display', restore);
     legendLabelsG.selectAll('.tick-label--legend').style('display', null);
   }
 
