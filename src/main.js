@@ -256,7 +256,16 @@ function render() {
   showEmptyState(false);
 
   const computed = computeModel(state);
-  if (!computed) return;
+  if (!computed) {
+    // Model failed (e.g. saturated fit) or no active points: don't leave the
+    // previous fit's stats, diagnostics, or CSV snapshot on screen.
+    updateStats({ modelResult: null, modelKey: state.m });
+    diagnostics?.clear();
+    document.getElementById('diag-plots')?.classList.add('hidden');
+    _cachedCSVData = null;
+    syncControls(state);
+    return;
+  }
 
   const {
     xColName, yColName, hColName, groupColorType,
