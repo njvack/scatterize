@@ -685,7 +685,7 @@ function interpolateAt(pts, x) {
 function buildCSVString() {
   if (!_cachedCSVData || !data) return null;
   const {
-    activeIndices, censored, xColName, yColName, hColName,
+    activeIndices, xColName, yColName, hColName,
     xLabel, yLabel, isResidualized, isSpearman,
     nuisanceNames, residuals, displayX, displayY, yActiveOrig, smootherData,
   } = _cachedCSVData;

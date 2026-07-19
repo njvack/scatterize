@@ -96,7 +96,7 @@ export function createLegendRenderer(legendG, legendLabelsG, legendHoverG, legen
   }
 
   function drawContinuousLegend({ groupValues, groupLabel, colorOf, isLeft, iW }) {
-    const PAD = 8, FS = 10, LINE_LEN = 12, BAR_H = 100, TICK_LEN = 6, TICK_GAP = 4, OUTER_PAD = 12;
+    const PAD = 8, FS = 10, LINE_LEN = 12, BAR_H = 100, TICK_GAP = 4, OUTER_PAD = 12;
     const vals = groupValues.map(Number).filter(isFinite);
     if (!vals.length) return;
     const sorted = [...vals].sort(d3.ascending);

@@ -10,7 +10,7 @@
 import * as d3 from 'd3';
 import { createWebGLRenderer } from './webgl-renderer.js';
 import {
-  buildPlotModel, buildColorOf, readPalette, cssToGL,
+  buildPlotModel, readPalette, cssToGL,
   fmtNum,
   POINT_R, TICK_LEN, CORNER_R, KDE_MAX_PX,
   CORNER_BOT_STRIP_Y, CORNER_LEFT_STRIP_X,
