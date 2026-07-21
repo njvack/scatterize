@@ -1,5 +1,5 @@
 import { Matrix, QrDecomposition } from 'ml-matrix';
-import { tPValue, fPValue, diagInverse } from './common.js';
+import { tPValue, fPValue, diagInverse, assertResidualDf } from './common.js';
 
 // Ordinary least squares regression.
 // x, y: arrays of numbers (equal length, no NaN/Inf)
@@ -15,6 +15,7 @@ export function ols(x, y, nuisance = []) {
   const n = x.length;
   const p = nuisance.length;  // number of nuisance covariates
   const k = p + 2;            // total columns: intercept + x + nuisance
+  assertResidualDf(n, k);
 
   // Joint design matrix: [1, x, z1, z2, ...]
   const dm = Array.from({ length: n }, (_, i) => [1, x[i], ...nuisance.map(col => col[i])]);

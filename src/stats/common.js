@@ -110,6 +110,17 @@ export function fPValue(f, d1, d2) {
   return incompleteBeta(d2 / 2, d1 / 2, x);  // equals P(F > f)
 }
 
+// Throw unless the fit leaves at least one residual degree of freedom.
+// n: observations; k: design matrix columns (intercept + x + covariates).
+// A saturated fit would otherwise render NaN/Infinity standard errors.
+export function assertResidualDf(n, k) {
+  if (n - k <= 0) {
+    throw new Error(
+      `saturated model — ${n} points with ${k} parameters leaves no residual ` +
+      'degrees of freedom. Remove covariates or censor fewer points.');
+  }
+}
+
 // Solve Ax = b via LU decomposition with partial pivoting (ml-matrix).
 // A: array-of-arrays (k×k); b: array (length k). Returns array (length k).
 export function solveLinear(A, b) {

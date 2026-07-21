@@ -241,3 +241,32 @@ test('ols nuisance: nuisanceStats populated', () => {
   // Perfect z fit: full model R² should be high
   assert.ok(r.fullModelRSquared > 0.99);
 });
+
+// ---------------------------------------------------------------------------
+// Saturated-model guard
+// ---------------------------------------------------------------------------
+
+test('ols: throws on a saturated model (df = 0) instead of returning NaN', () => {
+  // 4 points, intercept + x + 2 covariates = 4 parameters
+  const x = [1, 2, 3, 4];
+  const y = [2, 1, 4, 3];
+  const nuis = [[1, 3, 2, 5], [4, 1, 5, 2]];
+  assert.throws(() => ols(x, y, nuis), /no residual degrees of freedom/);
+});
+
+test('ols: still fits with one residual degree of freedom', () => {
+  const x = [1, 2, 3, 4, 5];
+  const y = [2, 1, 4, 3, 5];
+  const nuis = [[1, 3, 2, 5, 4], [4, 1, 5, 2, 3]];
+  const r = ols(x, y, nuis);
+  assert.equal(r.dfResidual, 1);
+  assert.ok(Number.isFinite(r.seSlope));
+});
+
+test('robust: throws on a saturated model (df = 0)', async () => {
+  const { robust } = await import('../../src/stats/robust.js');
+  const x = [1, 2, 3, 4];
+  const y = [2, 1, 4, 3];
+  const nuis = [[1, 3, 2, 5], [4, 1, 5, 2]];
+  assert.throws(() => robust(x, y, nuis), /no residual degrees of freedom/);
+});

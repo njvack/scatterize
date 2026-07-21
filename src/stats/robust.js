@@ -1,4 +1,4 @@
-import { solveLinear, diagInverse, zPValue, arrayMedian, mean } from './common.js';
+import { solveLinear, diagInverse, zPValue, arrayMedian, mean, assertResidualDf } from './common.js';
 import { sEstimate } from './s-estimate.js';
 
 // Robust regression. The public `robust()` is MM-estimation (Yohai 1987): a
@@ -148,6 +148,7 @@ export function robustM(x, y, nuisance = []) {
   const n = x.length;
   const dm = designMatrix(x, nuisance, n);
   const k = dm[0].length;
+  assertResidualDf(n, k);
 
   // Initialize with OLS
   const ones = new Array(n).fill(1);
@@ -183,6 +184,7 @@ export function robustMM(x, y, nuisance = [], opts = {}) {
   const n = x.length;
   const dm = designMatrix(x, nuisance, n);
   const k = dm[0].length;
+  assertResidualDf(n, k);
 
   // High-breakdown S-estimate: start coefficients + fixed scale.
   const { coef, scale } = sEstimate(dm, y, opts);

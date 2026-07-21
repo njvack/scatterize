@@ -1,7 +1,7 @@
 // src/main.js
 // Entry point: data loading, render pipeline, keyboard shortcuts.
 
-import { getState, setState, onStateChange } from './state.js';
+import { getState, setState, onStateChange, effectiveNuisance } from './state.js';
 import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
 import { createScatterplot, buildColorOf, readPalette } from './plot/scatterplot.js';
@@ -137,17 +137,13 @@ function computeModel(state) {
 
   const censored = new Set(state.c);
 
-  const nuisanceNames = (!RANK_MODELS.has(state.m) && state.n.length)
-    ? state.n.map(i => columns[i]).filter(Boolean)
+  // X and Y always win: a selected covariate in use as X or Y is inert
+  // (excluded here, kept in state) until X/Y move off it.
+  const nuisanceNames = !RANK_MODELS.has(state.m)
+    ? effectiveNuisance(state, columns.length).map(i => columns[i])
     : [];
 
-  // Warn if a nuisance variable is also the X or Y variable.
-  const nuisClash = nuisanceNames.filter(n => n === xColName || n === yColName);
-  if (nuisClash.length) {
-    showError(`Warning: "${nuisClash.join('", "')}" is selected as both a model variable and a nuisance covariate — results will be misleading.`);
-  } else {
-    showError(null);
-  }
+  showError(null); // clear any stale model error
 
   // Rows where any nuisance value is missing are excluded from the fit.
   const activeIndices = data
@@ -256,6 +252,7 @@ function render() {
     diagnostics?.clear();
     goMode?.reset();
     updateStats({ modelResult: null, modelKey: state.m });
+    showPlotOverlay(null);
     _cachedCSVData = null;
     return;
   }
@@ -263,7 +260,29 @@ function render() {
   showEmptyState(false);
 
   const computed = computeModel(state);
-  if (!computed) return;
+  if (!computed) {
+    // Model failed (e.g. saturated fit) or no active points: don't leave the
+    // previous fit's stats, diagnostics, or CSV snapshot on screen.
+    updateStats({ modelResult: null, modelKey: state.m });
+    diagnostics?.clear();
+    document.getElementById('diag-plots')?.classList.add('hidden');
+    _cachedCSVData = null;
+    // On a model error, computeModel set the error banner. Move that message
+    // onto a frosted overlay over the (stale) chart and suppress the toast —
+    // the overlay is now the alert. No message → no active points; leave the
+    // last frame as-is without an overlay.
+    const banner = document.getElementById('error-banner');
+    if (banner && !banner.hidden) {
+      showPlotOverlay(document.getElementById('error-message').textContent);
+      banner.hidden = true;
+    } else {
+      showPlotOverlay(null);
+    }
+    syncControls(state);
+    return;
+  }
+
+  showPlotOverlay(null);
 
   const {
     xColName, yColName, hColName, groupColorType,
@@ -427,6 +446,21 @@ function showError(msg) {
     banner.hidden = false;
   } else {
     banner.hidden = true;
+  }
+}
+
+// Frosted overlay carrying a model error across the (now-stale) chart. The
+// same message would otherwise sit in the bottom toast; when the overlay is
+// up we suppress that toast (render() does so) since the overlay is the alert.
+function showPlotOverlay(msg) {
+  const overlay = document.getElementById('plot-overlay');
+  const msgEl   = document.getElementById('plot-overlay-message');
+  if (!overlay || !msgEl) return;
+  if (msg) {
+    msgEl.textContent = msg;
+    overlay.hidden = false;
+  } else {
+    overlay.hidden = true;
   }
 }
 
