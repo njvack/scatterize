@@ -1,6 +1,5 @@
 // src/state.js
 // URL hash-based state management.
-// Schema: CLAUDE.md § URL State Schema
 
 export const DEFAULTS = {
   src: null,
@@ -12,7 +11,7 @@ export const DEFAULTS = {
   h: null,
   xl: null,
   yl: null,
-  sm: null,   // smoother type: null | 'median'
+  sm: null,   // smoother type: null | 'median' | 'lowess'
   sw: 10,     // smoother window percent (1–100)
   hide: [],   // hidden plot elements: subset of HIDEABLE
 };
