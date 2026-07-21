@@ -249,6 +249,7 @@ function render() {
     diagnostics?.clear();
     goMode?.reset();
     updateStats({ modelResult: null, modelKey: state.m });
+    showPlotOverlay(null);
     _cachedCSVData = null;
     return;
   }
@@ -263,9 +264,22 @@ function render() {
     diagnostics?.clear();
     document.getElementById('diag-plots')?.classList.add('hidden');
     _cachedCSVData = null;
+    // On a model error, computeModel set the error banner. Move that message
+    // onto a frosted overlay over the (stale) chart and suppress the toast —
+    // the overlay is now the alert. No message → no active points; leave the
+    // last frame as-is without an overlay.
+    const banner = document.getElementById('error-banner');
+    if (banner && !banner.hidden) {
+      showPlotOverlay(document.getElementById('error-message').textContent);
+      banner.hidden = true;
+    } else {
+      showPlotOverlay(null);
+    }
     syncControls(state);
     return;
   }
+
+  showPlotOverlay(null);
 
   const {
     xColName, yColName, hColName, groupColorType,
@@ -429,6 +443,21 @@ function showError(msg) {
     banner.hidden = false;
   } else {
     banner.hidden = true;
+  }
+}
+
+// Frosted overlay carrying a model error across the (now-stale) chart. The
+// same message would otherwise sit in the bottom toast; when the overlay is
+// up we suppress that toast (render() does so) since the overlay is the alert.
+function showPlotOverlay(msg) {
+  const overlay = document.getElementById('plot-overlay');
+  const msgEl   = document.getElementById('plot-overlay-message');
+  if (!overlay || !msgEl) return;
+  if (msg) {
+    msgEl.textContent = msg;
+    overlay.hidden = false;
+  } else {
+    overlay.hidden = true;
   }
 }
 

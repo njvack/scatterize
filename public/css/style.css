@@ -467,6 +467,50 @@ main > section {
   color: var(--color-text-muted);
 }
 
+/* ─── Plot Error Overlay ────────────────────────────────────────────────── */
+
+/* Frosted layer over the (now-stale) chart when the model can't be fit.
+   Non-modal: scoped to #plot-area, so the sidebar controls that fix the
+   error stay live. Covers the plot tools too — nothing there is valid. */
+#plot-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#plot-overlay[hidden] { display: none; }  /* beat display:flex */
+
+#plot-overlay-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+  padding: 20px 24px;
+  text-align: center;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-top: 4px solid #c0392b;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+#plot-overlay-icon { color: #c0392b; flex-shrink: 0; }
+
+#plot-overlay-message {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
 /* ─── Empty State ───────────────────────────────────────────────────────── */
 
 #empty-state {
