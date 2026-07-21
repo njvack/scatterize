@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   fmtNum, fiveNum, scaledPointR, computeKDE, computeBand, buildColorOf,
+  extendDomainToTicks,
   POINT_R, POINT_R_MIN, MODEL_DISPLAY_NAMES,
 } from '../../src/plot/plot-model.js';
 
@@ -151,6 +152,34 @@ test('computeKDE: grid spans the requested domain', () => {
   const result = computeKDE(vals, 0, 10);
   assert.ok(Math.abs(result[0].v - 0) < 0.1);
   assert.ok(Math.abs(result[result.length - 1].v - 10) < 0.1);
+});
+
+// ---------------------------------------------------------------------------
+// extendDomainToTicks
+// ---------------------------------------------------------------------------
+
+test('extendDomainToTicks: null/empty ticks leave the domain unchanged', () => {
+  assert.deepEqual(extendDomainToTicks([4.7, 10.3], null), [4.7, 10.3]);
+  assert.deepEqual(extendDomainToTicks([4.7, 10.3], []), [4.7, 10.3]);
+});
+
+test('extendDomainToTicks: ticks outside the data range extend to exact bounds', () => {
+  // data [5,10] padded to [4.7,10.3], ticks 0,10,20 → axis spans exactly [0,20]
+  assert.deepEqual(extendDomainToTicks([4.7, 10.3], [0, 10, 20]), [0, 20]);
+});
+
+test('extendDomainToTicks: ticks inside the data range do not shrink the domain', () => {
+  assert.deepEqual(extendDomainToTicks([4.7, 10.3], [6, 8]), [4.7, 10.3]);
+});
+
+test('extendDomainToTicks: data overrunning a tick still wins (points never clipped)', () => {
+  // data [5,25] padded to [3.8,26.2], ticks 0,10,20 → left is the tick 0,
+  // right stays at the data-driven bound so the point at 25 isn't clipped
+  assert.deepEqual(extendDomainToTicks([3.8, 26.2], [0, 10, 20]), [0, 26.2]);
+});
+
+test('extendDomainToTicks: non-finite ticks are ignored', () => {
+  assert.deepEqual(extendDomainToTicks([4.7, 10.3], [NaN, Infinity]), [4.7, 10.3]);
 });
 
 // ---------------------------------------------------------------------------

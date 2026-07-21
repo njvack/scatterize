@@ -156,7 +156,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
 
     const { width: W, height: H } = backSvgEl.getBoundingClientRect();
     if (W === 0 || H === 0) return;
-    const model = buildPlotModel(points, modelResult, { W, H, modelKey, groupColorType, palette });
+    const model = buildPlotModel(points, modelResult,
+      { W, H, modelKey, groupColorType, palette, customXTicks, customYTicks });
     if (!model) return;
     const { iW, iH, margin: MARGIN, xScale, yScale, active,
             allPoints, xVals, yVals, colorOf, voronoiPoints, cornerPoints,
