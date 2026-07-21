@@ -26,10 +26,15 @@ function parseIntList(s) {
   return s.split(',').map(v => parseInt(v, 10)).filter(v => !isNaN(v));
 }
 
+// Parse a comma-separated float list, sorted ascending for canonical URLs and
+// predictable label order. Sorting is cosmetic — drawAxisLabels positions each
+// tick by scale(v) independently — but it normalizes hand-edited URLs.
 function parseFloatList(s) {
   if (!s) return null;
   const vals = s.split(',').map(Number);
-  return vals.length && vals.every(v => !isNaN(v)) ? vals : null;
+  return vals.length && vals.every(v => !isNaN(v))
+    ? vals.sort((a, b) => a - b)
+    : null;
 }
 
 // Unknown tokens dropped; canonical order and de-duplication for stable URLs.

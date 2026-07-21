@@ -101,6 +101,18 @@
             <label><input type="checkbox" data-hide="ci" checked> Confidence band</label>
             <label><input type="checkbox" data-hide="kde" checked> Axis density</label>
             <label><input type="checkbox" data-hide="fringe" checked> Axis fringe</label>
+            <hr class="settings-divider">
+            <div class="settings-field">
+              <label for="xl-input">X axis labels</label>
+              <input type="text" id="xl-input" data-ticks="xl" placeholder="auto"
+                     inputmode="numeric" autocomplete="off" aria-describedby="ticks-hint">
+            </div>
+            <div class="settings-field">
+              <label for="yl-input">Y axis labels</label>
+              <input type="text" id="yl-input" data-ticks="yl" placeholder="auto"
+                     inputmode="numeric" autocomplete="off" aria-describedby="ticks-hint">
+            </div>
+            <p id="ticks-hint" class="settings-hint">Comma-separated numbers, e.g. 0, 50, 100</p>
           </form>
         </details>
         <button id="share-btn" aria-label="Download / Share" aria-haspopup="dialog">
