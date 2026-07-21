@@ -118,6 +118,14 @@ export function syncControls(state) {
   document.querySelectorAll('#plot-settings input[data-hide]').forEach(cb => {
     cb.checked = !hidden.has(cb.dataset.hide);
   });
+
+  // Custom tick inputs mirror state.xl / state.yl. Skip the focused input so a
+  // re-render mid-edit doesn't clobber (or re-sort) what's being typed.
+  document.querySelectorAll('#plot-settings input[data-ticks]').forEach(input => {
+    if (input === document.activeElement) return;
+    const vals = state[input.dataset.ticks];
+    input.value = vals?.length ? vals.join(', ') : '';
+  });
 }
 
 // Log-scale mapping between slider position (0–100) and window percent.
@@ -202,7 +210,18 @@ export function bindControls() {
   bindPlotSettings();
 }
 
-// Plot settings gear menu: checkboxes toggle plot elements (unchecked = hidden).
+// Custom axis tick labels: a comma-separated numeric string → sorted float
+// list, or null (→ automatic five-number summary) when empty. Any non-numeric
+// token voids the whole list, matching parseFloatList in state.js.
+function parseTickInput(str) {
+  const vals = str.split(',').map(s => s.trim()).filter(s => s !== '').map(Number);
+  return vals.length && vals.every(v => !isNaN(v))
+    ? vals.sort((a, b) => a - b)
+    : null;
+}
+
+// Plot settings gear menu: checkboxes toggle plot elements (unchecked = hidden);
+// text inputs set custom xl/yl axis tick labels.
 function bindPlotSettings() {
   const menu = document.getElementById('plot-settings');
   if (!menu) return;
@@ -213,6 +232,14 @@ function bindPlotSettings() {
         .filter(c => !c.checked)
         .map(c => c.dataset.hide);
       setState({ hide });
+    });
+  });
+
+  // 'change' fires on blur/Enter, so parsing (and sorting) commits on blur
+  // rather than per keystroke.
+  menu.querySelectorAll('input[data-ticks]').forEach(input => {
+    input.addEventListener('change', () => {
+      setState({ [input.dataset.ticks]: parseTickInput(input.value) });
     });
   });
 

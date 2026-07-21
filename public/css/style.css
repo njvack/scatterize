@@ -868,6 +868,43 @@ body:not(.has-data) #diag-plots {
       font-size: 0.857rem;
       cursor: pointer;
     }
+
+    & .settings-divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 4px 0 2px;
+    }
+
+    & .settings-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+
+      & label {
+        font-size: 0.786rem;
+        color: var(--color-text-muted);
+        cursor: default;
+      }
+
+      & input {
+        width: 168px;
+        padding: 3px 6px;
+        font-family: var(--font-sans);
+        font-size: 0.857rem;
+        color: var(--color-text);
+        background: var(--color-bg);
+        border: 1px solid var(--color-border-mid);
+        border-radius: 3px;
+      }
+    }
+
+    & .settings-hint {
+      margin: 0;
+      max-width: 168px;
+      font-size: 0.714rem;
+      color: var(--color-text-muted);
+      white-space: normal;
+    }
   }
 }
 

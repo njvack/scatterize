@@ -11,7 +11,7 @@ Interactive scatter plot explorer. Paste a CSV or Google Sheets URL, pick your X
 - Nuisance covariate residualization
 - Group coloring
 - Drag-and-drop CSV files — data stays in your browser, never sent anywhere
-- URL-shareable state (variable selections, censored points, etc.)
+- URL-shareable state (variable selections, censored points, custom axis labels, etc.)
 - SVG export for Illustrator / Inkscape
 
 ## Data sources

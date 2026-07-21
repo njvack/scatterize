@@ -53,6 +53,17 @@ test('parseState: custom axis tick float lists', () => {
   assert.deepEqual(s.yl, [-1, 0, 1]);
 });
 
+test('parseState: unsorted custom tick lists are normalized to ascending', () => {
+  const s = parseState('xl=100%2C0%2C50&yl=1%2C-1%2C0');
+  assert.deepEqual(s.xl, [0, 50, 100]);
+  assert.deepEqual(s.yl, [-1, 0, 1]);
+});
+
+test('parseState: any non-numeric token voids the whole tick list', () => {
+  const s = parseState('xl=0%2Cfoo%2C100');
+  assert.equal(s.xl, null);
+});
+
 test('parseState: non-numeric values filtered from int lists', () => {
   const s = parseState('n=1%2Cfoo%2C3');
   assert.deepEqual(s.n, [1, 3]);

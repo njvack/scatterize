@@ -77,6 +77,29 @@ window.location.hash = params.toString();
 window.addEventListener('hashchange', handleHashChange);
 ```
 
+All state lives in the hash and is parsed/serialized by `src/state.js`
+(`parseState` / `serializeState`). Serialization only emits non-default values,
+so shared URLs stay short. The full parameter schema:
+
+| Param  | Type                     | Default   | Meaning                                                              |
+|--------|--------------------------|-----------|---------------------------------------------------------------------|
+| `src`  | string                   | `null`    | Data source URL                                                     |
+| `x`    | int                      | `0`       | Column index for the X variable                                    |
+| `y`    | int                      | `1`       | Column index for the Y variable                                    |
+| `m`    | string                   | `ols`     | Model: `ols`, `robust`, `spearman`, `theilsen`                     |
+| `n`    | comma-separated ints     | `[]`      | Nuisance covariate column indices                                  |
+| `c`    | comma-separated ints     | `[]`      | Censored (excluded) point row indices                             |
+| `h`    | int                      | `null`    | Column index used for group coloring (`null` = none)              |
+| `xl`   | comma-separated floats   | `null`    | Custom X axis tick labels; `null` = automatic five-number summary |
+| `yl`   | comma-separated floats   | `null`    | Custom Y axis tick labels; `null` = automatic five-number summary |
+| `sm`   | string                   | `null`    | Smoother: `null`, `median`, `lowess`                              |
+| `sw`   | int (1–100)              | `10`      | Smoother window/bandwidth, percent of points                      |
+| `hide` | comma-separated tokens   | `[]`      | Hidden plot elements: subset of `fit`, `ci`, `kde`, `fringe`      |
+
+`xl`/`yl` are sorted ascending on parse for canonical URLs (rendering itself is
+order-independent). They can be set from the plot settings gear menu (a
+comma-separated numeric field, blank = auto) or by hand-editing the URL.
+
 ### Data input: URL paste field
 
 On the landing/header area: a text input where users paste their data URL.

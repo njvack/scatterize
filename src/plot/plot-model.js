@@ -187,10 +187,23 @@ export function buildColorOf(points, groupColorType, fallbackColor = 'currentCol
 
 // ── Main model builder ────────────────────────────────────────────────────────
 
+// Extend a padded data domain [lo, hi] to include any custom axis tick values,
+// so hand-picked labels outside the data range stay visible instead of being
+// filtered off. Tick bounds are exact (no extra padding), so ticks 0,10,20 give
+// an axis ending precisely at 0 and 20; data that overruns a tick still wins, so
+// points are never clipped. Ticks inside the data range leave the domain
+// unchanged. Returns [lo, hi].
+export function extendDomainToTicks([lo, hi], ticks) {
+  const finite = ticks?.filter(Number.isFinite) ?? [];
+  if (!finite.length) return [lo, hi];
+  return [Math.min(lo, ...finite), Math.max(hi, ...finite)];
+}
+
 // buildPlotModel — given points + model results + display config, returns all
 // derived values needed for rendering. Pure function: no DOM access.
 // Returns null if there are no active (uncensored) points.
-export function buildPlotModel(points, modelResult, { W, H, modelKey, groupColorType, palette }) {
+export function buildPlotModel(points, modelResult,
+    { W, H, modelKey, groupColorType, palette, customXTicks = null, customYTicks = null }) {
   const margin = W < 420 ? MARGIN_MOBILE : MARGIN_DESKTOP;
   const iW = W - margin.left - margin.right;
   const iH = H - margin.top - margin.bottom;
@@ -206,10 +219,10 @@ export function buildPlotModel(points, modelResult, { W, H, modelKey, groupColor
   const yPad = (yExt[1] - yExt[0]) * 0.06 || 1;
 
   const xScale = d3.scaleLinear()
-    .domain([xExt[0] - xPad, xExt[1] + xPad])
+    .domain(extendDomainToTicks([xExt[0] - xPad, xExt[1] + xPad], customXTicks))
     .range([0, iW]);
   const yScale = d3.scaleLinear()
-    .domain([yExt[0] - yPad, yExt[1] + yPad])
+    .domain(extendDomainToTicks([yExt[0] - yPad, yExt[1] + yPad], customYTicks))
     .range([iH, 0]);
 
   const allPoints = points.map(p => {
