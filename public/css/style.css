@@ -454,6 +454,58 @@ main > section {
 
 .go-pct input { width: 5em; }
 
+#go-label-btn {
+  padding: 2px 10px;
+  font-size: 0.857rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background 0.1s, color 0.1s;
+
+  &:hover:not(:disabled) {
+    background: var(--color-border);
+    color: var(--color-text);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+/* ─── Label Editor Popover ──────────────────────────────────────────────── */
+
+#label-editor {
+  position: absolute;
+  z-index: 20;
+  padding: 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+
+  & input {
+    width: 11em;
+    padding: 3px 7px;
+    font-size: 0.857rem;
+    font-family: var(--font-sans);
+    border: 1px solid var(--color-border-mid);
+    border-radius: 3px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    outline: none;
+
+    &:focus {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 2px rgba(39, 128, 227, 0.15);
+    }
+  }
+}
+
 /* ─── Loading State ─────────────────────────────────────────────────────── */
 
 #loading-state {

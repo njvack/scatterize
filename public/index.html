@@ -77,6 +77,7 @@
       </div>
       <label class="go-pos">Point <input id="go-index" type="number" min="1"> of <output id="go-total">—</output></label>
       <label class="go-pct"><input id="go-pct" type="text">%</label>
+      <button id="go-label-btn" type="button" disabled aria-keyshortcuts="e">Label</button>
       <span id="aria-announce" aria-live="polite" aria-atomic="true"></span>
     </div>
     <div id="plot-area">
@@ -122,6 +123,10 @@
           </svg>
           Download
         </button>
+      </div>
+      <div id="label-editor" hidden>
+        <input id="label-input" type="text" maxlength="40" autocomplete="off"
+               spellcheck="false" aria-label="Point label" placeholder="Label…">
       </div>
       <div id="plot-overlay" role="alert" aria-live="assertive" hidden>
         <div id="plot-overlay-box">
@@ -220,6 +225,11 @@
   </section>
 
   <section>
+    <h3>Labeling points</h3>
+    <p>Right-click (or shift-click) a point to give it a name that follows it as you change variables or models — handy for tracking whether an outlier is unusual everywhere or just on one axis. Keyboard users can navigate to a point and press <kbd>e</kbd>, or use the <strong>Label</strong> button in the navigate bar. Clear a label by emptying its text. Labels are saved in the URL and included in SVG, PNG, and CSV exports.</p>
+  </section>
+
+  <section>
     <h3>Privacy &amp; sharing</h3>
     <p>Everything runs in your browser — your data is never sent to a server. If you load a public CSV or Google Sheet URL, all settings (variables, model, censored points) are encoded in the URL. Share that URL and anyone with access to the data will see the same view.</p>
   </section>
@@ -243,6 +253,7 @@
     <tr><td><kbd class="kbd-alt">⌥</kbd> <kbd>←</kbd> / <kbd>→</kbd></td><td>Back / forward 1 percentile</td></tr>
     <tr><td><kbd class="kbd-meta">⌘</kbd> <kbd>←</kbd> / <kbd>→</kbd></td><td>First / last point</td></tr>
     <tr><td><kbd>Space</kbd></td><td>Censor / uncensor selected point</td></tr>
+    <tr><td><kbd>e</kbd></td><td>Label / rename selected point</td></tr>
     <tr><td><kbd>n</kbd> / <kbd>m</kbd></td><td>Next / previous navigation criterion</td></tr>
   </table>
   <p class="help-modal-dismiss">Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>

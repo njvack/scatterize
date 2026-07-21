@@ -84,7 +84,14 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
   const frontPlotArea = frontCanvas.append('g').attr('class', 'plot-area')
     .attr('clip-path', `url(#${frontClipId})`);
   const pointsG  = frontPlotArea.append('g').attr('class', 'points');
+  // Prominence rings for labeled points — clipped with the points; static
+  // between label changes, so they stay in the main (cacheable) SVG.
+  const labelMarkersG = frontPlotArea.append('g').attr('class', 'label-markers');
   const cornersG = frontCanvas.append('g').attr('class', 'corners'); // outside clip
+  // Label text — unclipped so labels near the plot edge aren't cut off, and in
+  // the front SVG so getExportSVG() captures it for SVG/PNG export.
+  const labelTextG = frontCanvas.append('g').attr('class', 'labels')
+    .style('pointer-events', 'none');
   // Legend lives in front SVG so it's above the WebGL canvas and captured by export.
   const legendG  = frontCanvas.append('g').attr('class', 'legend');
 
@@ -139,6 +146,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     onPointClick = () => {},
     onPointHover = () => {},
     onGroupHover = () => {},
+    onPointLabel = () => {},
     smootherData = null,
     hide = [],
     animate = true,
@@ -330,7 +338,7 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     const newPointMap = new Map(allPoints.map(p => [p.index, p]));
 
     // Store state for highlightPoint() called from outside (e.g. QQ hover → main scatter).
-    _plotState = { allPoints, iH, iW, colorOf, xScale, yScale };
+    _plotState = { allPoints, iH, iW, colorOf, xScale, yScale, margin: MARGIN };
 
     if (glRenderer) {
       // ── WebGL rendering path ─────────────────────────────────────────────
@@ -473,6 +481,13 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       .attr('data-cy', d => d.corner.outL ? d.corner.y : null)
       .style('fill', 'none').style('stroke', 'none');
 
+    // ── Point labels ──────────────────────────────────────────────────────
+    // Persistent user annotations: a prominence ring on the point plus a text
+    // label placed to avoid overpainting neighbours. Both live in the static
+    // front SVG (captured by export). Skip out-of-range censored points, whose
+    // corner diamonds have no room for a label.
+    drawLabels(allPoints, colorOf, iW, iH, _pointR);
+
     // ── Hit detection: interaction rect in overlay + delaunay.find() ──────
     // Mouse events live entirely in the overlay SVG.  The main SVG has zero
     // event handlers and never mutates during user interaction, so the browser
@@ -570,9 +585,18 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
           }
           interactionRect.style('cursor', 'default');
         })
-        .on('click', () => {
+        .on('click', (event) => {
           if (currentHoverIdx === null) return;
+          // Shift-click labels the point instead of censoring it (plain click
+          // is taken by censoring; right-click is the other label affordance).
+          if (event.shiftKey) { onPointLabel(currentHoverIdx); return; }
           onPointClick(currentHoverIdx);
+        })
+        .on('contextmenu', (event) => {
+          // Only hijack the browser menu when actually over a point.
+          if (currentHoverIdx === null) return;
+          event.preventDefault();
+          onPointLabel(currentHoverIdx);
         });
 
       // Re-establish hover at the last known position after a data/model change
@@ -591,6 +615,92 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
       cornerX: p.corner?.x, cornerY: p.corner?.y,
       isCorner: !!p.corner,
     }]));
+  }
+
+  // ── Point labels ────────────────────────────────────────────────────────
+
+  const LABEL_FONT_PX = 12;
+  const LABEL_CHAR_W  = 6.2;  // rough px per char at LABEL_FONT_PX for placement
+  const LABEL_H       = LABEL_FONT_PX + 4;
+
+  // Greedy quadrant placement: for each labeled point try NE/NW/SE/SW and keep
+  // the offset whose text box overlaps the fewest other points, already-placed
+  // labels, and out-of-bounds area. Preference order (NE first) breaks ties.
+  // O(labels × points) — fine for the handful of labels this feature invites.
+  function placeLabel(p, text, gap, occupied, points, iW, iH) {
+    const w = text.length * LABEL_CHAR_W + 6;
+    const candidates = [
+      { dx:  gap, dy: -gap, anchor: 'start', below: false },
+      { dx: -gap, dy: -gap, anchor: 'end',   below: false },
+      { dx:  gap, dy:  gap, anchor: 'start', below: true  },
+      { dx: -gap, dy:  gap, anchor: 'end',   below: true  },
+    ];
+    let best = null, bestScore = Infinity;
+    for (const c of candidates) {
+      const x0 = c.anchor === 'start' ? p.sx + c.dx : p.sx + c.dx - w;
+      const y0 = c.below ? p.sy + c.dy : p.sy + c.dy - LABEL_H;
+      const box = { x0, y0, x1: x0 + w, y1: y0 + LABEL_H };
+      let score = 0;
+      for (const q of points) {
+        if (q.index === p.index) continue;
+        const qx = q.corner ? q.corner.x : q.sx;
+        const qy = q.corner ? q.corner.y : q.sy;
+        if (qx >= box.x0 && qx <= box.x1 && qy >= box.y0 && qy <= box.y1) score += 1;
+      }
+      for (const b of occupied) {
+        if (box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0) score += 3;
+      }
+      if (box.x0 < 0 || box.x1 > iW || box.y0 < 0 || box.y1 > iH) score += 2;
+      if (score < bestScore) { bestScore = score; best = { ...c, box }; }
+      if (bestScore === 0) break;
+    }
+    occupied.push(best.box);
+    return best;
+  }
+
+  // Render prominence rings + text for every labeled, non-corner point.
+  function drawLabels(allPoints, colorOf, iW, iH, pointR) {
+    const labeled = allPoints.filter(p => p.label && !p.corner);
+
+    // Prominence ring: a slightly larger stroked circle over the point. Uses the
+    // point's group color as fill (censored → hollow) with a dark outline, so the
+    // cue reads without relying on color alone.
+    labelMarkersG.selectAll('.label-ring')
+      .data(labeled, d => d.index)
+      .join('circle')
+      .attr('class', 'label-ring')
+      .attr('cx', d => d.sx).attr('cy', d => d.sy)
+      .attr('r', pointR + 2)
+      .style('fill', d => d.censored ? 'none' : colorOf(d))
+      .style('stroke', d => d.censored ? palette.censored : palette.text)
+      .style('stroke-width', '1.75px')
+      .style('pointer-events', 'none');
+
+    // Text with a background-colored halo (paint-order: stroke) so it stays
+    // legible over points and KDE strips.
+    const gap = pointR + 5;
+    const occupied = [];
+    // Place denser regions last isn't worth the sort; stable index order is fine.
+    const placed = labeled.map(p => ({ p, pos: placeLabel(p, p.label, gap, occupied, allPoints, iW, iH) }));
+
+    labelTextG.selectAll('.point-label')
+      .data(placed, d => d.p.index)
+      .join('text')
+      .attr('class', 'point-label')
+      .attr('x', d => d.p.sx + d.pos.dx)
+      .attr('y', d => d.p.sy + d.pos.dy)
+      .attr('text-anchor', d => d.pos.anchor)
+      .attr('dominant-baseline', d => d.pos.below ? 'hanging' : 'auto')
+      .attr('paint-order', 'stroke')
+      .style('font-family', palette.font)
+      .style('font-size', `${LABEL_FONT_PX}px`)
+      .style('font-weight', '600')
+      .style('fill', palette.text)
+      .style('stroke', palette.bg)
+      .style('stroke-width', '3px')
+      .style('stroke-linejoin', 'round')
+      .style('pointer-events', 'none')
+      .text(d => d.p.label);
   }
 
   // ── Hover supertick ───────────────────────────────────────────────────
@@ -774,6 +884,8 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     // Remove data-driven content only; preserve the permanent SVG structure
     // so subsequent update() calls still work.
     pointsG.selectAll('*').remove();
+    labelMarkersG.selectAll('*').remove();
+    labelTextG.selectAll('*').remove();
     cornersG.selectAll('*').remove();
     cornersOverlayG.selectAll('*').remove();
     legendG.selectAll('*').remove();
@@ -857,5 +969,19 @@ export function createScatterplot(backSvgEl, frontSvgEl, overlaySvgEl, { glCanva
     return root;
   }
 
-  return { update, clear, highlightPoint, getExportSVG, showGroupHover };
+  // getPointScreenPos(index) — plot-container pixel coords (margin included) of a
+  // point, for anchoring the label editor popover. Uses the corner position for
+  // out-of-range censored points. Returns null if the point isn't in the render.
+  function getPointScreenPos(index) {
+    if (!_plotState) return null;
+    const d = _plotState.allPoints.find(p => p.index === index);
+    if (!d) return null;
+    const { margin } = _plotState;
+    return {
+      x: margin.left + (d.corner ? d.corner.x : d.sx),
+      y: margin.top  + (d.corner ? d.corner.y : d.sy),
+    };
+  }
+
+  return { update, clear, highlightPoint, getExportSVG, showGroupHover, getPointScreenPos };
 }
