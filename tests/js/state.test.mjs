@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseState, serializeState, resolveXY, effectiveNuisance, DEFAULTS } from '../../src/state.js';
+import { parseState, serializeState, serializeLabels, resolveXY, effectiveNuisance, DEFAULTS, LABEL_MAX_LEN } from '../../src/state.js';
 
 // ---------------------------------------------------------------------------
 // parseState
@@ -88,6 +88,35 @@ test('parseState: hide tokens parsed, unknown dropped, canonical order', () => {
   assert.deepEqual(s.hide, ['ci', 'fringe']);
 });
 
+test('parseState: lb defaults to empty array', () => {
+  assert.deepEqual(parseState('').lb, []);
+});
+
+test('parseState: labels parsed as index/text pairs, sorted by index', () => {
+  const s = parseState('lb=' + encodeURIComponent('12:outlier') + '%2C' + encodeURIComponent('3:check'));
+  assert.deepEqual(s.lb, [{ i: 3, text: 'check' }, { i: 12, text: 'outlier' }]);
+});
+
+test('parseState: label text with commas/colons survives via encoding', () => {
+  // "a,b:c" encoded per-entry so the delimiters do not collide.
+  const raw = `9:${encodeURIComponent('a,b:c')}`;
+  const s = parseState('lb=' + encodeURIComponent(raw));
+  assert.deepEqual(s.lb, [{ i: 9, text: 'a,b:c' }]);
+});
+
+test('parseState: blank/whitespace label dropped; duplicate index last wins', () => {
+  const s = parseState('lb=' + [
+    '5:first', '5:second', `7:${encodeURIComponent('   ')}`,
+  ].map(encodeURIComponent).join('%2C'));
+  assert.deepEqual(s.lb, [{ i: 5, text: 'second' }]);
+});
+
+test('parseState: label truncated to LABEL_MAX_LEN', () => {
+  const long = 'x'.repeat(80);
+  const s = parseState('lb=' + encodeURIComponent(`1:${encodeURIComponent(long)}`));
+  assert.equal(s.lb[0].text.length, LABEL_MAX_LEN);
+});
+
 // ---------------------------------------------------------------------------
 // serializeState
 // ---------------------------------------------------------------------------
@@ -168,6 +197,27 @@ test('serializeState: xl/yl float lists serialized correctly', () => {
   assert.equal(params.get('yl'), '-1,0,1');
 });
 
+test('serializeState: labels serialized sorted with encoded text; empty omitted', () => {
+  const params = new URLSearchParams(
+    serializeState({ ...DEFAULTS, src: 'x', lb: [{ i: 12, text: 'outlier' }, { i: 3, text: 'check' }] })
+  );
+  // URLSearchParams decodes the outer layer; entry text stays percent-encoded.
+  assert.equal(params.get('lb'), '3:check,12:outlier');
+  const empty = new URLSearchParams(serializeState({ ...DEFAULTS, src: 'x', lb: [] }));
+  assert.equal(empty.get('lb'), null);
+});
+
+test('serializeState: blank label text drops the entry', () => {
+  const params = new URLSearchParams(
+    serializeState({ ...DEFAULTS, src: 'x', lb: [{ i: 1, text: '  ' }, { i: 2, text: 'ok' }] })
+  );
+  assert.equal(params.get('lb'), '2:ok');
+});
+
+test('serializeLabels: encodes delimiter characters in text', () => {
+  assert.equal(serializeLabels([{ i: 4, text: 'a,b:c' }]), `4:${encodeURIComponent('a,b:c')}`);
+});
+
 // ---------------------------------------------------------------------------
 // Round-trip
 // ---------------------------------------------------------------------------
@@ -180,6 +230,7 @@ test('round-trip: parse → serialize → parse preserves all fields', () => {
     'h=5',
     'xl=0%2C1%2C2.5', 'yl=-1%2C0',
     'hide=ci%2Cfringe',
+    'lb=' + encodeURIComponent(`0:${encodeURIComponent('a,b')}%2C4:tag`),
   ].join('&');
   const parsed = parseState(original);
   const reparsed = parseState(serializeState(parsed));

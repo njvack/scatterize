@@ -1,13 +1,14 @@
 // src/main.js
 // Entry point: data loading, render pipeline, keyboard shortcuts.
 
-import { getState, setState, onStateChange, effectiveNuisance } from './state.js';
+import { getState, setState, onStateChange, effectiveNuisance, LABEL_MAX_LEN } from './state.js';
 import { fetchData }                          from './data.js';
 import { storeLocalFile, localFileName }      from './localfile.js';
 import { createScatterplot, buildColorOf, readPalette } from './plot/scatterplot.js';
 import { MODEL_DISPLAY_NAMES } from './plot/plot-model.js';
 import { createDiagnostics }                  from './plot/diagnostics.js';
 import { createGoMode }                        from './plot/gomode.js';
+import { createLabelEditor }                    from './plot/label-editor.js';
 import { populateControls, bindControls, syncControls, updateStats,
          bindSmootherControls, syncSmootherControls } from './plot/dashboard.js';
 import { runningMedianIQR, lowess } from './plot/smoother.js';
@@ -32,6 +33,7 @@ const MODELS = { ols, robust, spearman, theilsen: theilSen };
 let scatter     = null;
 let diagnostics = null;
 let goMode      = null;
+let labelEditor = null;
 let _prevAnnounceState = null;  // tracks what was last announced, to announce only deltas
 let _cachedUpdateArgs = null;  // last args passed to scatter.update(); reused on resize
 let _cachedCSVData    = null;  // data snapshot for CSV export
@@ -136,6 +138,7 @@ function computeModel(state) {
     : 'categorical';
 
   const censored = new Set(state.c);
+  const labelMap = new Map(state.lb.map(l => [l.i, l.text]));
 
   // X and Y always win: a selected covariate in use as X or Y is inert
   // (excluded here, kept in state) until X/Y move off it.
@@ -201,6 +204,7 @@ function computeModel(state) {
     group:    hColName ? row[hColName] : null,
     censored: censored.has(i),
     weight:   activeWeights ? (activeWeights.get(i) ?? null) : null,
+    label:    labelMap.get(i) ?? null,
   }));
 
   const xLabel = state.m === 'spearman' ? `rank(${xColName})` : xColName;
@@ -334,6 +338,7 @@ function render() {
     displayX, displayY,
     yActiveOrig: isResidualized ? yActive : null,
     smootherData,
+    labelMap: new Map(state.lb.map(l => [l.i, l.text])),
   };
 
   // Update scatter plot
@@ -348,6 +353,7 @@ function render() {
     smootherData,
     hide: state.hide,
     onPointClick: (index) => toggleCensor(index),
+    onPointLabel: (index) => openLabelEditor(index),
     onPointHover: (index) => {
       hoveredIndex = index;
       updateDiagnostics(modelResult, activeIndices);
@@ -426,6 +432,39 @@ function toggleCensor(index) {
   if (c.has(index)) c.delete(index);
   else c.add(index);
   setState({ c: [...c].sort((a, b) => a - b) });
+}
+
+// ---------------------------------------------------------------------------
+// Point labels
+// ---------------------------------------------------------------------------
+
+function getLabel(index) {
+  return getState().lb.find(l => l.i === index)?.text ?? null;
+}
+
+// Set or clear a point's label (blank text removes it), keyed by row index so
+// the label follows the point across model / censoring changes.
+function setLabel(index, text) {
+  const trimmed = (text ?? '').trim().slice(0, LABEL_MAX_LEN);
+  const rest = getState().lb.filter(l => l.i !== index);
+  const next = trimmed ? [...rest, { i: index, text: trimmed }] : rest;
+  next.sort((a, b) => a.i - b.i);
+  setState({ lb: next });
+  const pt = currentPoints?.[index];
+  const who = pt ? [fmtPointVal(pt.originalX), fmtPointVal(pt.originalY)].join(', ') : `point ${index}`;
+  announce(trimmed ? `Labeled ${who}: ${trimmed}` : `Label removed from ${who}`);
+}
+
+// Open the label editor for a point, anchored near it. Used by both the
+// keyboard/go-mode path and the pointer (right-click / shift-click) path.
+function openLabelEditor(index) {
+  if (index == null || !labelEditor || !scatter) return;
+  const anchor = scatter.getPointScreenPos(index);
+  labelEditor.open({
+    anchor,
+    value: getLabel(index) ?? '',
+    onCommit: (text) => setLabel(index, text),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -579,6 +618,11 @@ function setupKeyboard() {
       case 'o': setState({ m: MODEL_KEYS[Math.max(mIdx - 1, 0)] });                   break;
       case 'p': setState({ m: MODEL_KEYS[Math.min(mIdx + 1, MODEL_KEYS.length - 1)] }); break;
       case 'c': setState({ c: [] }); break; // clear all censored
+      case 'e': {                            // edit label on selected point
+        const rowIndex = goMode.getRowIndex();
+        if (rowIndex != null) { e.preventDefault(); openLabelEditor(rowIndex); }
+        break;
+      }
       case 'n': goMode.cycleCriterion(-1); break;
       case 'm': goMode.cycleCriterion(1);  break;
       case ';':
@@ -638,7 +682,7 @@ function setupFileDrop() {
     }
 
     if (urlInput) urlInput.value = file.name;
-    setState({ src: key, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
+    setState({ src: key, x: 0, y: 1, m: 'ols', n: [], c: [], h: null, lb: [] });
   });
 }
 
@@ -688,7 +732,10 @@ function buildCSVString() {
     activeIndices, xColName, yColName, hColName,
     xLabel, yLabel, isResidualized, isSpearman,
     nuisanceNames, residuals, displayX, displayY, yActiveOrig, smootherData,
+    labelMap,
   } = _cachedCSVData;
+
+  const hasLabels = labelMap && labelMap.size > 0;
 
   const activeSet   = new Set(activeIndices);
   const dispXMap    = new Map(activeIndices.map((oi, ai) => [oi, displayX[ai]]));
@@ -716,8 +763,9 @@ function buildCSVString() {
     }
   }
 
-  // Build column headers.
+  // Build column headers. A "label" column sits beside the X variable (issue #63).
   const headers = [xLabel, yLabel];
+  if (hasLabels)         headers.unshift('label');
   if (isResidualized)    headers.push(yColName);
   if (isSpearman)        headers.push(xColName, yColName);
   nuisanceNames.forEach(n => headers.push(n));
@@ -745,6 +793,7 @@ function buildCSVString() {
       : row[yColName];
 
     const vals = [xVal, yVal];
+    if (hasLabels) vals.unshift(labelMap.get(i) ?? '');
 
     if (isResidualized)
       vals.push(isActive ? (origYMap?.get(i) ?? '') : row[yColName]);
@@ -965,11 +1014,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (pt) {
           const parts = [fmtPointVal(pt.originalX), fmtPointVal(pt.originalY)];
           if (pt.group != null) parts.push(String(pt.group));
+          const lbl = getLabel(highlightIdx);
+          if (lbl) parts.push(`labeled ${lbl}`);
           announce(parts.join(', '));
         }
       }
+      // The toolbar Label button acts on the current selection.
+      const labelBtn = document.getElementById('go-label-btn');
+      if (labelBtn) labelBtn.disabled = highlightIdx == null;
     },
   });
+
+  // Toolbar "Label" button: edit the current go-mode point's label.
+  document.getElementById('go-label-btn')?.addEventListener('click', () => {
+    openLabelEditor(goMode.getRowIndex());
+  });
+
+  // Label editor popover (shared by keyboard, toolbar, and pointer paths).
+  const labelEditorEl = document.getElementById('label-editor');
+  const labelInputEl  = document.getElementById('label-input');
+  if (labelEditorEl && labelInputEl) {
+    labelEditor = createLabelEditor(labelEditorEl, labelInputEl, { maxLen: LABEL_MAX_LEN });
+  }
 
   // Show platform-appropriate modifier key in keyboard shortcuts
   if (!/Mac|iPhone|iPad/.test(navigator.platform)) {
@@ -1058,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('load-btn')?.addEventListener('click', () => {
     const url = document.getElementById('source-url')?.value?.trim();
     if (!url) return;
-    setState({ src: url, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
+    setState({ src: url, x: 0, y: 1, m: 'ols', n: [], c: [], h: null, lb: [] });
   });
 
   // Enter key in URL input
@@ -1083,14 +1149,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         showError(err.message);
         return;
       }
-      setState({ src: key, x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
+      setState({ src: key, x: 0, y: 1, m: 'ols', n: [], c: [], h: null, lb: [] });
     });
     openFileBtn.addEventListener('click', () => fileInput.click());
   }
 
   // Clear data source
   document.getElementById('clear-data-btn')?.addEventListener('click', () => {
-    setState({ src: '', x: 0, y: 1, m: 'ols', n: [], c: [], h: null });
+    setState({ src: '', x: 0, y: 1, m: 'ols', n: [], c: [], h: null, lb: [] });
   });
 
   // Error dismiss

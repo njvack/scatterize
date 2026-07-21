@@ -95,10 +95,43 @@ so shared URLs stay short. The full parameter schema:
 | `sm`   | string                   | `null`    | Smoother: `null`, `median`, `lowess`                              |
 | `sw`   | int (1–100)              | `10`      | Smoother window/bandwidth, percent of points                      |
 | `hide` | comma-separated tokens   | `[]`      | Hidden plot elements: subset of `fit`, `ci`, `kde`, `fringe`      |
+| `lb`   | `i:text` entries, commas | `[]`      | Point labels keyed by row index; text is `encodeURIComponent`d    |
 
 `xl`/`yl` are sorted ascending on parse for canonical URLs (rendering itself is
 order-independent). They can be set from the plot settings gear menu (a
 comma-separated numeric field, blank = auto) or by hand-editing the URL.
+
+`lb` encodes point labels as `index:text` entries joined by commas, sorted by
+index. Each label's text is `encodeURIComponent`d per entry so commas, colons,
+and unicode in a label survive the delimiters; `serializeLabels`/`parseLabels`
+in `state.js` are the round-trip pair. Labels are keyed by original row index
+(same as `c`), so they follow a point across model, variable, and censoring
+changes, and go stale if the source CSV's row order changes. Cleared on data
+load/unload alongside `c`.
+
+### Point labels (issue #63)
+
+Users mark individual points to track whether an outlier is unusual everywhere
+or only on one axis. Built keyboard-first on the existing **go mode** rather
+than on the pointer, because points aren't reachable DOM elements (WebGL pixels
+/ a single overlay hit-rect), so a pointer-only affordance would exclude screen
+readers:
+
+- **Interaction:** the go-mode point is labeled via the `e` shortcut or the
+  toolbar **Label** button; right-click / shift-click is a pointer convenience
+  alias. All routes open one shared popover input (`label-editor.js`) with
+  standard focus discipline (focus in on open, Enter/blur commit, Escape
+  cancel, focus restored on close). Clearing the text removes the label.
+- **Prominence without color reliance:** a larger stroked ring over the point
+  (size + dark outline), plus the label text itself as a redundant encoding.
+- **Placement:** greedy NE/NW/SE/SW quadrant choice per label, minimizing
+  overlap with other points, placed labels, and out-of-bounds area — held to
+  the issue's "if reasonable," not a force-directed solver.
+- **Text** lives in the static front SVG with a `paint-order: stroke` halo, so
+  it's captured by `getExportSVG()` (SVG + PNG) for free and never mutates
+  during hover. A `label` column (beside X) is added to the CSV export when any
+  labels exist. Changes and the selected point's label are announced through the
+  existing `aria-live` region.
 
 ### Data input: URL paste field
 
