@@ -1,0 +1,45 @@
+name: Deploy PR preview
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+# One preview deploy at a time per PR; a new push supersedes an in-flight one.
+concurrency: preview-${{ github.ref }}
+
+permissions:
+  contents: write        # push the preview to the gh-pages branch
+  pull-requests: write   # comment the preview URL on the PR
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Only build when the PR is open/updated. On a "closed" event we skip
+      # straight to the action below, which removes the preview directory.
+      - uses: actions/setup-node@v4
+        if: github.event.action != 'closed'
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+        if: github.event.action != 'closed'
+
+      - run: npm run build
+        if: github.event.action != 'closed'
+
+      # Deploys to gh-pages under pr-preview/pr-<N>/ on open/reopen/sync,
+      # and deletes that directory when the PR is closed or merged.
+      - name: Deploy preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: public
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
