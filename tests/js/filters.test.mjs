@@ -131,3 +131,42 @@ test('applyFilters: starts from the candidate rows given', () => {
 test('unknown step type throws', () => {
   assert.throws(() => applyFilters([{}], [0], [{ type: 'nope' }]), /Unknown filter step/);
 });
+
+test('columnTable: typed-array columns give the same flags as row objects', async () => {
+  const { columnTable } = await import('../../src/stats/filters.js');
+  const data = [3, 1, 4, 1, 5, 9, 2, 6, 5, 35].map((v, i) => ({ v, w: i * 1.5 + (i === 4 ? 20 : 0), f: i % 3 === 0 ? 'yes' : 'no' }));
+  const table = columnTable({
+    cols: { v: Float64Array.from(data, r => r.v), w: Float64Array.from(data, r => r.w) },
+    flags: { f: Uint8Array.from(data, r => (isTruthyFlag(r.f) ? 1 : 0)) },
+  });
+  const steps = [
+    { type: 'exclude', column: 'f' },
+    { type: 'z', columns: ['v'], threshold: 2 },
+    { type: 'mad', columns: ['v', 'w'], threshold: 3 },
+    { type: 'mahalanobis', columns: ['v', 'w'], threshold: 4 },
+    { type: 'cooks', threshold: 0.5 },
+  ];
+  const model = { x: 'w', y: 'v' };
+  for (const step of steps) {
+    assert.deepEqual(flagRows(table, rowsOf(data), step, model), flagRows(data, rowsOf(data), step, model), step.type);
+  }
+});
+
+test('rows: drops listed row indices (hand-excluded fork)', () => {
+  const data = [{}, {}, {}, {}];
+  assert.deepEqual(applyFilters(data, [0, 1, 2, 3], [{ type: 'rows', rows: [2, 0, 9] }]).rows, [1, 3]);
+});
+
+test("Cook's D for M fits: a point the fit rejects has no influence", () => {
+  const x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const y = x.map((v, i) => 2 * v + 1 + [0.3, -0.2, 0.1, -0.4, 0.2, 0, -0.1, 0.3, -0.3, 0.2, 0.1, -0.2][i]);
+  y[6] = 60;
+  const ols = cooksDistances(x, y);
+  const m = cooksDistances(x, y, [], { estimator: 'm' });
+  assert.ok(ols[6] > 0.3 && ols[6] === Math.max(...ols), `OLS D = ${ols[6]}`);
+  assert.equal(m[6], 0);
+  // Away from the outlier, the M fit is close to OLS on clean data.
+  const clean = cooksDistances(x.filter((_, i) => i !== 6), y.filter((_, i) => i !== 6));
+  const mRest = [...m].filter((_, i) => i !== 6);
+  mRest.forEach((d, i) => assert.ok(Math.abs(d - clean[i]) < 0.15, `${d} vs ${clean[i]}`));
+});

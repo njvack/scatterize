@@ -176,14 +176,17 @@ function assembleResult({ X, y, b, scale, weights, nuisance, n, k }) {
 
 // M-estimation: OLS-initialized IRLS with re-estimated MAD scale.
 // Matches MASS::rlm(psi=psi.bisquare, method="M").
-export function robustM(x, y, nuisance = []) {
+// opts.init: start coefficients [intercept, slope, ...nuisance]. Callers that
+// already have the OLS fit (scatterverse) pass it to skip one QR; MASS starts
+// from OLS too, so the result is the same.
+export function robustM(x, y, nuisance = [], opts = {}) {
   const n = x.length;
   const k = nuisance.length + 2;
   assertResidualDf(n, k);
   const { X } = designMatrix(x, nuisance);
 
   // Initialize with OLS
-  let b = wlsSolve(X, n, k, y, new Float64Array(n).fill(1));
+  let b = opts.init ? Float64Array.from(opts.init) : wlsSolve(X, n, k, y, new Float64Array(n).fill(1));
   let r = residuals(X, n, k, y, b);
   let scale = madScale(r);
   let w = bisquareWeights(r, scale);
