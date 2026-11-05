@@ -270,6 +270,7 @@ const FMT = {
     return v.toFixed(3);
   },
   r2: v => v == null ? '—' : v.toFixed(3),
+  ci: v => v == null ? '—' : `[${v[0].toFixed(3)}, ${v[1].toFixed(3)}]`,
   n: v => v == null ? '—' : String(v),
 };
 
@@ -323,13 +324,15 @@ export function updateStats({ modelResult, modelKey, xLabel,
          ['t', FMT.stat(r.tIntercept)], ['p', FMT.pval(r.pIntercept)]];
     html += varSection('Intercept', interceptPairs);
 
-    // X variable section
+    // X variable section. Partial r (with a 95% Fisher-z CI) is the common
+    // effect size across OLS and robust fits.
+    const partialRPairs = [['partial r', FMT.r2(r.partialR)], ['95% CI', FMT.ci(r.partialRCI)]];
     const xPairs = modelKey === 'ols'
       ? [['coef', FMT.coef(r.slope)], ['SE', FMT.coef(r.seSlope)],
          ['t', FMT.stat(r.tSlope)], ['p', FMT.pval(r.pSlope)],
-         ['partial R²', FMT.r2(r.rSquared)]]
+         ['partial R²', FMT.r2(r.rSquared)], ...partialRPairs]
       : [['coef', FMT.coef(r.slope)], ['SE', FMT.coef(r.seSlope)],
-         ['t', FMT.stat(r.tSlope)], ['p', FMT.pval(r.pSlope)]];
+         ['t', FMT.stat(r.tSlope)], ['p', FMT.pval(r.pSlope)], ...partialRPairs];
     html += varSection(xLabel, xPairs);
 
     // Nuisance sections

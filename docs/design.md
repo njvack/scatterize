@@ -26,12 +26,12 @@ Neither supports nuisance covariates. The UI model selector will offer: OLS / Ro
 
 ### Build tooling: esbuild, single app
 
-No CDNs. All dependencies via npm. esbuild bundles `src/main.js` and its imports (including npm packages from `node_modules/`) into `dist/main.js` that the browser can load.
+No CDNs. All dependencies via npm. esbuild bundles two entry points (including npm packages from `node_modules/`): `src/main.js` → `public/dist/main.js` for the page, and `src/stats/worker.js` → `public/dist/stats/worker.js` for regression workers.
 
 ```json
 "scripts": {
-  "dev": "esbuild src/main.js --bundle --outfile=dist/main.js --servedir=. --watch",
-  "build": "esbuild src/main.js --bundle --outfile=dist/main.js --minify"
+  "dev": "esbuild src/main.js src/stats/worker.js --bundle --outdir=public/dist --outbase=src --servedir=public --watch --sourcemap",
+  "build": "esbuild src/main.js src/stats/worker.js --bundle --outdir=public/dist --outbase=src --minify"
 }
 ```
 
@@ -41,11 +41,11 @@ No config file. No HMR (full page reload on change — fine). Simple and underst
 
 ## Architecture Decisions (Settled)
 
-### Stats library: custom implementations + ml-matrix
+### Stats library: custom implementations + a typed-array kernel
 
-All four stat methods are custom implementations validated against R, with no dependency on simple-statistics (removed). `ml-matrix` handles the linear algebra:
-- `QrDecomposition` in `residualize()` — avoids squaring the condition number vs normal equations
-- `solve()` (LU with pivoting) in the robust IRLS loop
+All four stat methods are custom implementations validated against R, with no dependency on simple-statistics (removed). OLS and robust regression run on `src/stats/kernel.js`: column-major `Float64Array` design matrices, Householder QR (avoids squaring the condition number vs normal equations), weighted QR for the IRLS loop, and cross-product helpers for fitting many related models from shared sufficient statistics. The kernel has no DOM access, so it also runs in Web Workers (`src/stats/pool.js`, `src/stats/worker.js`). `ml-matrix` remains for the S-estimator's small subset solves.
+
+The pre-kernel implementations live in `tests/js/oracle/` as a test oracle: `tests/js/kernel.test.mjs` checks the kernel against them on randomized data, and `npm run bench` compares their throughput.
 
 All stats functions: pure, typed inputs (arrays of numbers), consistent output objects. OLS and Robust return `residuals` for use by diagnostic plots.
 

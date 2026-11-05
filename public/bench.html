@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scatterize benchmark</title>
+<style>
+  :root { --bg: #fff; --fg: #1a1a1a; --muted: #5c5c5c; --rule: #ddd; --accent: #1f5fbf; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161616; --fg: #ececec; --muted: #a8a8a8; --rule: #333; --accent: #7fb0ff; }
+  }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, sans-serif; margin: 0 auto; max-width: 52rem; padding: 1.5rem 1rem 3rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.05rem; margin: 2rem 0 .5rem; }
+  p, .env { color: var(--muted); }
+  .env { font-size: .8rem; word-break: break-word; }
+  .controls { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; margin: 1rem 0; }
+  button { font: inherit; padding: .4rem 1rem; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: var(--bg); cursor: pointer; }
+  button[disabled] { opacity: .5; cursor: default; }
+  button.secondary { background: none; color: var(--accent); }
+  input[type=number] { width: 6rem; font: inherit; }
+  #status { min-height: 1.4em; color: var(--fg); }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: .3rem .6rem; border-bottom: 1px solid var(--rule); text-align: right; }
+  thead th { font-weight: 600; }
+  th:first-child { text-align: left; }
+  .table-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Scatterize benchmark</h1>
+<p>Measures regression speed in this browser. It compares the old and new stats code, calibrates at a chosen sample size, and checks how well the worker pool scales. All of the work runs in Web Workers. A full run takes about 30 seconds.</p>
+<div class="env" id="env"></div>
+
+<div class="controls">
+  <button id="run" type="button">Run benchmark</button>
+  <button id="copy" type="button" class="secondary" disabled>Copy results</button>
+  <label><input type="checkbox" id="quick"> Quick run</label>
+  <label>Calibration n <input type="number" id="calib-n" value="1000" min="10" step="100"></label>
+</div>
+<div id="status" role="status" aria-live="polite"></div>
+
+<h2>Old vs new code, single thread</h2>
+<div class="table-wrap">
+<table>
+  <caption class="visually-hidden" hidden>Fits per second before and after the typed-array kernel</caption>
+  <thead><tr><th scope="col">Model</th><th scope="col">n</th><th scope="col">Covariates</th><th scope="col">Before (fits/s)</th><th scope="col">After (fits/s)</th><th scope="col">Speedup</th></tr></thead>
+  <tbody id="compare-body"></tbody>
+</table>
+</div>
+
+<h2>Calibration</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Model</th><th scope="col">n</th><th scope="col">Covariates</th><th scope="col">Fits/s</th></tr></thead>
+  <tbody id="calib-body"></tbody>
+</table>
+</div>
+
+<h2>Worker pool scaling</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Workers</th><th scope="col">Wall time</th><th scope="col">Throughput</th><th scope="col">Speedup</th></tr></thead>
+  <tbody id="scale-body"></tbody>
+</table>
+</div>
+
+<script src="dist/bench/page.js"></script>
+</body>
+</html>

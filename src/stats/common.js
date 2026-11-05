@@ -121,6 +121,26 @@ export function assertResidualDf(n, k) {
   }
 }
 
+// Partial correlation of X with Y, controlling for the other design columns,
+// from X's t statistic and the residual df: r = sign(t)·√(t²/(t² + df)).
+// For OLS this is exact; for M/MM-estimates it is the same transform applied
+// to the robust t, which puts all parametric models on one effect-size scale.
+export function partialR(t, df) {
+  if (!Number.isFinite(t) || !(df > 0)) return null;
+  const t2 = t * t;
+  return Math.sign(t) * Math.sqrt(t2 / (t2 + df));
+}
+
+// 95% CI for a partial correlation via Fisher's z. With q controls,
+// SE(atanh r) = 1/√(n − q − 3); in terms of the residual df (n − q − 2)
+// that is 1/√(df − 1). Returns [lo, hi], or null when df < 2.
+export function partialRCI(r, df) {
+  if (r == null || !(df >= 2)) return null;
+  const z = Math.atanh(r);
+  const h = Z95 / Math.sqrt(df - 1);
+  return [Math.tanh(z - h), Math.tanh(z + h)];
+}
+
 // Solve Ax = b via LU decomposition with partial pivoting (ml-matrix).
 // A: array-of-arrays (k×k); b: array (length k). Returns array (length k).
 export function solveLinear(A, b) {

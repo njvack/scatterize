@@ -1,5 +1,6 @@
-import { solveLinear, diagInverse, zPValue, arrayMedian, mean, assertResidualDf } from './common.js';
+import { zPValue, mean, assertResidualDf, partialR, partialRCI } from './common.js';
 import { sEstimate } from './s-estimate.js';
+import { designMatrix, qrDecompose, qrXtXInverse, residuals, wlsSolve } from './kernel.js';
 
 // Robust regression. The public `robust()` is MM-estimation (Yohai 1987): a
 // high-breakdown S-estimate supplies the start coefficients and a fixed scale,
@@ -8,58 +9,80 @@ import { sEstimate } from './s-estimate.js';
 // and, unlike plain M-estimation, resists high-leverage outliers (50% breakdown,
 // 95% Gaussian efficiency).
 //
-// `robustM()` (the older OLS-initialized M-estimation with re-estimated scale,
-// = MASS::rlm(psi=psi.bisquare, method="M")) is retained as internal plumbing:
-// a component-level test target and a fallback when the S-step degenerates.
+// `robustM()` (OLS-initialized M-estimation with re-estimated scale,
+// = MASS::rlm(psi=psi.bisquare, method="M")) is a component-level test target,
+// the fallback when the S-step degenerates, and the robust estimator for many-
+// path analyses, where the S-step is too slow.
 //
 // x, y: arrays of numbers (equal length, no NaN/Inf)
 // nuisance: array of covariate arrays — included in the full design matrix
 //           (FWL doesn't hold for M/MM; weights depend on full residuals)
+//
+// Linear algebra runs on column-major typed arrays (stats/kernel.js); each
+// IRLS step is a weighted QR solve.
 
 const TUKEY_C = 4.685;  // 95%-efficiency constant for Tukey bisquare (M-step)
 
 function bisquareWeights(r, scale) {
   // w_i = (1 - (r_i/(c*s))^2)^2  for |r_i/(c*s)| < 1, else 0
   // Equals MASS psi.bisquare(u) — the weight w(u) = ψ(u)/u, not ψ(u) itself.
-  return r.map(ri => {
-    const u = ri / (TUKEY_C * scale);
-    return Math.abs(u) >= 1 ? 0 : (1 - u * u) ** 2;
-  });
+  const n = r.length;
+  const w = new Float64Array(n);
+  const cs = TUKEY_C * scale;
+  for (let i = 0; i < n; i++) {
+    const u = r[i] / cs;
+    w[i] = Math.abs(u) >= 1 ? 0 : (1 - u * u) ** 2;
+  }
+  return w;
 }
 
 function bisquarePsiPrime(r, scale) {
   // ψ'(u) for Tukey bisquare — MASS psi.bisquare(u, deriv=1):
   //   t = (u/c)^2;  (1 - t)(1 - 5t) for t < 1, else 0.
-  return r.map(ri => {
-    const t = (ri / (TUKEY_C * scale)) ** 2;
-    return t < 1 ? (1 - t) * (1 - 5 * t) : 0;
-  });
-}
-
-function doWls(dm, y, w, n, k) {
-  const XtWX = Array.from({ length: k }, () => new Array(k).fill(0));
-  const XtWy = new Array(k).fill(0);
+  const n = r.length;
+  const out = new Float64Array(n);
+  const cs = TUKEY_C * scale;
   for (let i = 0; i < n; i++) {
-    for (let j = 0; j < k; j++) {
-      XtWy[j] += dm[i][j] * w[i] * y[i];
-      for (let l = 0; l < k; l++) XtWX[j][l] += dm[i][j] * w[i] * dm[i][l];
-    }
+    const t = (r[i] / cs) ** 2;
+    out[i] = t < 1 ? (1 - t) * (1 - 5 * t) : 0;
   }
-  return { b: solveLinear(XtWX, XtWy), XtWX };
+  return out;
 }
 
-function residuals(dm, y, b) {
-  return y.map((yi, i) => yi - dm[i].reduce((sum, xij, j) => sum + xij * b[j], 0));
+// Rearrange a so a[kth] holds the value it would have if sorted, with smaller
+// values before it and larger after (Hoare quickselect, expected O(n)).
+function selectInPlace(a, kth) {
+  let lo = 0, hi = a.length - 1;
+  while (hi > lo) {
+    const pivot = a[(lo + hi) >> 1];
+    let i = lo, j = hi;
+    while (i <= j) {
+      while (a[i] < pivot) i++;
+      while (a[j] > pivot) j--;
+      if (i <= j) { const t = a[i]; a[i] = a[j]; a[j] = t; i++; j--; }
+    }
+    if (kth <= j) hi = j;
+    else if (kth >= i) lo = i;
+    else return;
+  }
+}
+
+// Median of a scratch Float64Array (reordered in place).
+function medianInPlace(a) {
+  const m = a.length;
+  const mid = m >> 1;
+  selectInPlace(a, mid);
+  if (m % 2) return a[mid];
+  let lower = -Infinity;
+  for (let i = 0; i < mid; i++) if (a[i] > lower) lower = a[i];
+  return (lower + a[mid]) / 2;
 }
 
 function madScale(r) {
-  const s = arrayMedian(r.map(Math.abs)) / 0.6745;
+  const abs = new Float64Array(r.length);
+  for (let i = 0; i < r.length; i++) abs[i] = Math.abs(r[i]);
+  const s = medianInPlace(abs) / 0.6745;
   return s < 1e-10 ? 1e-10 : s;
-}
-
-// Build the design matrix [intercept, x, ...nuisance columns].
-function designMatrix(x, nuisance, n) {
-  return Array.from({ length: n }, (_, i) => [1, x[i], ...nuisance.map(col => col[i])]);
 }
 
 // Assemble the shared result object (SEs, t/p, nuisance stats, y-residual) from
@@ -76,36 +99,33 @@ function designMatrix(x, nuisance, n) {
 //   mn = mean(ψ'(r/s)),  κ = 1 + k · var(ψ'(r/s)) / (n · mn²)
 // where r is wresid (residuals from the final fit), s the reported scale,
 // w = ψ(r/s) (bisquare weight), and var() is Bessel-corrected (÷ n−1).
-function assembleResult({ dm, y, b, scale, weights, nuisance, n, k }) {
-  const rFinal = residuals(dm, y, b);          // MASS wresid: final residuals
+function assembleResult({ X, y, b, scale, weights, nuisance, n, k }) {
+  const rFinal = residuals(X, n, k, y, b);     // MASS wresid: final residuals
   const wSE    = bisquareWeights(rFinal, scale);
   const psip   = bisquarePsiPrime(rFinal, scale);
 
-  const S = rFinal.reduce((acc, ri, i) => acc + (ri * wSE[i]) ** 2, 0) / (n - k);
+  let S = 0;
+  for (let i = 0; i < n; i++) S += (rFinal[i] * wSE[i]) ** 2;
+  S /= (n - k);
   const mn = mean(psip);
-  const varPsip = psip.reduce((acc, p) => acc + (p - mn) ** 2, 0) / (n - 1);
+  let varPsip = 0;
+  for (let i = 0; i < n; i++) varPsip += (psip[i] - mn) ** 2;
+  varPsip /= (n - 1);
   const kappa = 1 + k * varPsip / (n * mn * mn);
   const stddev = Math.sqrt(S) * kappa / mn;
   const sd2 = stddev * stddev;
 
-  // Unweighted X'X and the pieces of its inverse we need.
-  const XtX = Array.from({ length: k }, () => new Array(k).fill(0));
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < k; j++) {
-      for (let l = 0; l < k; l++) XtX[j][l] += dm[i][j] * dm[i][l];
-    }
-  }
-  const diagInv = diagInverse(XtX);
+  // Unweighted (X'X)⁻¹ via QR of X.
+  const inv = qrXtXInverse(qrDecompose(X, n, k));
+  const diagInv = j => inv[j * k + j];
 
-  // Off-diagonal [0][1] of (X'X)⁻¹ scaled by stddev²: covariance of intercept
-  // and x-slope (used by the CI band). Reuse the column-1 solve.
-  const e1 = new Array(k).fill(0); e1[1] = 1;
-  const covIntSlope = solveLinear(XtX, e1)[0] * sd2;
+  // Covariance of intercept and x-slope (used by the CI band).
+  const covIntSlope = inv[1] * sd2;
 
   const slope       = b[1];
   const intercept   = b[0];
-  const seSlope     = Math.sqrt(diagInv[1]) * stddev;
-  const seIntercept = Math.sqrt(diagInv[0]) * stddev;
+  const seSlope     = Math.sqrt(diagInv(1)) * stddev;
+  const seIntercept = Math.sqrt(diagInv(0)) * stddev;
 
   const tSlope     = slope     / seSlope;
   const tIntercept = intercept / seIntercept;
@@ -114,15 +134,25 @@ function assembleResult({ dm, y, b, scale, weights, nuisance, n, k }) {
   const nuisanceStats = nuisance.map((_, pi) => {
     const j    = pi + 2;
     const coef = b[j];
-    const se   = Math.sqrt(diagInv[j]) * stddev;
+    const se   = Math.sqrt(diagInv(j)) * stddev;
     const t    = coef / se;
     return { coef, se, t, p: zPValue(t) };
   });
 
   // Y with nuisance effects removed (for plot y-axis)
-  const yResidual = nuisance.length
-    ? y.map((yi, i) => yi - nuisance.reduce((s, col, pi) => s + b[pi + 2] * col[i], 0))
-    : null;
+  let yResidual = null;
+  if (nuisance.length) {
+    yResidual = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let s = y[i];
+      for (let pi = 0; pi < nuisance.length; pi++) s -= b[pi + 2] * nuisance[pi][i];
+      yResidual[i] = s;
+    }
+  }
+
+  // Residual df as MASS::summary.rlm reports it; used for partial r.
+  const dfResidual = n - k;
+  const pr = partialR(tSlope, dfResidual);
 
   return {
     slope, intercept,
@@ -133,12 +163,14 @@ function assembleResult({ dm, y, b, scale, weights, nuisance, n, k }) {
     // no closed-form df, but converges to N(0,1) under H₀ as n → ∞.
     pSlope:     zPValue(tSlope),
     pIntercept: zPValue(tIntercept),
+    partialR:   pr,
+    partialRCI: partialRCI(pr, dfResidual),
     nuisanceStats,
     yResidual,
     scale,
-    weights,           // pre-final-WLS bisquare weights (matches MASS rlm$w)
-    residuals: rFinal, // final residuals (matches MASS rlm$residuals)
-    n,
+    weights: Array.from(weights),  // pre-final-WLS bisquare weights (matches MASS rlm$w)
+    residuals: Array.from(rFinal), // final residuals (matches MASS rlm$residuals)
+    n, dfResidual,
   };
 }
 
@@ -146,14 +178,13 @@ function assembleResult({ dm, y, b, scale, weights, nuisance, n, k }) {
 // Matches MASS::rlm(psi=psi.bisquare, method="M").
 export function robustM(x, y, nuisance = []) {
   const n = x.length;
-  const dm = designMatrix(x, nuisance, n);
-  const k = dm[0].length;
+  const k = nuisance.length + 2;
   assertResidualDf(n, k);
+  const { X } = designMatrix(x, nuisance);
 
   // Initialize with OLS
-  const ones = new Array(n).fill(1);
-  let { b } = doWls(dm, y, ones, n, k);
-  let r = residuals(dm, y, b);
+  let b = wlsSolve(X, n, k, y, new Float64Array(n).fill(1));
+  let r = residuals(X, n, k, y, b);
   let scale = madScale(r);
   let w = bisquareWeights(r, scale);
 
@@ -162,50 +193,59 @@ export function robustM(x, y, nuisance = []) {
   // This means when we break on convergence, w and scale are the ones that
   // were fed into the final WLS — matching what MASS::rlm reports.
   for (let iter = 0; iter < 20; iter++) {
-    const bPrev = b.slice();
+    const bPrev = b;
 
-    ({ b } = doWls(dm, y, w, n, k));
+    b = wlsSolve(X, n, k, y, w);
 
     // MASS::rlm convergence: all |Δb_j| <= acc * (|b_j| + 1e-3), acc=1e-4
-    if (b.every((bj, j) => Math.abs(bj - bPrev[j]) <= 1e-4 * (Math.abs(bPrev[j]) + 1e-3))) break;
+    let converged = true;
+    for (let j = 0; j < k; j++) {
+      if (Math.abs(b[j] - bPrev[j]) > 1e-4 * (Math.abs(bPrev[j]) + 1e-3)) { converged = false; break; }
+    }
+    if (converged) break;
 
     // Only update r/s/w if not yet converged (so on break, w is from last WLS input)
-    r = residuals(dm, y, b);
+    r = residuals(X, n, k, y, b);
     scale = madScale(r);
     w = bisquareWeights(r, scale);
   }
 
-  return assembleResult({ dm, y, b, scale, weights: w, nuisance, n, k });
+  return assembleResult({ X, y, b, scale, weights: w, nuisance, n, k });
 }
 
 // MM-estimation: S-estimate start (coef + fixed scale) then a bisquare M-step
 // with the scale held fixed. Matches MASS::rlm(method="MM").
 export function robustMM(x, y, nuisance = [], opts = {}) {
   const n = x.length;
-  const dm = designMatrix(x, nuisance, n);
-  const k = dm[0].length;
+  const k = nuisance.length + 2;
   assertResidualDf(n, k);
+  const { X } = designMatrix(x, nuisance);
 
   // High-breakdown S-estimate: start coefficients + fixed scale.
+  // (sEstimate takes a row-major array-of-arrays design.)
+  const dm = Array.from({ length: n }, (_, i) => [1, x[i], ...nuisance.map(col => col[i])]);
   const { coef, scale } = sEstimate(dm, y, opts);
 
   // M-step with the scale FIXED (scale.est == "MM" in rlm.default): iterate
   //   w = ψ(resid/scale) → WLS → new resid, until residuals stop changing.
   // Convergence via MASS irls.delta (resid-based, acc = 1e-4).
-  let b = coef;
-  let r = residuals(dm, y, b);
+  let b = Float64Array.from(coef);
+  let r = residuals(X, n, k, y, b);
   let w = bisquareWeights(r, scale);
   for (let iter = 0; iter < 20; iter++) {
     const rPrev = r;
     w = bisquareWeights(r, scale);
-    ({ b } = doWls(dm, y, w, n, k));
-    r = residuals(dm, y, b);
-    const num = rPrev.reduce((acc, rp, i) => acc + (rp - r[i]) ** 2, 0);
-    const den = Math.max(1e-20, rPrev.reduce((acc, rp) => acc + rp * rp, 0));
-    if (Math.sqrt(num / den) <= 1e-4) break;
+    b = wlsSolve(X, n, k, y, w);
+    r = residuals(X, n, k, y, b);
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+      num += (rPrev[i] - r[i]) ** 2;
+      den += rPrev[i] * rPrev[i];
+    }
+    if (Math.sqrt(num / Math.max(1e-20, den)) <= 1e-4) break;
   }
 
-  return assembleResult({ dm, y, b, scale, weights: w, nuisance, n, k });
+  return assembleResult({ X, y, b, scale, weights: w, nuisance, n, k });
 }
 
 // Public robust regression = MM-estimation, with a fallback to plain M if the
