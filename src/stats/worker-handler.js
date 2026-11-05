@@ -10,12 +10,15 @@
 import { ols } from './ols.js';
 import { robust, robustM } from './robust.js';
 import { applyFilters } from './filters.js';
+import { calibrate } from './calibrate.js';
 
 export const OPS = {
   ols:     ({ x, y, nuisance = [] }) => ols(x, y, nuisance),
   robust:  ({ x, y, nuisance = [], opts = {} }) => robust(x, y, nuisance, opts),
   robustM: ({ x, y, nuisance = [] }) => robustM(x, y, nuisance),
   filters: ({ data, rows, steps, model = null }) => applyFilters(data, rows, steps, model),
+  // Speed calibration takes ~200 ms, so callers run it here rather than on the main thread.
+  calibrate: ({ n, covariates, budgetMs }) => calibrate({ n, covariates, budgetMs }),
 };
 
 function runOne(op, args) {

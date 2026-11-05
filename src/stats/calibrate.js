@@ -5,9 +5,12 @@
 // scatterverse fork would take more than SLOW_SECONDS), and to decide whether a
 // fit belongs in a worker.
 //
-// The run is short (budgetMs total, default 200 ms) and memoized per n for the
-// session. Synthetic data is deterministic, so results vary only with the
-// machine and its load.
+// The run takes budgetMs (default 200 ms) of busy CPU, so pages should run it in
+// a worker (the 'calibrate' op in worker-handler.js) rather than on the main
+// thread: getCalibrationInPool() does that and memoizes per n for the session.
+// getCalibration() is the synchronous equivalent, for Node and tests.
+// Synthetic data is deterministic, so results vary only with the machine and
+// its load.
 
 import { ols } from './ols.js';
 import { robustM } from './robust.js';
@@ -82,6 +85,21 @@ export function getCalibration(n, opts = {}) {
   return memo.get(n);
 }
 
+const poolMemo = new Map();
+
+// Memoized calibration run as a 'calibrate' job on a regression pool (see
+// pool.js), so the busy loop stays off the main thread. Returns a Promise.
+// A failed run is not cached.
+export function getCalibrationInPool(pool, n, opts = {}) {
+  if (!poolMemo.has(n)) {
+    const p = pool.run('calibrate', { ...opts, n });
+    p.catch(() => poolMemo.delete(n));
+    poolMemo.set(n, p);
+  }
+  return poolMemo.get(n);
+}
+
 export function clearCalibrationCache() {
   memo.clear();
+  poolMemo.clear();
 }

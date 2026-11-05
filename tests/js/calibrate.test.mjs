@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { calibrate, secondsPerFit, estimateSeconds, getCalibration,
-         clearCalibrationCache, SLOW_SECONDS } from '../../src/stats/calibrate.js';
+         clearCalibrationCache, getCalibrationInPool, SLOW_SECONDS } from '../../src/stats/calibrate.js';
 
 const fake = { n: 100, rates: { ols: { 0: 1000, 2: 500, 5: 250 }, robustM: { 0: 100 } } };
 
@@ -50,4 +50,31 @@ test('getCalibration: memoized per n', () => {
   assert.equal(a, b);
   clearCalibrationCache();
   assert.notEqual(getCalibration(25, { budgetMs: 10, covariates: [0] }), a);
+});
+
+test('getCalibrationInPool: runs the calibrate op once per n', async () => {
+  clearCalibrationCache();
+  const calls = [];
+  const pool = { run: (op, args) => { calls.push([op, args]); return Promise.resolve({ n: args.n, rates: {} }); } };
+  const a = await getCalibrationInPool(pool, 50, { budgetMs: 5 });
+  const b = await getCalibrationInPool(pool, 50, { budgetMs: 5 });
+  assert.equal(a, b);
+  assert.deepEqual(calls, [['calibrate', { budgetMs: 5, n: 50 }]]);
+});
+
+test('getCalibrationInPool: a failed run is retried next time', async () => {
+  clearCalibrationCache();
+  let fail = true;
+  const pool = { run: () => (fail ? Promise.reject(new Error('nope')) : Promise.resolve({ ok: 1 })) };
+  await assert.rejects(getCalibrationInPool(pool, 60), /nope/);
+  await new Promise(r => setTimeout(r, 0));
+  fail = false;
+  assert.deepEqual(await getCalibrationInPool(pool, 60), { ok: 1 });
+});
+
+test('worker handler: calibrate op returns rates', async () => {
+  const { handleMessage } = await import('../../src/stats/worker-handler.js');
+  const r = handleMessage({ id: 1, op: 'calibrate', args: { n: 30, covariates: [0], budgetMs: 10 } });
+  assert.equal(r.ok, true);
+  assert.ok(r.result.rates.ols[0] > 0);
 });
