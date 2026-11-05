@@ -18,6 +18,9 @@ import { robust, robustM } from '../../src/stats/robust.js';
 import { sEstimate } from '../../src/stats/s-estimate.js';
 import { spearman } from '../../src/stats/spearman.js';
 import { theilSen } from '../../src/stats/theilsen.js';
+import { normalizeSpec, enumeratePaths, specColumns } from '../../src/verse/spec.js';
+import { prepareDataset } from '../../src/verse/dataset.js';
+import { evaluatePlans } from '../../src/verse/evaluate.js';
 
 const NOT_IMPLEMENTED = () => { throw new Error('not yet implemented'); };
 
@@ -345,6 +348,63 @@ try {
 } catch (err) {
   console.log(`  Could not load expected values: ${err.message}`);
   console.log('  Run: make expected');
+}
+
+// ---------------------------------------------------------------------------
+// Scatterverse path engine vs lm()/rlm() grids built the way specr builds them
+// (tests/r/expected_specr.R). Every path is matched by its choices.
+// ---------------------------------------------------------------------------
+section('Scatterverse — path grids (specr semantics, lm + rlm)');
+try {
+  const cases = loadExpected('specr');
+  for (const c of cases) {
+    console.log(`\n  ${c.name}`);
+    try {
+      const data = loadData(c.dataset);
+      const spec = normalizeSpec(c.spec);
+      const { dims, paths } = enumeratePaths(spec);
+      const ds = prepareDataset(data, specColumns(spec));
+      const results = evaluatePlans(ds, paths.map(p => p.plan));
+      const index = new Map();
+      paths.forEach((p, i) => {
+        let apply = false, z = null, cooks = null;
+        dims.forEach((d, j) => {
+          const v = d.options[p.choices[j]].value;
+          if (d.kind === 'exclude') apply = v;
+          if (d.kind === 'outlier' && d.fork.rule === 'z') z = v;
+          if (d.kind === 'outlier' && d.fork.rule === 'cooks') cooks = v;
+        });
+        const covs = [...p.plan.covariates].sort().join('+');
+        index.set([p.plan.y, p.plan.x, covs, apply, p.plan.estimator, z, cooks].join('|'), results[i]);
+      });
+      let ok = 0;
+      const before = failed;
+      for (const e of c.results) {
+        const key = [e.y, e.x, [...e.controls].sort().join('+'), e.subset !== 'all', e.estimator, e.z ?? null, e.cooks ?? null].join('|');
+        const r = index.get(key);
+        const label = `${e.y}~${e.x} [${e.controls.join('+') || 'none'}] ${e.subset} ${e.estimator}${e.z ? ` z>${e.z}` : ''}${e.cooks ? ` D>${e.cooks}/n` : ''}`;
+        if (!r?.ok) { console.log(`    ✗ ${label}: ${r ? r.error : 'no such path'}`); failed++; continue; }
+        const tol = e.estimator === 'm' ? ROBUST_TOL : COEF_TOL;
+        const good = relDiff(r.estimate, e.estimate) <= tol && relDiff(r.se, e.std_error) <= tol &&
+          relDiff(r.t, e.statistic) <= tol && r.n === e.nobs &&
+          (e.p_value == null || relDiff(r.p, e.p_value) <= PVAL_TOL);
+        if (good) { ok++; passed++; continue; }
+        failed++;
+        console.log(`    ✗ ${label}: est ${r.estimate} vs ${e.estimate}, se ${r.se} vs ${e.std_error}, n ${r.n} vs ${e.nobs}`);
+      }
+      if (index.size !== c.results.length) {
+        console.log(`    ✗ path count: ${index.size} vs R ${c.results.length}`);
+        failed++;
+      }
+      if (failed === before) console.log(`    ✓ ${ok} paths match (estimate, SE, t, p, n)`);
+    } catch (err) {
+      console.log(`    ERROR: ${err.message}`);
+      failed++;
+    }
+  }
+} catch (err) {
+  console.log(`  Could not load expected values: ${err.message}`);
+  console.log('  Run: just expected');
 }
 
 // ---------------------------------------------------------------------------
