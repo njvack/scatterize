@@ -7,11 +7,11 @@ import { fetchData } from './data.js';
 import { storeLocalFile, localFileName } from './localfile.js';
 import { createChipPicker } from './plot/chip-picker.js';
 import { createRegressionPool } from './stats/pool.js';
-import { curveStats, bootstrapPValues } from './verse/summary.js';
+import { curveStats, bootstrapPValues, forkSummaries } from './verse/summary.js';
 import { normalizeSpec, countPaths, specFromScatterState, MAX_PATHS } from './verse/spec.js';
 import { prepareDataset } from './verse/dataset.js';
 import { createVerseRunner } from './verse/runner.js';
-import { selectCurve, selectProgress, selectForkSummaries } from './verse/engine.js';
+import { selectCurve, selectProgress } from './verse/engine.js';
 import { parseVerseHash, serializeVerseHash, DEFAULT_SEED } from './verse/url.js';
 import { createForkEditor, newFork, forkId } from './verse-ui/forks.js';
 import { createCurveGrid } from './verse-ui/curves.js';
@@ -30,6 +30,7 @@ const app = {
   seed: DEFAULT_SEED,
   draws: 0,
   showDiag: false,
+  reverse: [],   // reverse-scored outcomes/predictors: their sign flips for display and tests
   split: false,  // one curve per outcome x predictor, instead of one curve
   focus: null,   // panel id, or null for the grid
   hover: null,   // { d, o } from the summary panel
@@ -150,6 +151,9 @@ async function writeHash() {
   let hash = await serializeVerseHash({ src: app.src, spec, seed: app.seed, draws: app.draws });
   if (app.showDiag) hash += '&diag=1';
   if (app.split) hash += '&split=1';
+  const rev = new URLSearchParams();
+  for (const c of activeReverse()) rev.append('rev', c);
+  if (rev.size) hash += `&${rev}`;
   lastHash = hash;
   history.replaceState(null, '', `#${hash}`);
   updateScatterLink();
@@ -187,6 +191,7 @@ async function readHash() {
   } else {
     app.spec = defaultSpec();
   }
+  app.reverse = raw.getAll('rev');
   if (parsed.specError) $('verse-status').textContent = `Couldn't read the analysis in this link (${parsed.specError}); starting fresh.`;
 
   engine.dispatch({ type: 'bootstrap', seed: app.seed, draws: app.draws });
@@ -226,7 +231,7 @@ function clearData() {
 function columnPicker(id, key, placeholder) {
   const picker = createChipPicker({
     container: $(`${id}-picker`), inputId: `${id}-input`, placeholder, searchLabel: `Search ${key}`,
-    onChange: sel => { app.spec[key] = sel; specChanged(); },
+    onChange: sel => { app.spec[key] = sel; syncReversePicker(); specChanged(); },
   });
   return picker;
 }
@@ -237,6 +242,50 @@ const pickers = {
   always: columnPicker('always', 'always', 'Add covariate…'),
 };
 
+// Reverse scoring flips a column's sign. Every path's result is symmetric in
+// that flip (z / MAD / Mahalanobis / Cook's D flag the same rows, the bisquare
+// is symmetric, and OLS is linear), so a reversed path's r, CI, z and
+// bootstrap draws are the unreversed ones negated, applied here at display
+// time. The engine never sees it, so toggling refits nothing.
+const reversePicker = createChipPicker({
+  container: $('reverse-picker'), inputId: 'reverse-input', placeholder: 'Reverse-score…', searchLabel: 'Search outcomes and predictors',
+  onChange: sel => { app.reverse = sel; writeHash(); render(); },
+});
+
+function xyColumns() {
+  return app.spec ? [...new Set([...app.spec.outcomes, ...app.spec.predictors])] : [];
+}
+
+function activeReverse() {
+  const xy = new Set(xyColumns());
+  return app.reverse.filter(c => xy.has(c));
+}
+
+function syncReversePicker() {
+  reversePicker.update({ options: xyColumns().map(c => ({ value: c, label: c })), selected: activeReverse() });
+}
+
+function pathSign(plan, rev) {
+  return (rev.has(plan.y) ? -1 : 1) * (rev.has(plan.x) ? -1 : 1);
+}
+
+function flipResult(r) {
+  if (!r?.ok) return r;
+  return {
+    ...r,
+    estimate: -r.estimate, t: -r.t, z: -r.z, partialR: -r.partialR,
+    ci: r.ci ? [-r.ci[1], -r.ci[0]] : r.ci,
+  };
+}
+
+// Dims with reversed outcome / predictor labels marked.
+function displayDims(dims) {
+  if (!dims) return dims;
+  const rev = new Set(activeReverse());
+  const mark = d => ({ ...d, options: d.options.map(o => rev.has(o.value) ? { ...o, label: `${o.label} (reversed)` } : o) });
+  return [mark(dims[0]), mark(dims[1]), ...dims.slice(2)];
+}
+
 const forkEditor = createForkEditor({
   list: $('fork-list'),
   getColumns: () => ({ numeric: app.numeric, all: app.all }),
@@ -246,6 +295,7 @@ const forkEditor = createForkEditor({
 function syncControls() {
   const options = app.numeric.map(c => ({ value: c, label: c }));
   for (const [key, picker] of Object.entries(pickers)) picker.update({ options, selected: app.spec[key] });
+  syncReversePicker();
   forkEditor.render(app.spec);
 }
 
@@ -339,7 +389,13 @@ function curveInference(g) {
   if (boots.some(b => !b)) return null;
   const drawR = new Float32Array(boots.length * draws);
   const drawZ = new Float32Array(boots.length * draws);
-  boots.forEach((b, i) => { drawR.set(b.r, i * draws); drawZ.set(b.z, i * draws); });
+  boots.forEach((b, i) => {
+    drawR.set(b.r, i * draws);
+    drawZ.set(b.z, i * draws);
+    if (g.paths[i].sign < 0) {
+      for (let d = i * draws; d < (i + 1) * draws; d++) { drawR[d] = -drawR[d]; drawZ[d] = -drawZ[d]; }
+    }
+  });
   return bootstrapPValues(g.stats, drawR, drawZ, boots.length, draws);
 }
 
@@ -393,11 +449,11 @@ function validHighlight(sel, dims) {
 
 function drawCurves() {
   if (!lastCurve) return;
-  const dims = engine.state.dims;
+  const dims = displayDims(engine.state.dims);
   app.pinned = validHighlight(app.pinned, dims);
   grid.render({
     ...lastCurve,
-    dims: engine.state.dims,
+    dims,
     focus: lastCurve.panels.some(p => p.id === app.focus) ? app.focus : null,
     highlight: validHighlight(app.hover, dims) ?? app.pinned,
     showDiag: app.showDiag,
@@ -430,11 +486,18 @@ function render() {
   if (st.specError) status = st.specError;
   $('verse-status').textContent = status;
 
-  lastCurve = buildPanels(selectCurve(st));
+  const rev = new Set(activeReverse());
+  const curve = selectCurve(st);
+  curve.dims = displayDims(curve.dims);
+  curve.paths = curve.paths.map(p => {
+    const sign = pathSign(p.plan, rev);
+    return sign < 0 ? { ...p, sign, result: flipResult(p.result) } : { ...p, sign };
+  });
+  lastCurve = buildPanels(curve);
   drawCurves();
   summary.render({
-    dims: st.dims,
-    summaries: selectForkSummaries(st),
+    dims: curve.dims,
+    summaries: forkSummaries(curve.dims, curve.paths, curve.paths.map(p => p.result)),
     progress,
     pinned: app.pinned,
   });
