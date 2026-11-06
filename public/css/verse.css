@@ -1,0 +1,271 @@
+/* Scatterverse view. Loaded after style.css, which supplies the header,
+   panels, buttons, chip picker and empty state. */
+
+body.verse {
+  --controls-width: 290px;
+  --stats-width: 300px;
+  --sig-pos: #2a6fb8;
+  --sig-neg: #c2491d;
+  --nonsig:  #9aa0a6;
+  --highlight: #e8a33d;
+}
+
+body.verse main {
+  height: calc(100dvh - var(--header-height));
+}
+
+#scatter-link {
+  font-size: 0.929rem;
+}
+
+#verse-controls select,
+#verse-controls input[type="number"],
+#verse-controls input[type="text"] {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 0.929rem;
+  font-family: var(--font-sans);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.verse-subhead {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 20px 0 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.verse-hint {
+  font-size: 0.857rem;
+  color: var(--color-text-muted);
+  margin: 0 0 10px;
+}
+
+.verse-check label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  font-size: 0.929rem;
+  color: var(--color-text);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+#fork-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fork-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  & .fork-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    font-size: 0.929rem;
+  }
+  & .fork-title { flex: 1; }
+  & .fork-count {
+    font-weight: 400;
+    font-size: 0.857rem;
+    color: var(--color-text-muted);
+  }
+  & .fork-head button {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: 0.929rem;
+    padding: 0 4px;
+    &:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-border); }
+    &:disabled { opacity: 0.3; cursor: default; }
+  }
+  & .fork-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.857rem;
+    color: var(--color-text-muted);
+  }
+  & .fork-inline {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.857rem;
+    flex-wrap: wrap;
+  }
+  & .fork-inline label { display: flex; gap: 4px; align-items: center; }
+  & .fork-error { color: var(--sig-neg); font-size: 0.857rem; }
+}
+
+#path-count {
+  font-size: 0.929rem;
+  margin: 0;
+
+  &.warn  { color: #8a5a00; }
+  &.error { color: var(--sig-neg); }
+}
+
+/* ─── Curves ────────────────────────────────────────────────────────────── */
+
+#verse-main {
+  position: relative;
+  overflow: auto;
+  padding: 12px 16px 24px;
+  background: var(--color-bg);
+}
+
+#verse-status {
+  font-size: 0.929rem;
+  color: var(--color-text-muted);
+  min-height: 1.4em;
+  margin-bottom: 8px;
+}
+
+#curve-grid {
+  display: grid;
+  gap: 18px 16px;
+}
+
+.curve-panel {
+  min-width: 0;
+
+  & header {
+    all: unset;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  & h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  & .curve-stats {
+    font-size: 0.857rem;
+    color: var(--color-text-muted);
+  }
+  & .curve-focus {
+    margin-left: auto;
+    font-size: 0.857rem;
+    background: none;
+    border: none;
+    color: var(--color-link);
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--color-link) 40%, transparent);
+  }
+  & canvas {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+  }
+}
+
+#verse-tooltip {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 6px 8px;
+  font-size: 0.857rem;
+  line-height: 1.35;
+  max-width: 320px;
+
+  & dl { margin: 4px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 0 8px; }
+  & dt { color: var(--color-text-muted); }
+  & dd { margin: 0; }
+}
+
+#load-error { color: var(--sig-neg); margin: 0; }
+
+/* ─── Summary panel ─────────────────────────────────────────────────────── */
+
+#verse-summary {
+  border-right: none;
+  border-left: 1px solid var(--color-border);
+  font-size: 0.929rem;
+
+  & h2 { font-size: 1rem; margin: 0 0 6px; }
+  & .verse-hint { margin-bottom: 12px; }
+}
+
+.overall {
+  margin-bottom: 16px;
+  & dl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin: 0; }
+  & dt { color: var(--color-text-muted); }
+  & dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+}
+
+.fork-summary {
+  margin-bottom: 14px;
+
+  & h3 {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.929rem;
+    margin: 0 0 2px;
+  }
+  & .eta {
+    font-weight: 400;
+    color: var(--color-text-muted);
+    font-size: 0.857rem;
+  }
+  & .eta-bar {
+    height: 3px;
+    background: var(--color-border);
+    margin-bottom: 4px;
+    & span { display: block; height: 100%; background: var(--highlight); }
+  }
+  & ul { list-style: none; margin: 0; padding: 0; }
+}
+
+.option-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-variant-numeric: tabular-nums;
+
+  &:hover, &:focus-visible { background: color-mix(in srgb, var(--highlight) 18%, transparent); outline: none; }
+  &[aria-pressed="true"] { border-color: var(--highlight); background: color-mix(in srgb, var(--highlight) 28%, transparent); }
+  & .opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  & .opt-r, & .opt-sig { font-size: 0.857rem; color: var(--color-text-muted); }
+}
+
+@media (max-width: 900px) {
+  body.verse main { display: flex; flex-direction: column; height: auto; overflow: visible; }
+  html:has(body.verse), body.verse { height: auto; overflow-y: auto; }
+  #verse-main { order: 1; min-height: 60vh; }
+  #verse-controls { order: 2; }
+  body.verse.no-data #verse-controls, body.verse.no-data #verse-summary { display: none; }
+  #verse-summary { order: 3; border-left: none; border-top: 1px solid var(--color-border); }
+}
