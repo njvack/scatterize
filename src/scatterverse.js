@@ -30,6 +30,7 @@ const app = {
   seed: DEFAULT_SEED,
   draws: 0,
   showDiag: false,
+  split: false,  // one curve per outcome x predictor, instead of one curve
   focus: null,   // panel id, or null for the grid
   hover: null,   // { d, o } from the summary panel
   pinned: null,
@@ -148,6 +149,7 @@ async function writeHash() {
   try { spec = normalizeSpec(specForUrl(effectiveSpec())); } catch { return; /* keep the old link */ }
   let hash = await serializeVerseHash({ src: app.src, spec, seed: app.seed, draws: app.draws });
   if (app.showDiag) hash += '&diag=1';
+  if (app.split) hash += '&split=1';
   lastHash = hash;
   history.replaceState(null, '', `#${hash}`);
   updateScatterLink();
@@ -164,6 +166,8 @@ async function readHash() {
   app.showDiag = raw.get('diag') === '1';
   $('boot-draws').value = String(app.draws);
   $('show-diag').checked = app.showDiag;
+  app.split = raw.get('split') === '1';
+  $('split-xy').checked = app.split;
 
   if (!parsed.src) { clearData(); return; }
   if (parsed.src !== app.src && !(await loadSource(parsed.src))) { render(); return; }
@@ -254,6 +258,13 @@ $('add-fork').addEventListener('change', e => {
   specChanged();
 });
 
+$('split-xy').addEventListener('change', e => {
+  app.split = e.target.checked;
+  app.focus = null;
+  writeHash();
+  render();
+});
+
 $('show-diag').addEventListener('change', e => {
   app.showDiag = e.target.checked;
   writeHash();
@@ -317,8 +328,9 @@ let lastCurve = null;
 
 // Forced-null bootstrap p-values for one curve. Every path is resampled with
 // the same row draws (seed, draw index), so a curve's p-values come from
-// slicing the shared draws to its own paths; nothing is refitted. Each
-// outcome x predictor is its own hypothesis, so each gets its own test.
+// slicing the shared draws to its own paths; nothing is refitted. As one
+// curve, outcome and predictor are forks and the test spans every path; split
+// into a grid, each outcome x predictor gets its own test.
 function curveInference(g) {
   const st = engine.state;
   const draws = st.boot.draws;
@@ -335,10 +347,13 @@ function buildPanels(curve) {
   const { dims, paths } = curve;
   const byPanel = new Map();
   for (const p of paths) {
-    const id = `${p.choices[0]}:${p.choices[1]}`;
+    const id = app.split ? `${p.choices[0]}:${p.choices[1]}` : 'all';
     let g = byPanel.get(id);
     if (!g) {
-      g = { id, title: `${dims[0].options[p.choices[0]].label} ~ ${dims[1].options[p.choices[1]].label}`, paths: [], pending: 0, failed: 0 };
+      const title = app.split
+        ? `${dims[0].options[p.choices[0]].label} ~ ${dims[1].options[p.choices[1]].label}`
+        : `${dims[0].options.map(o => o.label).join(' | ')} ~ ${dims[1].options.map(o => o.label).join(' | ')}`;
+      g = { id, title, paths: [], pending: 0, failed: 0 };
       byPanel.set(id, g);
     }
     if (!p.result) g.pending++;
@@ -386,7 +401,8 @@ function drawCurves() {
     focus: lastCurve.panels.some(p => p.id === app.focus) ? app.focus : null,
     highlight: validHighlight(app.hover, dims) ?? app.pinned,
     showDiag: app.showDiag,
-    columns: engine.state.spec?.predictors.length ?? 1,
+    split: app.split,
+    columns: app.split ? (engine.state.spec?.predictors.length ?? 1) : 1,
   });
 }
 

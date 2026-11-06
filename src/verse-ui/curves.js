@@ -48,10 +48,11 @@ function niceTicks(lo, hi, count = 4) {
   return out;
 }
 
-// Which dims get matrix rows: forks with more than one option (outcome and
-// predictor are fixed within a panel).
-function matrixDims(dims) {
-  return dims.map((d, i) => ({ d, i })).filter(({ d, i }) => i >= 2 && d.options.length > 1);
+// Which dims get matrix rows: forks with more than one option. When the grid
+// splits by outcome x predictor those two are fixed within a panel; as one
+// curve they are forks like any other.
+function matrixDims(dims, split) {
+  return dims.map((d, i) => ({ d, i })).filter(({ d, i }) => (!split || i >= 2) && d.options.length > 1);
 }
 
 export function createCurveGrid({ container, tooltip, onFocus }) {
@@ -114,7 +115,7 @@ export function createCurveGrid({ container, tooltip, onFocus }) {
 
   function draw(p, data) {
     const focus = !!model.focus || model.panels.length === 1;
-    const mDims = focus ? matrixDims(model.dims) : [];
+    const mDims = focus ? matrixDims(model.dims, model.split) : [];
     const ctx0 = p.canvas.getContext('2d');
     ctx0.font = `11px ${colors.font}`;
     const labelW = mDims.length
@@ -291,8 +292,8 @@ export function createCurveGrid({ container, tooltip, onFocus }) {
     if (i < 0 || i >= L.n) { tooltip.hidden = true; return; }
     const pth = data.paths[i];
     const r = pth.result;
-    const rows = model.dims.map((dim, d) => ({ dim, d })).filter(({ dim, d }) => d >= 2 && dim.options.length > 1)
-      .map(({ dim, d }) => `<dt>${esc(dimName(dim))}</dt><dd>${esc(dim.options[pth.choices[d]].label)}</dd>`).join('');
+    const rows = matrixDims(model.dims, model.split)
+      .map(({ d: dim, i: d }) => `<dt>${esc(dimName(dim))}</dt><dd>${esc(dim.options[pth.choices[d]].label)}</dd>`).join('');
     tooltip.innerHTML =
       `<strong>r = ${fmtR(r.partialR)}</strong> [${fmtR(r.ci?.[0])}, ${fmtR(r.ci?.[1])}] · p ${fmtP(r.p)} · n ${r.n}`
       + `<dl>${rows}`
