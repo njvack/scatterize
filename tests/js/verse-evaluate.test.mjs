@@ -199,3 +199,50 @@ test('paths with no observed estimate are skipped (NaN)', () => {
   assert.ok(Number.isNaN(r[0]) && Number.isNaN(r[1]));
   assert.ok(Number.isFinite(r[2]));
 });
+
+// The scatterverse view reverse-scores a column by negating each path's
+// results instead of refitting. That is only right if every path is symmetric
+// under negating its outcome or predictor: same rows flagged by each outlier
+// rule, same fit up to sign. Check it, including the bootstrap draws.
+test('negating y or x negates every path result and bootstrap draw', () => {
+  const spec = normalizeSpec({
+    ...BIG_SPEC,
+    forks: [
+      ...BIG_SPEC.forks,
+      { kind: 'outlier', rule: 'mahalanobis', thresholds: [9], on: 'model' },
+      { kind: 'outlier', rule: 'mad', thresholds: [3] },
+    ],
+  });
+  const plans = enumeratePaths(spec).paths.map(p => p.plan);
+  const base = evaluatePlans(ds, plans, { diagnostics: true });
+  for (const col of ['y', 'x']) {
+    const neg = { ...ds, cols: { ...ds.cols, [col]: ds.cols[col].map(v => -v) } };
+    const flipped = evaluatePlans(neg, plans, { diagnostics: true });
+    let checked = 0;
+    plans.forEach((plan, i) => {
+      const a = base[i], b = flipped[i];
+      assert.equal(b.ok, a.ok, plan.key);
+      assert.equal(b.n, a.n, plan.key);
+      if (!a.ok) return;
+      const s = plan.y === col || plan.x === col ? -1 : 1;
+      if (s > 0) return;
+      checked++;
+      for (const f of ['estimate', 't', 'z', 'partialR']) close(b[f], s * a[f], 1e-6, `${plan.key} ${f}`);
+      close(b.p, a.p, 1e-6, `${plan.key} p`);
+      close(b.ci[0], -a.ci[1], 1e-6, 'ci lo');
+      close(b.ci[1], -a.ci[0], 1e-6, 'ci hi');
+      close(b.diagnostics.filliben, a.diagnostics.filliben, 1e-6, `${plan.key} filliben`);
+    });
+    assert.ok(checked > 10, `${col}: only ${checked} paths checked`);
+
+    const some = plans.filter((p, i) => base[i].ok && (p.y === col || p.x === col)).slice(0, 24);
+    const est = some.map(p => base[plans.indexOf(p)].estimate);
+    const bA = bootstrapPlans(ds, some, est, { seed: 3, count: 6 });
+    const bB = bootstrapPlans(neg, some, est.map(e => -e), { seed: 3, count: 6 });
+    for (let k = 0; k < bA.r.length; k++) {
+      if (Number.isNaN(bA.r[k])) { assert.ok(Number.isNaN(bB.r[k])); continue; }
+      close(bB.r[k], -bA.r[k], 1e-4, `draw r ${k}`);
+      close(bB.z[k], -bA.z[k], 1e-4, `draw z ${k}`);
+    }
+  }
+});
