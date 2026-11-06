@@ -1052,6 +1052,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // React to URL hash changes
   onStateChange(async (state) => {
+    // The scatterverse view reads the same hash to start from this plot.
+    const verseLink = document.getElementById('verse-link');
+    if (verseLink) verseLink.href = `scatterverse/${location.hash}`;
+
     // Update header data source indicator
     const sourceEl   = document.getElementById('data-source');
     const sourceNameEl = document.getElementById('data-source-name');
@@ -1102,6 +1106,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initial load
   const state = getState();
+  const verseLink = document.getElementById('verse-link');
+  if (verseLink) verseLink.href = `scatterverse/${location.hash}`;
 
   if (state.src) {
     const sourceEl     = document.getElementById('data-source');

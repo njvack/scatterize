@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scatterverse</title>
+  <link rel="preload" href="../fonts/LeagueSpartan-VF.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/verse.css">
+</head>
+<body class="verse">
+
+<header>
+  <h1><a href="./">Scatterverse</a></h1>
+  <a id="scatter-link" href="../">Scatterplot view</a>
+  <div id="data-source" hidden>
+    <span id="data-source-name"></span>
+    <button id="clear-data-btn" aria-label="Clear data">×</button>
+  </div>
+</header>
+
+<main>
+
+  <section id="verse-controls" aria-label="Analysis choices">
+    <div class="control-group">
+      <label for="outcome-input">Outcomes</label>
+      <div id="outcome-picker"></div>
+    </div>
+    <div class="control-group">
+      <label for="predictor-input">Predictors</label>
+      <div id="predictor-picker"></div>
+    </div>
+    <div class="control-group">
+      <label for="always-input">Covariates in every path</label>
+      <div id="always-picker"></div>
+    </div>
+
+    <h2 class="verse-subhead">Forks</h2>
+    <p class="verse-hint">Forks apply top to bottom: an outlier rule sees only the rows left by the forks above it.</p>
+    <ol id="fork-list"></ol>
+    <div class="control-group">
+      <label for="add-fork">Add a fork</label>
+      <select id="add-fork">
+        <option value="">Choose…</option>
+        <option value="exclude">Exclusion column</option>
+        <option value="covariates">Covariate block</option>
+        <option value="outlier">Outlier rule</option>
+        <option value="model">Model</option>
+      </select>
+    </div>
+
+    <p id="path-count" aria-live="polite"></p>
+
+    <h2 class="verse-subhead">Display</h2>
+    <div class="control-group verse-check">
+      <label><input type="checkbox" id="split-xy"> Separate curve per outcome × predictor</label>
+    </div>
+    <div class="control-group verse-check">
+      <label><input type="checkbox" id="show-diag"> Residual normality strip</label>
+    </div>
+    <div class="control-group">
+      <label for="boot-draws">Bootstrap draws (0 = off)</label>
+      <input type="number" id="boot-draws" min="0" step="100" value="0">
+    </div>
+  </section>
+
+  <div id="verse-main">
+    <div id="verse-status" role="status" aria-live="polite"></div>
+    <div id="curve-grid"></div>
+    <div id="verse-tooltip" hidden></div>
+    <div id="empty-state">
+      <div>
+        <h2>Open a dataset&hellip;</h2>
+        <div class="open-data-row">
+          <button id="open-file-btn" class="btn btn-secondary">Browse files…</button>
+          <span class="open-data-or">or</span>
+          <div class="open-data-url">
+            <input type="text" id="source-url" placeholder="Paste a Google Sheets or CSV URL" autocomplete="off" spellcheck="false">
+            <button id="load-btn" class="btn btn-primary">Load</button>
+          </div>
+        </div>
+        <p class="open-data-note">Data never leaves your browser</p>
+        <p class="open-data-examples">
+          Examples:
+          <a href="#src=https://njvack.github.io/scatterize/example_csv/mtcars.csv">’74 Cars</a> ·
+          <a href="#src=https://njvack.github.io/scatterize/example_csv/ames_housing.csv">Ames Housing</a> ·
+          <a href="#src=https://njvack.github.io/scatterize/example_csv/synthetic_outliers.csv">Synthetic outliers</a>
+        </p>
+        <p id="load-error" role="alert" hidden></p>
+      </div>
+    </div>
+  </div>
+
+  <section id="verse-summary" aria-label="Which choices matter"></section>
+
+</main>
+
+<input type="file" id="file-input" accept=".csv,text/csv,text/plain" hidden>
+<script src="../dist/scatterverse.js"></script>
+</body>
+</html>

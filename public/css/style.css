@@ -1219,3 +1219,7 @@ footer button {
     overflow-y: visible;
   }
 }
+
+#verse-link {
+  font-size: 0.929rem;
+}
