@@ -11,6 +11,7 @@ import { ols } from './ols.js';
 import { robust, robustM } from './robust.js';
 import { applyFilters } from './filters.js';
 import { calibrate } from './calibrate.js';
+import { evaluatePlans, bootstrapPlans } from '../verse/evaluate.js';
 
 export const OPS = {
   ols:     ({ x, y, nuisance = [] }) => ols(x, y, nuisance),
@@ -19,6 +20,10 @@ export const OPS = {
   filters: ({ data, rows, steps, model = null }) => applyFilters(data, rows, steps, model),
   // Speed calibration takes ~200 ms, so callers run it here rather than on the main thread.
   calibrate: ({ n, covariates, budgetMs }) => calibrate({ n, covariates, budgetMs }),
+  // Scatterverse (src/verse/engine.js builds these jobs).
+  'verse:eval': ({ dataset, plans, diagnostics = false }) => evaluatePlans(dataset, plans, { diagnostics }),
+  'verse:boot': ({ dataset, plans, estimates, seed, draws }) =>
+    bootstrapPlans(dataset, plans, estimates, { seed, start: 0, count: draws }),
 };
 
 function runOne(op, args) {

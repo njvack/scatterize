@@ -141,6 +141,21 @@ Google Sheets detection: if URL matches `docs.google.com/spreadsheets`, transfor
 
 CORS note: if fetch fails with a CORS error, show a clear message: "This URL doesn't allow cross-origin access. For Google Sheets: File → Share → Anyone with the link. For other CSVs, the server needs CORS headers."
 
+### Scatterverse engine (issues #71, #72, #74)
+
+The engine behind the scatterverse view lives in `src/verse/`, with no DOM access, so all of it runs in regression workers.
+
+- **`spec.js`**: the spec (outcomes and predictors pinned on top, "always" covariates, then forks in the order the user added them: exclusion columns, hand-excluded rows, covariate blocks in `all` / `simplify` / `nested` mode, outlier rules, model). `enumeratePaths` walks the Cartesian product and gives each path an evaluation plan: rows missing a used variable drop first, then the forks apply top to bottom, so an outlier rule sees only rows left above it and Cook's D fits the covariates and estimator chosen above it. The final fit uses all of the path's covariates and the last model fork's estimator. X and Y win over covariates (#39); x = y paths and paths whose plan duplicates an earlier one are skipped. A plan's `key` is canonical, so equal keys mean equal results.
+- **`url.js`**: the spec as deflate + base64url JSON in `vs`, with `seed` and `boot` (draw count) as plain parameters.
+- **`evaluate.js`**: fits many paths at once. Row sets are cached by pipeline prefix and interned by content; all OLS paths on one row set share a centered cross-product matrix, and each is then a Cholesky solve on its sub-block (cost independent of n). M paths fit one by one from the OLS start. `evaluatePlanReference` fits a path from scratch with `ols()` / `robustM()` and is the test oracle. Covariate subsets are solved directly rather than by Gray-code sweeps: a k×k Cholesky is already tiny next to the cross-product pass, and sweeps accumulate rounding.
+- **Forced-null bootstrap** (`bootstrapPlans`): per draw, one resample of all rows (seeded per draw, so results don't depend on how draws are split), y* = y − b̂·x per path, refit. Row sets stay at their observed values. OLS paths reuse weighted cross-products, and forcing the null only changes the y row of each sub-block; M paths refit by IRLS on the resample.
+- **`summary.js`**: curve statistics (median partial r, share significant in the dominant direction, Stouffer's Z), one-sided bootstrap p-values, and per-fork summaries: each option's share of paths, per-option median r and significance counts, and η² of r by option.
+- **`engine.js`**: scheduling as a step function `(state, event) → { state, effects }` with no I/O. Results are cached by plan key, so fork edits compute only new paths. Jobs queue in the engine by priority (OLS, M, bootstrap OLS, bootstrap M) and at most `capacity` run at once; superseded jobs are aborted and their replies ignored. `runner.js` connects it to the worker pool.
+- **Significance** is |z| > 1.96 with z the normal equivalent of each path's two-sided p (OLS from t, M from the robust t), for observed paths and draws alike.
+- **Cook's D under an M model** (a Cook's rule below a model fork that picked M) uses the converged IRLS weights as WLS weights; a point the M fit rejected has D = 0.
+
+Concurrency tests (`tests/js/verse-engine.test.mjs`) drive the step function directly, run the runner against a manual pool where the test picks completion order, and use `fc.scheduler()` for seeded random interleavings of edits, data swaps, bootstrap changes and completions. Invariants: the final curve equals from-scratch fits of the final spec, every cached result belongs to the current dataset, aborted jobs never write, every job settles, and no more than `capacity` jobs run at once.
+
 ---
 
 ## Visual Design
@@ -209,6 +224,7 @@ And a corresponding JS script in `tests/js/` that:
 - **Robust:** `MASS::rlm(y ~ x, data=df, method="MM")` — MM-estimation (Yohai 1987): a high-breakdown S-estimate (`lqs(method="S", k0=1.548)`, exact subset enumeration) supplies the start coefficients and a fixed scale, then a Tukey-biweight (c=4.685) M-step runs from there. 50% breakdown, 95% Gaussian efficiency. SEs use the `summary.rlm` XtX formula. Layered fixtures in `expected_mm.R` check the S-step and the full MM fit; `robustM()` (plain `psi=psi.bisquare`, M-estimation) is retained internally and checked by `expected_robust.R`.
 - **Spearman:** `cor.test(x, y, method="spearman")` — check rho and p-value
 - **Theil-Sen:** `mblm::mblm(y ~ x)` or `DescTools::TheilSen()` — slope and intercept; Kendall's τ p-value via `cor.test(x, y, method="kendall")`
+- **Scatterverse paths:** `expected_specr.R` fits whole specification grids with `lm()` and `MASS::rlm(psi = psi.bisquare)`, built the way `specr::setup()` builds them (controls with and without `simplify`, `add_to_formula`, subsets, per-model NA drop), plus a grid with outlier rules done with `scale()` and `cooks.distance()`. When `specr` is installed the script also fits specr's own grid and stops if any path disagrees.
 
 ### Residualization (nuisance covariates)
 

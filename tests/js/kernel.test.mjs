@@ -255,3 +255,16 @@ test('robust results report dfResidual and partial r', () => {
   close(r.partialR, partialR(r.tSlope, 57), 1e-15, 'partial r');
   assert.equal(r.partialRCI.length, 2);
 });
+
+test('robustM: starting from the OLS fit (opts.init) gives the same result', async () => {
+  const { robustM } = await import('../../src/stats/robust.js');
+  const { ols } = await import('../../src/stats/ols.js');
+  const x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const y = [1.2, 2.1, 2.8, 4.3, 5.1, 5.8, 7.2, 30, 9.1, 9.8];
+  const c = [0.5, -1, 0.3, 0.9, -0.2, 0.1, -0.7, 0.4, 1.1, -0.6];
+  const o = ols(x, y, [c]);
+  const a = robustM(x, y, [c]);
+  const b = robustM(x, y, [c], { init: [o.intercept, o.slope, o.nuisanceStats[0].coef] });
+  assert.ok(Math.abs(a.slope - b.slope) < 1e-10);
+  assert.ok(Math.abs(a.seSlope - b.seSlope) < 1e-10);
+});

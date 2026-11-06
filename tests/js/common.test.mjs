@@ -270,3 +270,15 @@ test('robust: throws on a saturated model (df = 0)', async () => {
   const nuis = [[1, 3, 2, 5], [4, 1, 5, 2]];
   assert.throws(() => robust(x, y, nuis), /no residual degrees of freedom/);
 });
+
+test('normalQuantile (AS 241) inverts normalCDF and matches R qnorm', async () => {
+  const { normalQuantile, signedZ } = await import('../../src/stats/common.js');
+  // R: qnorm(c(1e-10, 0.001, 0.025, 0.3, 0.5, 0.9))
+  const cases = [[1e-10, -6.361340902404056], [0.001, -3.090232306167813], [0.025, -1.959963984540054],
+    [0.3, -0.5244005127080407], [0.5, 0], [0.9, 1.281551565544601]];
+  for (const [p, q] of cases) assert.ok(Math.abs(normalQuantile(p) - q) < 1e-12, `${p}`);
+  assert.equal(normalQuantile(0), -Infinity);
+  assert.equal(normalQuantile(1), Infinity);
+  assert.ok(Math.abs(signedZ(-2, 0.05) + 1.959963984540054) < 1e-12);
+  assert.equal(signedZ(3, 0), 38);
+});

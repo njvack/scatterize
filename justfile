@@ -17,6 +17,7 @@ expected: fixtures
     Rscript tests/r/expected_mm.R
     Rscript tests/r/expected_spearman.R
     Rscript tests/r/expected_theilsen.R
+    Rscript tests/r/expected_specr.R
 
 # Run all JS tests (unit tests + R-comparison)
 test:
