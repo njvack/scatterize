@@ -4,7 +4,7 @@
 // eta² (the share of variance in r the fork's options explain). Hovering an
 // option highlights its paths in every curve; clicking pins the highlight.
 
-import { dimName, fmtR, fmtP, fmtPct } from './labels.js';
+import { dimName, fmtR } from './labels.js';
 
 export function createSummaryPanel({ container, onHover, onPin }) {
   let pinned = null;
@@ -34,27 +34,15 @@ export function createSummaryPanel({ container, onHover, onPin }) {
     onPin(pinned);
   }
 
-  function render({ dims, summaries, observed, inference, progress, pinned: pin }) {
+  function render({ dims, summaries, progress, pinned: pin }) {
     pinned = pin;
     if (!dims) { container.innerHTML = ''; return; }
     const parts = [];
     parts.push('<div class="overall"><h2>All paths</h2><dl>');
     parts.push(`<dt>Paths fitted</dt><dd>${progress.done - progress.failed} of ${progress.total}</dd>`);
     if (progress.failed) parts.push(`<dt>Failed</dt><dd>${progress.failed}</dd>`);
-    if (observed.k) {
-      parts.push(`<dt>Median partial r</dt><dd>${fmtR(observed.medianR)}</dd>`);
-      parts.push(`<dt>Positive</dt><dd>${fmtPct(observed.positive / observed.k)}</dd>`);
-      parts.push(`<dt>Significant, positive</dt><dd>${fmtPct(observed.sigPositive / observed.k)}</dd>`);
-      parts.push(`<dt>Significant, negative</dt><dd>${fmtPct(observed.sigNegative / observed.k)}</dd>`);
-    }
-    if (progress.boot) {
-      if (inference?.p) {
-        parts.push(`<dt>p (median, forced null)</dt><dd>${fmtP(inference.p.median)}</dd>`);
-        parts.push(`<dt>p (share significant)</dt><dd>${fmtP(inference.p.shareSig)}</dd>`);
-        parts.push(`<dt>p (Stouffer's Z)</dt><dd>${fmtP(inference.p.stouffer)}</dd>`);
-      } else {
-        parts.push(`<dt>Bootstrap</dt><dd>${progress.boot.done} of ${progress.boot.total}</dd>`);
-      }
+    if (progress.boot && progress.boot.done < progress.boot.total) {
+      parts.push(`<dt>Bootstrap</dt><dd>${progress.boot.done} of ${progress.boot.total}</dd>`);
     }
     parts.push('</dl></div>');
 

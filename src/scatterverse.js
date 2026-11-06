@@ -7,11 +7,11 @@ import { fetchData } from './data.js';
 import { storeLocalFile, localFileName } from './localfile.js';
 import { createChipPicker } from './plot/chip-picker.js';
 import { createRegressionPool } from './stats/pool.js';
-import { curveStats } from './verse/summary.js';
+import { curveStats, bootstrapPValues } from './verse/summary.js';
 import { normalizeSpec, countPaths, specFromScatterState, MAX_PATHS } from './verse/spec.js';
 import { prepareDataset } from './verse/dataset.js';
 import { createVerseRunner } from './verse/runner.js';
-import { selectCurve, selectProgress, selectInference, selectForkSummaries } from './verse/engine.js';
+import { selectCurve, selectProgress, selectForkSummaries } from './verse/engine.js';
 import { parseVerseHash, serializeVerseHash, DEFAULT_SEED } from './verse/url.js';
 import { createForkEditor, newFork, forkId } from './verse-ui/forks.js';
 import { createCurveGrid } from './verse-ui/curves.js';
@@ -315,6 +315,22 @@ function scheduleRender() {
 
 let lastCurve = null;
 
+// Forced-null bootstrap p-values for one curve. Every path is resampled with
+// the same row draws (seed, draw index), so a curve's p-values come from
+// slicing the shared draws to its own paths; nothing is refitted. Each
+// outcome x predictor is its own hypothesis, so each gets its own test.
+function curveInference(g) {
+  const st = engine.state;
+  const draws = st.boot.draws;
+  if (!draws || g.pending || !g.paths.length) return null;
+  const boots = g.paths.map(p => st.bootResults.get(p.plan.key));
+  if (boots.some(b => !b)) return null;
+  const drawR = new Float32Array(boots.length * draws);
+  const drawZ = new Float32Array(boots.length * draws);
+  boots.forEach((b, i) => { drawR.set(b.r, i * draws); drawZ.set(b.z, i * draws); });
+  return bootstrapPValues(g.stats, drawR, drawZ, boots.length, draws);
+}
+
 function buildPanels(curve) {
   const { dims, paths } = curve;
   const byPanel = new Map();
@@ -339,6 +355,7 @@ function buildPanels(curve) {
   for (const g of panels) {
     g.paths.sort((a, b) => a.result.partialR - b.result.partialR);
     g.stats = curveStats(g.paths.map(p => p.result.partialR), g.paths.map(p => p.result.z));
+    g.inference = curveInference(g);
     for (const p of g.paths) {
       const [l, h] = p.result.ci ?? [p.result.partialR, p.result.partialR];
       if (l < lo) lo = l;
@@ -391,7 +408,6 @@ function render() {
   }
 
   const progress = selectProgress(st);
-  const { observed, inference } = selectInference(st);
   let status = `${progress.total.toLocaleString('en-US')} paths`;
   if (progress.done < progress.total) status += ` · fitting ${progress.done.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')}…`;
   else if (progress.boot && progress.boot.done < progress.boot.total) status += ` · bootstrapping ${progress.boot.done} of ${progress.boot.total}…`;
@@ -403,7 +419,7 @@ function render() {
   summary.render({
     dims: st.dims,
     summaries: selectForkSummaries(st),
-    observed, inference, progress,
+    progress,
     pinned: app.pinned,
   });
 }

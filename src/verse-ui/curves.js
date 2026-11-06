@@ -102,6 +102,9 @@ export function createCurveGrid({ container, tooltip, onFocus }) {
         ? `${s.k} paths · median r ${fmtR(s.medianR)} · ${s.sigPositive} sig +, ${s.sigNegative} sig −`
           + (data.pending ? ` · ${data.pending} pending` : '')
           + (data.failed ? ` · ${data.failed} failed` : '')
+          + (data.inference?.p
+            ? ` · bootstrap p: median ${fmtP(data.inference.p.median)}, share sig ${fmtP(data.inference.p.shareSig)}, Stouffer ${fmtP(data.inference.p.stouffer)}`
+            : '')
         : (data.pending ? `${data.pending} pending` : 'no paths');
       p.focusBtn.textContent = model.focus ? 'Back to grid' : (model.panels.length > 1 ? 'Focus' : '');
       p.focusBtn.hidden = !model.focus && model.panels.length <= 1;
